@@ -19,10 +19,10 @@ find_package(Magnum REQUIRED
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_resource(xxx_RESOURCES resources.conf)
+corrade_add_resource(ebc_RESOURCES resources.conf)
 
-add_executable(xxx xxx.cpp ${xxx_RESOURCES})
-target_link_libraries(xxx PRIVATE
+add_executable(ebc evenbettercap.cc ${ebc_RESOURCES})
+target_link_libraries(ebc PRIVATE
     broker
     caf_core
     Magnum::Application
@@ -38,8 +38,8 @@ target_link_libraries(xxx PRIVATE
 )
 
 
-target_compile_options(xxx PRIVATE)
+target_compile_options(ebc PRIVATE)
 
-set_target_properties(xxx
+set_target_properties(ebc
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
