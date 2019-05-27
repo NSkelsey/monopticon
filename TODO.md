@@ -1,10 +1,14 @@
 TODO
 =====
-As of 22/5/19
+As of 27/5/19
 
-[ ] Cleanup & Docs:
+[X] Cleanup & Docs:
     - Readme with installation instructions
     - Remove wireshark deps and migrate to singular CMake
+
+[ ] Improve source of Evenbettercap
+    - Split files from single source file
+    - Add version
 
 [ ] OpenGL shader:
     - animate movement to point B for packetline shader
@@ -24,11 +28,6 @@ As of 22/5/19
     - add colors for ARP req/resp
         - figure out how to filter to deduplicate arp from raw packets
     - parse dhcp to intuit network topology
-
-[ ] Improve source
-    - Split files from single source file
-    - Remove Wireshark completely
-    - Add version
 
 [ ] Test Portability // Document Deps
     - Try to run program on Riccardo's machine.
