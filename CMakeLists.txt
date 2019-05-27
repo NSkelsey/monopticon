@@ -1,0 +1,45 @@
+cmake_minimum_required(VERSION 3.1)
+
+set(CMAKE_BUILD_TYPE Debug)
+
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g")
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
+
+find_package(MagnumIntegration REQUIRED ImGui)
+find_package(Magnum REQUIRED
+                    GL
+                    MeshTools
+                    Primitives
+                    SceneGraph
+                    Sdl2Application
+                    Shaders
+                    Trade
+                    )
+
+set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
+
+corrade_add_resource(xxx_RESOURCES resources.conf)
+
+add_executable(xxx xxx.cpp ${xxx_RESOURCES})
+target_link_libraries(xxx PRIVATE
+    broker
+    caf_core
+    Magnum::Application
+    Magnum::GL
+    Magnum::Magnum
+    Magnum::MeshTools
+    Magnum::Primitives
+    Magnum::SceneGraph
+    Magnum::Shaders
+    Magnum::Trade
+    MagnumIntegration::ImGui
+    ${LIBEPAN_LIBS}
+)
+
+
+target_compile_options(xxx PRIVATE)
+
+set_target_properties(xxx
+  PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
