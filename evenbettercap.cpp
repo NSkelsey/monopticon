@@ -1,6 +1,6 @@
 /*
-evenbettercap displays and filters ethernet traffic in 3D
-Copyright (C) 2019 Nicholas Skelsey
+Evenbettercap displays and filters ethernet traffic in 3D
+Copyright (C) 2019 Nick Skelsey
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

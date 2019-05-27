@@ -21,7 +21,7 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 corrade_add_resource(ebc_RESOURCES resources.conf)
 
-add_executable(ebc evenbettercap.cc ${ebc_RESOURCES})
+add_executable(ebc evenbettercap.cpp ${ebc_RESOURCES})
 target_link_libraries(ebc PRIVATE
     broker
     caf_core
