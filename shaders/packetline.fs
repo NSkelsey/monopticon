@@ -5,5 +5,6 @@ layout (location = 1) uniform lowp vec3 color;
 out highp vec4 fragmentColor;
 
 void main() {
-    fragmentColor = vec4(color.x*tParam*0.5, color.y*tParam, color.z*tParam, tParam);
+    vec4 x = vec4(tParam);
+    fragmentColor = vec4(color.x, color.y, color.z, 0.0) + vec4(tParam);
 }

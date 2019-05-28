@@ -21,7 +21,13 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 corrade_add_resource(ebc_RESOURCES resources.conf)
 
-add_executable(ebc evenbettercap.cpp ${ebc_RESOURCES})
+set(ebc_FILES
+        evenbettercap.h
+        evenbettercap.cpp
+        device_chart.cpp
+    )
+
+add_executable(ebc ${ebc_FILES} ${ebc_RESOURCES})
 target_link_libraries(ebc PRIVATE
     broker
     caf_core
@@ -34,7 +40,6 @@ target_link_libraries(ebc PRIVATE
     Magnum::Shaders
     Magnum::Trade
     MagnumIntegration::ImGui
-    ${LIBEPAN_LIBS}
 )
 
 

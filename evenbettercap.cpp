@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <math.h>
 #include <ctime>
 #include <set>
+#include <unordered_map>
 
 #include <imgui.h>
 
@@ -71,7 +72,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "broker/message.hh"
 #include "broker/bro.hh"
 
-#include <unordered_map>
+#include "evenbettercap.h"
 
 // Zeek broker components
 broker::endpoint ep;
@@ -90,7 +91,6 @@ Vector2 randCirclePoint();
 Vector2 randOffset(float z);
 
 class DeviceStats;
-
 
 class PhongIdShader: public GL::AbstractShaderProgram {
     public:
@@ -330,8 +330,8 @@ class PacketLineDrawable: public SceneGraph::Drawable3D {
         void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override {
             if (_t < 1.001f && _t > 0.0f) {
                 _t -= 0.02f;
-                Matrix4 scaling = Matrix4::scaling(Vector3{_t});
-                _object.transform(scaling);
+                //Vector3 v = Vector3{0.02f, 0, 0.02f};
+                //_object.translate(v);
             }
             if (_t < 0.0f) {
                 _expired=true;
@@ -427,9 +427,18 @@ class ObjSelect: public Platform::Application {
 
         GL::Buffer _sphereVertices, _sphereIndices;
 
+        // Scene objects
         std::vector<DeviceDrawable*> _device_objects{};
         std::set<PacketLineDrawable*> _packet_line_queue{};
         std::unordered_map<std::string, DeviceStats> _device_map{};
+
+
+        // Custom ImGui interface components
+        Poliopticon::DeviceChartMngr ifaceChartMngr{240, 1.5f};
+        Poliopticon::DeviceChartMngr ifaceLongChartMngr{300, 3.0f};
+
+        int run_sum;
+        int frame_cnt;
 
         bool _drawCubes{true};
 };
@@ -555,6 +564,11 @@ ObjSelect::ObjSelect(const Arguments& arguments):
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
+
+    //ifaceChartMngr = Poliopticon::DeviceChartMngr(240);
+    run_sum = 0;
+    frame_cnt = 0;
+
     setSwapInterval(1);
     setMinimalLoopPeriod(16);
     _timeline.start();
@@ -653,15 +667,33 @@ void ObjSelect::createLine(Vector2 a, Vector2 b) {
 
 
 void ObjSelect::drawEvent() {
+    int event_cnt = 0;
     for (auto msg : subscriber.poll()) {
-        broker::topic topic = broker::get_topic(msg);
-        broker::bro::Event event = broker::get_data(msg);
-        std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
-        if (event.name().compare("raw_packet_event")) {
-            parse_raw_packet(event);
+        event_cnt++;
+        if (event_cnt < 500) {
+            broker::topic topic = broker::get_topic(msg);
+            broker::bro::Event event = broker::get_data(msg);
+            std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+            if (event.name().compare("raw_packet_event")) {
+                    parse_raw_packet(event);
+            } else {
+                std::cout << "Unhandled Event: " << event.name() << std::endl;
+            }
         } else {
-            std::cout << "Unhandled Event: " << event.name() << std::endl;
+            if (event_cnt > 1000) {
+                break;
+            }
         }
+    }
+    frame_cnt ++;
+    ifaceChartMngr.push(static_cast<float>(event_cnt));
+
+    if (frame_cnt % 15 == 0) {
+        ifaceLongChartMngr.push(static_cast<float>(run_sum));
+        run_sum = 0;
+        frame_cnt = 0;
+    } else {
+        run_sum += event_cnt;
     }
 
     // TODO TODO TODO TODO
@@ -711,40 +743,22 @@ void ObjSelect::drawEvent() {
 
     _imgui.newFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(300, 210), ImGuiSetCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Always);
     ImGui::Begin("Tap Status");
 
     if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
+
     }
 
-    const int len_v = 60;
-    static float values[len_v] = { 0 };
-    static float values2[len_v] = { 0 };
-    static int values_offset = 0;
-    static double refresh_time = 0.0;
-    float tot = 0;
-    if (refresh_time == 0.0)
-        refresh_time = ImGui::GetTime();
-    while (refresh_time < ImGui::GetTime()) // Create dummy data at fixed 60 hz rate for the demo
-    {
-        float x = (float)(1 + std::rand()/((RAND_MAX + 1u)/2));
-        int y = 1 + std::rand()/((RAND_MAX + 1u)/2);
-        tot = tot + x;
-        values[values_offset] = x;
-        values2[values_offset] = (float)y;
-        values_offset = (values_offset+1) % len_v;
-        refresh_time += 4.0f/60.0f;
-    }
-
-    ImGui::Separator();
-    char c[40];
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
-        1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
-    sprintf(c, "avg tx ppf %0.6f", tot/len_v);
-    ImGui::PlotLines("", values, len_v, values_offset, c, 0.0f, 4.0f, ImVec2(300,60));
-    sprintf(c, "avg rx ppf %0.6f", tot/len_v);
-    ImGui::PlotLines("", values2, len_v, values_offset, c, 0.0f, 4.0f, ImVec2(300,60));
+        1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
+
     ImGui::Separator();
+    ifaceChartMngr.draw();
+    ImGui::Separator();
+    ifaceLongChartMngr.draw();
+    ImGui::Separator();
+
     ImGui::End();
 
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiSetCond_Once);
