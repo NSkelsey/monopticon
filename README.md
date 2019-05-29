@@ -85,8 +85,6 @@ The relevant docs are listed here for your reference. Compilation of this progra
 
 5. Install zeek
 
-# TODO here create and maintain a package for zeek to ease the installation
-
 ```bash
 > mkdir zeek; cd zeek;
 > wget https://www.zeek.org/downloads/bro-2.6.1.tar.gz

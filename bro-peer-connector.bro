@@ -7,7 +7,7 @@ redef Log::enable_remote_logging = T;
 
 global my_event: event(msg: string, c: count);
 
-event zeek_init()
+event bro_init()
 {
     print "trying to add peer";
     Broker::peer("127.0.0.1", 9999/tcp, 0sec);

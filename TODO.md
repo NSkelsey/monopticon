@@ -39,6 +39,10 @@ As of 29/5/19
 - [ ] Improve Logging
     - [ ] Broker does not log well
 
+- [ ] Improve Portability:
+    - [ ] create and maintain a package for zeek to ease the installation
+    - [ ] figure out how to force zeek_init instead of the deprecated bro_init
+
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)
     - [ ] Port Manifold Shader and Setup
@@ -46,10 +50,10 @@ As of 29/5/19
 DONE
 ====
 
-[x] Test Portability:
+- [x] Test Portability:
     - Try to run program on Diego's machine:
       communication bug between broker and interface
 
-[x] Cleanup & Docs:
+- [x] Cleanup & Docs:
     - Readme with installation instructions
     - Remove wireshark deps and migrate to singular CMake
