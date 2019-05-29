@@ -12,11 +12,11 @@ New source code will live in `src/` and one-off tests in `src/expirements`
 ## Compliation
 The first builds of this project have been tested on arch systems.
 
-This project requires that the source of `magnum`, `corrade`, `imgui` and the zeek `broker` are installed on the system to build the target `ebc`.
+This project requires that the source of `magnum`, `corrade`, `imgui` `zeek` and its `broker` are installed on the system to build the target `ebc`.
 
 The documentation of the magnum project provides a reasonable solution for the installation of the required headers, source and object files. Instead the linkage between magnum and imgui through the magnum-integration requires particular attention.
 
-The relevant docs are listed here for your reference. Compilation of this program is an excerise in linking with cmake so always remember that its not about the final binary distributed but the journey.
+The relevant docs are listed here for your reference. Compilation of this program is an excerise in linking with cmake and patience so always remember that its not about the final binary distributed but the journey.
 
 - [magnum](https://doc.magnum.graphics/magnum/building.html)
 - [corrade](https://doc.magnum.graphics/corrade/building-corrade.html)
@@ -61,7 +61,9 @@ The relevant docs are listed here for your reference. Compilation of this progra
 ```bash
 > git clone https://github.com/mosra/magnum-integration
 > cd magnum-integration/package/archlinux
-> use misc/PKGBUILD
+# NOTE here the PKGBUILD file must be modified to specify WITH_IMGUI=ON and a path.
+# You can replace the file inside of mosra's directory with the one in this repository.
+>  cp -f /path/to/monopticon/contrib/PKGBUILD ./PKGBUILD
 > makepkg -fp PKGBUILD
 > pacman -U name-of.pkg.tar.xz
 ```
@@ -78,20 +80,23 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > git submodule update
 > cd ../..
 > ./configure
-> make install
+> make -j7 install
 ```
 
 5. Install zeek
 
+# TODO here create and maintain a package for zeek to ease the installation
 
 ```bash
 > mkdir zeek; cd zeek;
 > wget https://www.zeek.org/downloads/bro-2.6.1.tar.gz
 > tar xvf bro-2.6.1.tar.gz
-> ./configure
-> make
-> make install
+> cd bro-2.6.1
+> ./configure --disable-broctl --disable-auxtools --disable-perftools --disable-python --disable-broker-tests
+> sudo make -j7 install
 
+# remove the root privs requirement to listen on bin/bro using setcap as the current user
+> sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/bro/bin/bro
 ```
 
 6. After resolving the dependencies compilation follows the cmake norm.
@@ -107,10 +112,11 @@ The relevant docs are listed here for your reference. Compilation of this progra
 Select a suitable interface to capture packets on and simply run the following two commands in two different terminals.
 
 ```bash
-> export LD_LIBRARY_PATH=/usr/local/lib
 # launches the user interface
-> ./build/bin/ebc
+> export LD_LIBRARY_PATH=/usr/local/lib; ./build/bin/ebc
+```
 
-# launches zeek for packet capture on the interface en1
-> /usr/local/bro/bin/bro -i en1 -b bro-peer-connector.bro
+```bash
+# launches zeek for packet capture on the interface enp0s31f6
+> /usr/local/bro/bin/bro -i enp0s31f6 -b bro-peer-connector.bro
 ```
