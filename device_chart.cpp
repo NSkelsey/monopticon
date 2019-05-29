@@ -14,7 +14,6 @@ namespace Poliopticon {
 DeviceChartMngr::DeviceChartMngr(int len, float f) {
     vec = std::vector<float>(len);
     arr_len = len;
-    welford_m2 = 0.0f;
     moving_avg = 0.0f;
     scaling_factor = f;
 }
@@ -25,7 +24,6 @@ void DeviceChartMngr::draw() {
 
     int len = vec.size();
 
-   // float y_max = 6*sqrt(welford_m2)*moving_avg+moving_avg;
     float y_max = scaling_factor*moving_avg;
 
     float* arr_ptr = &vec[0];
@@ -52,8 +50,6 @@ void DeviceChartMngr::push(float new_val) {
     }
     vec.push_back(new_val);
 
-    //float n = static_cast<float>(arr_len);
-
     float sum = 0;
     float n = 0;
     for (auto it = vec.begin(); it != vec.end(); it++) {
@@ -64,38 +60,25 @@ void DeviceChartMngr::push(float new_val) {
         }
     }
     moving_avg = sum/static_cast<float>(n);
+}
 
-    /*
-    if (prev_val != 0.0f) {
-       moving_avg -= prev_val/non_zero_v;
-       non_zero_v --;
-       if (moving_avg < 0.0f) {
-           moving_avg = 0.0f;
-       }
 
-    }
+DeviceWindowMngr::DeviceWindowMngr() {
+    chartMngr = new DeviceChartMngr(240, 1.5f);
+}
 
-    if (new_val == 0.0f) {
+void DeviceWindowMngr::draw() {
+    ImGui::SetNextWindowSize(ImVec2(315, 200), ImGuiCond_FirstUseEver);
+    bool p_open = true;
+    if(!ImGui::Begin("dwm test", &p_open)) {
+        ImGui::End();
         return;
-    } else {
-       non_zero_v ++;
     }
-
-
-    //float delta = new_val - moving_avg;
-    moving_avg = moving_avg + new_val/non_zero_v;
-
-    if (moving_avg < 0.0f) {
-        moving_avg = 0.0f;
+    ImGui::Text("device inspector");
+    if (chartMngr != NULL) {
+        chartMngr->draw();
     }
-
-    *
-    //max_val = *std::max_element(vec.begin(), vec.end());
-
-    float delta2 = new_val - moving_avg;
-    welford_m2 = (welford_m2 + delta * delta2)/(arr_len-1);
-
-    */
+    ImGui::End();
 }
 
 }

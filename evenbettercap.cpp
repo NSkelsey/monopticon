@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <ctime>
 #include <set>
 #include <unordered_map>
+#include <unistd.h>
 
 #include <imgui.h>
 
@@ -378,9 +379,9 @@ class DeviceStats {
 };
 
 
-class ObjSelect: public Platform::Application {
+class Optcon: public Platform::Application {
     public:
-        explicit ObjSelect(const Arguments& arguments);
+        explicit Optcon(const Arguments& arguments);
 
         void drawEvent() override;
 
@@ -430,7 +431,9 @@ class ObjSelect: public Platform::Application {
         // Scene objects
         std::vector<DeviceDrawable*> _device_objects{};
         std::set<PacketLineDrawable*> _packet_line_queue{};
-        std::unordered_map<std::string, DeviceStats> _device_map{};
+        std::map<std::string, DeviceStats> _device_map{};
+
+        std::unordered_map<int, Poliopticon::DeviceWindowMngr> _inspected_device_window_map{};
 
 
         // Custom ImGui interface components
@@ -444,7 +447,7 @@ class ObjSelect: public Platform::Application {
 };
 
 
-ObjSelect::ObjSelect(const Arguments& arguments):
+Optcon::Optcon(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
             .setTitle("Monopticon")
             .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
@@ -575,7 +578,7 @@ ObjSelect::ObjSelect(const Arguments& arguments):
 }
 
 
-void ObjSelect::parse_raw_packet(broker::bro::Event event) {
+void Optcon::parse_raw_packet(broker::bro::Event event) {
     broker::vector parent_content = event.args();
 
     broker::vector *raw_pkt_hdr = broker::get_if<broker::vector>(parent_content.at(0));
@@ -622,16 +625,20 @@ void ObjSelect::parse_raw_packet(broker::bro::Event event) {
     Vector2 p2 = d_s->circPoint;
 
     createLine(p1, p2);
+
+
+    // check if a selected device is needed:
+    // _inspected_devices_map
 }
 
-void ObjSelect::deselectAllDevices() {
+void Optcon::deselectAllDevices() {
     /* Highlight object under mouse and deselect all other */
     for(std::vector<DeviceDrawable*>::iterator it = _device_objects.begin(); it != _device_objects.end(); ++it) {
         (*it)->setSelected(false);
     }
 }
 
-DeviceStats* ObjSelect::createCircle(const std::string mac) {
+DeviceStats* Optcon::createCircle(const std::string mac) {
     Object3D* o = new Object3D{&_scene};
 
     Vector2 v = 4.0f*randCirclePoint();
@@ -656,7 +663,7 @@ DeviceStats* ObjSelect::createCircle(const std::string mac) {
 }
 
 
-void ObjSelect::createLine(Vector2 a, Vector2 b) {
+void Optcon::createLine(Vector2 a, Vector2 b) {
         Object3D* line = new Object3D{&_scene};
         Vector3 a3 = Vector3{a.x(), 0.0f, a.y()};
         Vector3 b3 = Vector3{b.x(), 0.0f, b.y()};
@@ -666,7 +673,7 @@ void ObjSelect::createLine(Vector2 a, Vector2 b) {
 }
 
 
-void ObjSelect::drawEvent() {
+void Optcon::drawEvent() {
     int event_cnt = 0;
     for (auto msg : subscriber.poll()) {
         event_cnt++;
@@ -680,6 +687,8 @@ void ObjSelect::drawEvent() {
                 std::cout << "Unhandled Event: " << event.name() << std::endl;
             }
         } else {
+            // This an overflow handler that drops n packets from the visualization 
+            // before moving to rendering
             if (event_cnt > 1000) {
                 break;
             }
@@ -707,6 +716,7 @@ void ObjSelect::drawEvent() {
 
     std::set<PacketLineDrawable *>::iterator it;
     for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
+        // Note this is an O(N) operation
         PacketLineDrawable *pl = *it;
         if (pl->_expired) {
             it = _packet_line_queue.erase(it);
@@ -743,11 +753,25 @@ void ObjSelect::drawEvent() {
 
     _imgui.newFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Always);
+    ImGui::ShowDemoWindow();
+
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_FirstUseEver);
     ImGui::Begin("Tap Status");
 
-    if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
-
+    static bool peer_connected = false;
+    static int pid = -1;
+    if (!peer_connected) {
+        if (ImGui::Button("Connect", ImVec2(80, 20))) {
+            std::cout << "Launched subprocess" << std::endl;
+            std::system("/usr/local/bro/bin/bro -i enp0s31f6 -b /home/synnick/projects/monopticon/bro-peer-connector.bro &");
+            peer_connected = true;
+        }
+    } else {
+        if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
+            std::system("pkill bro");
+            std::cout << "Disconnect" << std::endl;
+            peer_connected = false;
+        }
     }
 
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
@@ -763,6 +787,14 @@ void ObjSelect::drawEvent() {
 
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display");
+
+    Poliopticon::DeviceWindowMngr *dwm;
+    if (ImGui::Button("Inspect", ImVec2(80,20))) {
+        std::cout << "clicked inspect" << std::endl;
+        dwm = new Poliopticon::DeviceWindowMngr();
+        _inspected_device_window_map.insert(std::make_pair(100, *dwm));
+    }
+
     ImGui::Text("Observed Addresses");
     ImGui::Separator();
     ImGui::BeginChild("Scrolling");
@@ -776,14 +808,20 @@ void ObjSelect::drawEvent() {
             ImGui::Text("%s", s.c_str());
         }
         /*
-        ImVec2 dimensions = ImVec2(300,20);
         if (ImGui::Button("xxx", dimensions)) {
             deselectAllDevices();
             d_s->_drawable->setSelected(true);
         }*/
     }
     ImGui::EndChild();
+
     ImGui::End();
+
+    // Render custom windows chosen by user
+    for (auto it = _inspected_device_window_map.begin(); it != _inspected_device_window_map.end(); ++it) {
+        Poliopticon::DeviceWindowMngr *dwm = &(it->second);
+        dwm->draw();
+    }
 
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
     GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
@@ -803,7 +841,7 @@ void ObjSelect::drawEvent() {
 }
 
 
-void ObjSelect::viewportEvent(ViewportEvent& event) {
+void Optcon::viewportEvent(ViewportEvent& event) {
     GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
 
     _imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
@@ -811,7 +849,7 @@ void ObjSelect::viewportEvent(ViewportEvent& event) {
 }
 
 
-void ObjSelect::keyPressEvent(KeyEvent& event) {
+void Optcon::keyPressEvent(KeyEvent& event) {
     if(_imgui.handleKeyPressEvent(event)) return;
 
     /* Movement */
@@ -827,12 +865,12 @@ void ObjSelect::keyPressEvent(KeyEvent& event) {
 }
 
 
-void ObjSelect::keyReleaseEvent(KeyEvent& event) {
+void Optcon::keyReleaseEvent(KeyEvent& event) {
     if(_imgui.handleKeyReleaseEvent(event)) return;
 }
 
 
-void ObjSelect::mousePressEvent(MouseEvent& event) {
+void Optcon::mousePressEvent(MouseEvent& event) {
     if(_imgui.handleMousePressEvent(event)) return;
 
     if(event.button() != MouseEvent::Button::Left) return;
@@ -842,7 +880,7 @@ void ObjSelect::mousePressEvent(MouseEvent& event) {
     event.setAccepted();
 }
 
-void ObjSelect::mouseReleaseEvent(MouseEvent& event) {
+void Optcon::mouseReleaseEvent(MouseEvent& event) {
     if(_imgui.handleMouseReleaseEvent(event)) return;
 
     if(event.button() != MouseEvent::Button::Left || _mousePressPosition != event.position()) return;
@@ -866,7 +904,7 @@ void ObjSelect::mouseReleaseEvent(MouseEvent& event) {
 }
 
 
-void ObjSelect::mouseMoveEvent(MouseMoveEvent& event) {
+void Optcon::mouseMoveEvent(MouseMoveEvent& event) {
     if(_imgui.handleMouseMoveEvent(event)) return;
 
     if(!(event.buttons() & MouseMoveEvent::Button::Left)) return;
@@ -884,11 +922,11 @@ void ObjSelect::mouseMoveEvent(MouseMoveEvent& event) {
     redraw();
 }
 
-void ObjSelect::mouseScrollEvent(MouseScrollEvent& event) {
+void Optcon::mouseScrollEvent(MouseScrollEvent& event) {
     if(_imgui.handleMouseScrollEvent(event)) return;
 }
 
-void ObjSelect::textInputEvent(TextInputEvent& event) {
+void Optcon::textInputEvent(TextInputEvent& event) {
     if(_imgui.handleTextInputEvent(event)) return;
 }
 
@@ -908,4 +946,4 @@ Vector2 randOffset(float z) {
 
 }}
 
-MAGNUM_APPLICATION_MAIN(Magnum::Monopticon::ObjSelect)
+MAGNUM_APPLICATION_MAIN(Magnum::Monopticon::Optcon)

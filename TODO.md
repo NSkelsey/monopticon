@@ -2,7 +2,7 @@ TODO
 =====
 As of 29/5/19
 
-- [ ] Improve source of Evenbettercap
+- [ ] Release source
     - Split files from single source file
     - Add version
 
@@ -18,6 +18,7 @@ As of 29/5/19
     - maybe implement  a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
 - [ ] Improve interface:
+    - [ ] Temporarily fade out devices after 60 seconds
     - add GUI display for devices
         - selected device displays detailed info if we have it.
         - starts a graph of traffic using CharMngr
@@ -42,6 +43,8 @@ As of 29/5/19
 - [ ] Improve Portability:
     - [ ] create and maintain a package for zeek to ease the installation
     - [ ] figure out how to force zeek_init instead of the deprecated bro_init
+    - [ ] internal: ask for a strace of execution
+    - [ ] plan binary distribution via static build
 
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)

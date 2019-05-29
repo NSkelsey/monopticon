@@ -12,8 +12,6 @@ class DeviceChartMngr {
 
         float moving_avg;
         float max_val;
-        float welford_m2;
-        int non_zero_v;
         float scaling_factor;
 
         DeviceChartMngr(int len, float f);
@@ -23,17 +21,16 @@ class DeviceChartMngr {
         void push(float new_val);
 };
 
-/*{
-  public:
-     DeviceStats(std::string macAddr, Vector2 pos, DeviceDrawable *dev);
+class DeviceWindowMngr {
+    public:
+        DeviceChartMngr *chartMngr;
+        std::vector<std::string> announced_ips;
 
-     std::string create_device_string();
+        DeviceWindowMngr();
 
-     std::string mac_addr;
-     Vector2 circPoint;
-     int num_pkts_sent;
-     int num_pkts_recv;
-     DeviceDrawable *_drawable;
-};*/
+        void draw();
+
+};
+
 }
 #endif
