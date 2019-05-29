@@ -85,7 +85,9 @@ The relevant docs are listed here for your reference. Compilation of this progra
 
 
 ```bash
-> git clone https://github.com/zeek/zeek
+> mkdir zeek; cd zeek;
+> wget https://www.zeek.org/downloads/bro-2.6.1.tar.gz
+> tar xvf bro-2.6.1.tar.gz
 > ./configure
 > make
 > make install
