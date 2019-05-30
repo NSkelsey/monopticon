@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "evenbettercap.h"
 
-namespace Monopticon { namespace Application {
+namespace Monopticon {
 
 // Zeek broker components
 broker::endpoint _ep;
@@ -27,9 +27,9 @@ broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2"});
 using namespace Magnum;
 using namespace Math::Literals;
 
-class Optcon: public Platform::Application {
+class Application: public Platform::Application {
     public:
-        explicit Optcon(const Arguments& arguments);
+        explicit Application(const Arguments& arguments);
 
         void drawEvent() override;
 
@@ -47,7 +47,7 @@ class Optcon: public Platform::Application {
         void parse_raw_packet(broker::bro::Event event);
         Device::Stats* createCircle(const std::string);
         void createLine(Vector2, Vector2);
-        void deselectAllDevices();
+        void deselectDevice();
 
     private:
         // UI fields
@@ -81,8 +81,9 @@ class Optcon: public Platform::Application {
         std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
         std::map<std::string, Device::Stats> _device_map{};
 
-        std::unordered_map<int, Device::WindowMgr> _inspected_device_window_map{};
+        std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
+        Device::Stats* _selectedDevice{NULL};
 
         // Custom ImGui interface components
         Device::ChartMgr ifaceChartMgr{240, 1.5f};
@@ -95,18 +96,17 @@ class Optcon: public Platform::Application {
 };
 
 
-Optcon::Optcon(const Arguments& arguments):
+Application::Application(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
             .setTitle("Monopticon")
             .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
-            .setSize(Vector2i{1200,800}),
-            GLConfiguration{}.setSampleCount(8)},
+            .setSize(Vector2i{1600,1200}),
+            GLConfiguration{}.setSampleCount(16)},
         _framebuffer{GL::defaultFramebuffer.viewport()}
 {
     std::cout << "Waiting for broker connection" << std::endl;
 
     _ep.listen("127.0.0.1", 9999);
-    //_subscriber _ep.make_subscriber({"monopt/l2"});
 
     std::cout << "Connection received" << std::endl;
 
@@ -228,7 +228,7 @@ Optcon::Optcon(const Arguments& arguments):
 }
 
 
-void Optcon::parse_raw_packet(broker::bro::Event event) {
+void Application::parse_raw_packet(broker::bro::Event event) {
     broker::vector parent_content = event.args();
 
     broker::vector *raw_pkt_hdr = broker::get_if<broker::vector>(parent_content.at(0));
@@ -275,20 +275,16 @@ void Optcon::parse_raw_packet(broker::bro::Event event) {
     Vector2 p2 = d_s->circPoint;
 
     createLine(p1, p2);
-
-
-    // check if a selected device is needed:
-    // _inspected_devices_map
 }
 
-void Optcon::deselectAllDevices() {
-    /* Highlight object under mouse and deselect all other */
-    for(std::vector<Figure::DeviceDrawable*>::iterator it = _device_objects.begin(); it != _device_objects.end(); ++it) {
-        (*it)->setSelected(false);
+void Application::deselectDevice() {
+    if (_selectedDevice != NULL) {
+        _selectedDevice->setSelected(false);
+        _selectedDevice = NULL;
     }
 }
 
-Device::Stats* Optcon::createCircle(const std::string mac) {
+Device::Stats* Application::createCircle(const std::string mac) {
     Object3D* o = new Object3D{&_scene};
 
     Vector2 v = 4.0f*Util::randCirclePoint();
@@ -300,12 +296,19 @@ Device::Stats* Optcon::createCircle(const std::string mac) {
     UnsignedByte id = static_cast<UnsignedByte>(_device_objects.size()+1);
 
     Color3 c = 0xa5c9ea_rgbf;
-    Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{id, *o, _phong_id_shader, c, _sphere,
-        Matrix4::scaling(Vector3{0.25f}), _drawables};
+    Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{
+        id,
+        *o,
+        _phong_id_shader,
+        c,
+        _sphere,
+        Matrix4::scaling(Vector3{0.25f}),
+        _drawables};
 
     _device_objects.push_back(dev);
 
     Device::Stats* d_s = new Device::Stats{mac, v, dev};
+    dev->_deviceStats = d_s;
 
     _device_map.insert(std::make_pair(mac, *d_s));
 
@@ -313,7 +316,7 @@ Device::Stats* Optcon::createCircle(const std::string mac) {
 }
 
 
-void Optcon::createLine(Vector2 a, Vector2 b) {
+void Application::createLine(Vector2 a, Vector2 b) {
         Object3D* line = new Object3D{&_scene};
         Vector3 a3 = Vector3{a.x(), 0.0f, a.y()};
         Vector3 b3 = Vector3{b.x(), 0.0f, b.y()};
@@ -323,7 +326,7 @@ void Optcon::createLine(Vector2 a, Vector2 b) {
 }
 
 
-void Optcon::drawEvent() {
+void Application::drawEvent() {
     int event_cnt = 0;
     // Read and parse packets
     for (auto msg : _subscriber.poll()) {
@@ -338,7 +341,7 @@ void Optcon::drawEvent() {
                 std::cout << "Unhandled Event: " << event.name() << std::endl;
             }
         } else {
-            // This an overflow handler that drops n packets from the visualization 
+            // This an overflow handler that drops n packets from the visualization
             // before moving to rendering
             if (event_cnt > 1000) {
                 break;
@@ -402,13 +405,10 @@ void Optcon::drawEvent() {
 
     _imgui.newFrame();
 
-    ImGui::ShowDemoWindow();
-
     ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_FirstUseEver);
     ImGui::Begin("Tap Status");
 
     static bool peer_connected = false;
-    static int pid = -1;
     if (!peer_connected) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
             std::cout << "Launched subprocess" << std::endl;
@@ -437,52 +437,64 @@ void Optcon::drawEvent() {
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display");
 
-    Device::WindowMgr *dwm;
     if (ImGui::Button("Inspect", ImVec2(80,20))) {
         std::cout << "clicked inspect" << std::endl;
-        dwm = new Device::WindowMgr();
-        _inspected_device_window_map.insert(std::make_pair(100, *dwm));
+
+        if (_selectedDevice->_windowMgr == NULL) {
+            Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
+            _selectedDevice->_windowMgr = dwm;
+            _inspected_device_window_list.push_back(dwm);
+        } else {
+            std::cout << "ref to window already exists" << std::endl;
+        }
     }
 
-
-    ImGui::SameLine(5.0f);
+    ImGui::SameLine(100.0f);
     if (!_orbit_toggle) {
-        if (ImGui::Button("Start Orbit", ImVec2(80,20))) {
+        if (ImGui::Button("Start Orbit", ImVec2(90,20))) {
                /* Rotate the camera on an orbit */
                _orbit_toggle = true;
-        } else {
-           if (ImGui::Button("Stop Orbit", ImVec2(80,20))) {
-               _orbit_toggle = false;
-           }
-           _cameraRig->rotateY(0.10_degf);
         }
+    } else {
+       if (ImGui::Button("Stop Orbit", ImVec2(80,20))) {
+           _orbit_toggle = false;
+       }
+       _cameraRig->rotateY(0.10_degf);
     }
 
     ImGui::Text("Observed Addresses");
     ImGui::Separator();
     ImGui::BeginChild("Scrolling");
+    int i = 1;
     for (auto it = _device_map.begin(); it != _device_map.end(); it++) {
         Device::Stats *d_s = &(it->second);
         std::string s = d_s->create_device_string();
 
-        if (d_s->_drawable->isSelected()) {
+        char b[4] = {};
+        sprintf(b, "%d", i);
+        i++;
+        if (ImGui::Button(b, ImVec2(200, 18))) {
+            deselectDevice();
+
+            d_s->setSelected(true);
+            _selectedDevice = d_s;
+        }
+        ImGui::SameLine(5.0f);
+
+        if (d_s->isSelected()) {
             ImGui::TextColored(ImVec4(1,1,0,1), "%s", s.c_str());
         } else {
             ImGui::Text("%s", s.c_str());
         }
-        /*
-        if (ImGui::Button("xxx", dimensions)) {
-            deselectAllDevices();
-            d_s->_drawable->setSelected(true);
-        }*/
     }
+
     ImGui::EndChild();
 
     ImGui::End();
 
     // Render custom windows chosen by user
-    for (auto it = _inspected_device_window_map.begin(); it != _inspected_device_window_map.end(); ++it) {
-        Device::WindowMgr *dwm = &(it->second);
+    for (auto it = _inspected_device_window_list.begin(); it != _inspected_device_window_list.end(); ++it) {
+        Device::WindowMgr *dwm = *it;
         dwm->draw();
     }
 
@@ -504,7 +516,7 @@ void Optcon::drawEvent() {
 }
 
 
-void Optcon::viewportEvent(ViewportEvent& event) {
+void Application::viewportEvent(ViewportEvent& event) {
     GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
 
     _imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
@@ -512,7 +524,7 @@ void Optcon::viewportEvent(ViewportEvent& event) {
 }
 
 
-void Optcon::keyPressEvent(KeyEvent& event) {
+void Application::keyPressEvent(KeyEvent& event) {
     if(_imgui.handleKeyPressEvent(event)) return;
 
     /* Movement */
@@ -528,12 +540,12 @@ void Optcon::keyPressEvent(KeyEvent& event) {
 }
 
 
-void Optcon::keyReleaseEvent(KeyEvent& event) {
+void Application::keyReleaseEvent(KeyEvent& event) {
     if(_imgui.handleKeyReleaseEvent(event)) return;
 }
 
 
-void Optcon::mousePressEvent(MouseEvent& event) {
+void Application::mousePressEvent(MouseEvent& event) {
     if(_imgui.handleMousePressEvent(event)) return;
 
     if(event.button() != MouseEvent::Button::Left) return;
@@ -543,7 +555,8 @@ void Optcon::mousePressEvent(MouseEvent& event) {
     event.setAccepted();
 }
 
-void Optcon::mouseReleaseEvent(MouseEvent& event) {
+
+void Application::mouseReleaseEvent(MouseEvent& event) {
     if(_imgui.handleMouseReleaseEvent(event)) return;
 
     if(event.button() != MouseEvent::Button::Left || _mousePressPosition != event.position()) return;
@@ -555,11 +568,13 @@ void Optcon::mouseReleaseEvent(MouseEvent& event) {
         {PixelFormat::R32UI});
 
 
-    deselectAllDevices();
-
+    deselectDevice();
     UnsignedByte id = data.data<UnsignedByte>()[0];
     if(id > 0 && id < _device_objects.size()+1) {
-        _device_objects.at(id-1)->setSelected(true);
+        _selectedDevice = _device_objects.at(id-1)->_deviceStats;
+        _selectedDevice->setSelected(true);
+    } else {
+        std::cout << "Could not find device" << std::endl;
     }
 
     event.setAccepted();
@@ -567,7 +582,7 @@ void Optcon::mouseReleaseEvent(MouseEvent& event) {
 }
 
 
-void Optcon::mouseMoveEvent(MouseMoveEvent& event) {
+void Application::mouseMoveEvent(MouseMoveEvent& event) {
     if(_imgui.handleMouseMoveEvent(event)) return;
 
     if(!(event.buttons() & MouseMoveEvent::Button::Left)) return;
@@ -585,17 +600,17 @@ void Optcon::mouseMoveEvent(MouseMoveEvent& event) {
     redraw();
 }
 
-void Optcon::mouseScrollEvent(MouseScrollEvent& event) {
+
+void Application::mouseScrollEvent(MouseScrollEvent& event) {
     if(_imgui.handleMouseScrollEvent(event)) return;
 }
 
-void Optcon::textInputEvent(TextInputEvent& event) {
+
+void Application::textInputEvent(TextInputEvent& event) {
     if(_imgui.handleTextInputEvent(event)) return;
 }
 
-}// Close Application namespace 
 }
-
 
 Vector2 Monopticon::Util::randCirclePoint() {
     float f =  rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
@@ -610,4 +625,4 @@ Vector2 Monopticon::Util::randOffset(float z) {
     return v;
 }
 
-MAGNUM_APPLICATION_MAIN(Monopticon::Application::Optcon)
+MAGNUM_APPLICATION_MAIN(Monopticon::Application)

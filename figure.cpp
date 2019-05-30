@@ -66,22 +66,14 @@ PhongIdShader& PhongIdShader::setProjectionMatrix(const Matrix4& matrix) {
 DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables):
     SceneGraph::Drawable3D{object, &drawables},
     _id{id},
-    _selected{false},
     _color{color},
     _shader(shader),
     _mesh(mesh),
-    _primitiveTransformation{primitiveTransformation} 
-{
-     _t = 0.0f;
-}
+    _primitiveTransformation{primitiveTransformation},
+    _t{0.0f} {}
 
-void DeviceDrawable::setSelected(bool selected) {
-    _selected = selected;
-    if (selected) _t = 1.0f;
-}
-
-bool DeviceDrawable::isSelected() {
-    return _selected;
+void DeviceDrawable::resetTParam() {
+    _t = 1.0f;
 }
 
 void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& camera){
@@ -92,8 +84,8 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
     _shader.setTransformationMatrix(transformation*_primitiveTransformation)
            .setNormalMatrix(transformation.rotationScaling())
            .setProjectionMatrix(camera.projectionMatrix())
-           .setAmbientColor(_selected ? _color*0.2f : Color3{})
-           .setColor(_color*(_selected ? 1.5f : 0.9f))
+           .setAmbientColor(_deviceStats->_selected ? _color*0.2f : Color3{})
+           .setColor(_color*(_deviceStats->_selected ? 1.5f : 0.9f))
            .setTimeIntensity(_t)
            /* relative to the camera */
            .setLightPosition({0.0f, 4.0f, 3.0f})

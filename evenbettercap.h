@@ -110,13 +110,27 @@ class Stats {
 
      std::string create_device_string();
 
+     void setSelected(bool selected);
+     bool isSelected();
+
      std::string            mac_addr;
      Figure::DeviceDrawable *_drawable;
-     WindowMgr              *_WindowMgr;
+     WindowMgr              *_windowMgr;
+     bool                   _selected;
 
      Vector2 circPoint;
      int num_pkts_sent;
      int num_pkts_recv;
+};
+
+class WindowMgr {
+    public:
+        WindowMgr(Stats *d_s);
+        void draw();
+
+        Stats *_stats;
+        std::vector<ChartMgr*> chartMgrList;
+        std::vector<std::string> announced_ips;
 };
 
 class ChartMgr {
@@ -133,16 +147,6 @@ class ChartMgr {
         float moving_avg;
         float max_val;
         float scaling_factor;
-};
-
-class WindowMgr {
-    public:
-        WindowMgr();
-        void draw();
-
-        Stats *_stats;
-        std::vector<ChartMgr> chartMgrList;
-        std::vector<std::string> announced_ips;
 };
 
 }
@@ -185,14 +189,13 @@ class DeviceDrawable: public SceneGraph::Drawable3D {
     public:
         explicit DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
 
-        void setSelected(bool selected);
-        bool isSelected();
+        Device::Stats * _deviceStats;
+        void resetTParam();
 
     private:
         void draw(const Matrix4& transformation, SceneGraph::Camera3D& camera) override;
 
         UnsignedByte _id;
-        bool _selected;
         Color3 _color;
         PhongIdShader& _shader;
         GL::Mesh& _mesh;

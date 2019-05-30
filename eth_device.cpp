@@ -16,11 +16,11 @@ using namespace Monopticon::Device;
 Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
          _drawable{dev},
-         circPoint{pos}
-{
-    num_pkts_sent = 0;
-    num_pkts_recv = 0;
-}
+         _selected{false},
+         _windowMgr{NULL},
+         circPoint{pos},
+        num_pkts_sent{0},
+        num_pkts_recv{0} {}
 
 std::string Stats::create_device_string() {
     std::ostringstream stringStream;
@@ -31,6 +31,16 @@ std::string Stats::create_device_string() {
     stringStream << this->num_pkts_recv;
     std::string c = stringStream.str();
     return c;
+}
+
+void Stats::setSelected(bool selected) {
+    _selected = selected;
+
+    if (selected) _drawable->resetTParam();
+}
+
+bool Stats::isSelected() {
+    return _selected;
 }
 
 
@@ -84,21 +94,28 @@ void ChartMgr::push(float new_val) {
 }
 
 
-WindowMgr::WindowMgr() {
-    //auto chartMgr = new ChartMgr(240, 1.5f);
+WindowMgr::WindowMgr(Stats *d_s) {
+    _stats = d_s;
+
+    auto *c_m = new ChartMgr(240, 1.5f);
+    chartMgrList = std::vector<ChartMgr*>();
+    chartMgrList.push_back(c_m);
 }
 
 void WindowMgr::draw() {
     ImGui::SetNextWindowSize(ImVec2(315, 200), ImGuiCond_FirstUseEver);
     bool p_open = true;
-    if(!ImGui::Begin("dwm test", &p_open)) {
+
+    if(!ImGui::Begin("Device", &p_open)) {
         ImGui::End();
         return;
     }
-    ImGui::Text("device inspector");
-    /*
-    if (chartMgr != NULL) {
-        chartMgr->draw();
-    }*/
+    std::string s = _stats->create_device_string();
+    ImGui::Text(s.c_str());
+
+    for (auto it = chartMgrList.begin(); it != chartMgrList.end(); it++) {
+        (*it)->draw();
+    }
+
     ImGui::End();
 }
