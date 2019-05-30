@@ -79,7 +79,8 @@ class Application: public Platform::Application {
         // Scene objects
         std::vector<Figure::DeviceDrawable*> _device_objects{};
         std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
-        std::map<std::string, Device::Stats> _device_map{};
+
+        std::map<std::string, Device::Stats*> _device_map{};
 
         std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
@@ -258,9 +259,9 @@ void Application::parse_raw_packet(broker::bro::Event event) {
     auto search = _device_map.find(*mac_src);
     if (search == _device_map.end()) {
         d_s = createCircle(*mac_src);
-        _device_map.insert(std::make_pair(*mac_src, *d_s));
+        _device_map.insert(std::make_pair(*mac_src, d_s));
     } else {
-        d_s = &(search->second);
+        d_s = search->second;
     }
     d_s->num_pkts_sent += 1;
     Vector2 p1 = d_s->circPoint;
@@ -269,7 +270,7 @@ void Application::parse_raw_packet(broker::bro::Event event) {
     if (search_dst == _device_map.end()) {
         d_s = createCircle(*mac_dst);
     } else {
-        d_s = &(search_dst->second);
+        d_s = search_dst->second;
     }
     d_s->num_pkts_recv += 1;
     Vector2 p2 = d_s->circPoint;
@@ -305,12 +306,12 @@ Device::Stats* Application::createCircle(const std::string mac) {
         Matrix4::scaling(Vector3{0.25f}),
         _drawables};
 
-    _device_objects.push_back(dev);
 
     Device::Stats* d_s = new Device::Stats{mac, v, dev};
     dev->_deviceStats = d_s;
 
-    _device_map.insert(std::make_pair(mac, *d_s));
+    _device_objects.push_back(dev);
+    _device_map.insert(std::make_pair(mac, d_s));
 
     return d_s;
 }
@@ -437,10 +438,10 @@ void Application::drawEvent() {
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display");
 
-    if (ImGui::Button("Inspect", ImVec2(80,20))) {
-        std::cout << "clicked inspect" << std::endl;
+    if (ImGui::Button("Watch", ImVec2(80,20))) {
+        std::cout << "clicked watch" << std::endl;
 
-        if (_selectedDevice->_windowMgr == NULL) {
+        if (_selectedDevice != NULL && _selectedDevice->_windowMgr == NULL) {
             Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
             _selectedDevice->_windowMgr = dwm;
             _inspected_device_window_list.push_back(dwm);
@@ -467,7 +468,7 @@ void Application::drawEvent() {
     ImGui::BeginChild("Scrolling");
     int i = 1;
     for (auto it = _device_map.begin(); it != _device_map.end(); it++) {
-        Device::Stats *d_s = &(it->second);
+        Device::Stats *d_s = it->second;
         std::string s = d_s->create_device_string();
 
         char b[4] = {};
