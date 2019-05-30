@@ -264,6 +264,7 @@ void Application::parse_raw_packet(broker::bro::Event event) {
         d_s = search->second;
     }
     d_s->num_pkts_sent += 1;
+    d_s->health = 60*30;
     Vector2 p1 = d_s->circPoint;
 
     auto search_dst = _device_map.find(*mac_dst);
@@ -273,6 +274,7 @@ void Application::parse_raw_packet(broker::bro::Event event) {
         d_s = search_dst->second;
     }
     d_s->num_pkts_recv += 1;
+    d_s->health = 60*30;
     Vector2 p2 = d_s->circPoint;
 
     createLine(p1, p2);
@@ -407,7 +409,7 @@ void Application::drawEvent() {
 
     _imgui.newFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Always);
     ImGui::Begin("Tap Status");
 
     static bool peer_connected = false;
@@ -436,7 +438,7 @@ void Application::drawEvent() {
 
     ImGui::End();
 
-    ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Always);
     ImGui::Begin("Heads Up Display");
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
@@ -609,9 +611,16 @@ void Application::textInputEvent(TextInputEvent& event) {
 }
 
 Vector2 Monopticon::Util::randCirclePoint() {
-    float f =  rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
+    float r = rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
 
-    return Vector2{cos(f), sin(f)};
+    float steps = 16.0f;
+    float max = 2*Math::Constants<float>::pi();
+    float min = 0.0f;
+
+    float zerone = std::round((r-min)*(steps/(max-min)))/steps;
+    float res = zerone*(max-min) + min;
+
+    return Vector2{cos(res), sin(res)};
 }
 
 Vector2 Monopticon::Util::randOffset(float z) {

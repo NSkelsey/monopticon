@@ -122,6 +122,7 @@ class Stats {
      Vector2 circPoint;
      int num_pkts_sent;
      int num_pkts_recv;
+     int health;
 };
 
 class WindowMgr {

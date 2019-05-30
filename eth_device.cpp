@@ -20,7 +20,10 @@ Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
          _windowMgr{NULL},
          circPoint{pos},
         num_pkts_sent{0},
-        num_pkts_recv{0} {}
+        num_pkts_recv{0},
+        health{60*30}
+{}
+
 
 std::string Stats::create_device_string() {
     std::ostringstream stringStream;
@@ -81,7 +84,7 @@ void WindowMgr::draw() {
 
     // TODO TODO TODO
 
-    ImGui::SetNextWindowSize(ImVec2(315, 200), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Always);
     bool p_open = true;
 
     if(!ImGui::Begin("Device", &p_open)) {

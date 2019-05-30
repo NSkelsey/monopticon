@@ -81,6 +81,8 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
         _t = _t - 0.01f;
     }
 
+    if (_deviceStats->health > 0) {
+        _deviceStats->health --;
     _shader.setTransformationMatrix(transformation*_primitiveTransformation)
            .setNormalMatrix(transformation.rotationScaling())
            .setProjectionMatrix(camera.projectionMatrix())
@@ -91,6 +93,7 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
            .setLightPosition({0.0f, 4.0f, 3.0f})
            .setObjectId(_id);
     _mesh.draw(_shader);
+    }
 }
 
 RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::DrawableGroup3D& group):
