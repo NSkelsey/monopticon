@@ -3,24 +3,47 @@
 #include <math.h>
 #include <ctime>
 #include <vector>
-#include <algorithm>
+#include <unistd.h>
+#include <sstream>
 
 #include <imgui.h>
 
 #include "evenbettercap.h"
 
-namespace Poliopticon {
 
-DeviceChartMngr::DeviceChartMngr(int len, float f) {
+using namespace Monopticon::Device;
+
+Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
+         mac_addr{macAddr},
+         _drawable{dev},
+         circPoint{pos}
+{
+    num_pkts_sent = 0;
+    num_pkts_recv = 0;
+}
+
+std::string Stats::create_device_string() {
+    std::ostringstream stringStream;
+    stringStream << this->mac_addr;
+    stringStream << " | ";
+    stringStream << this->num_pkts_sent;
+    stringStream << " | ";
+    stringStream << this->num_pkts_recv;
+    std::string c = stringStream.str();
+    return c;
+}
+
+
+ChartMgr::ChartMgr(int len, float f) {
     vec = std::vector<float>(len);
     arr_len = len;
     moving_avg = 0.0f;
     scaling_factor = f;
 }
 
-void DeviceChartMngr::draw() {
+void ChartMgr::draw() {
     char txt[40];
-    sprintf(txt, "avg ppb %0.2f", moving_avg);
+    sprintf(txt, "avg ppb %0.2f", static_cast<double>(moving_avg));
 
     int len = vec.size();
 
@@ -33,19 +56,17 @@ void DeviceChartMngr::draw() {
 }
 
 
-void DeviceChartMngr::clear() {
+void ChartMgr::clear() {
 
 }
 
-void DeviceChartMngr::resize(int len) {
+void ChartMgr::resize(int len) {
     vec.resize(len);
     arr_len = len;
 }
 
-void DeviceChartMngr::push(float new_val) {
-    float prev_val = 0.0f;
+void ChartMgr::push(float new_val) {
     if (vec.size() > arr_len) {
-        prev_val = vec.at(0);
         vec.erase(vec.begin());
     }
     vec.push_back(new_val);
@@ -63,11 +84,11 @@ void DeviceChartMngr::push(float new_val) {
 }
 
 
-DeviceWindowMngr::DeviceWindowMngr() {
-    chartMngr = new DeviceChartMngr(240, 1.5f);
+WindowMgr::WindowMgr() {
+    //auto chartMgr = new ChartMgr(240, 1.5f);
 }
 
-void DeviceWindowMngr::draw() {
+void WindowMgr::draw() {
     ImGui::SetNextWindowSize(ImVec2(315, 200), ImGuiCond_FirstUseEver);
     bool p_open = true;
     if(!ImGui::Begin("dwm test", &p_open)) {
@@ -75,10 +96,9 @@ void DeviceWindowMngr::draw() {
         return;
     }
     ImGui::Text("device inspector");
-    if (chartMngr != NULL) {
-        chartMngr->draw();
-    }
+    /*
+    if (chartMgr != NULL) {
+        chartMgr->draw();
+    }*/
     ImGui::End();
-}
-
 }

@@ -1,6 +1,6 @@
 TODO
 =====
-As of 29/5/19
+As of 30/5/19
 
 - [ ] Release source
     - Split files from single source file
@@ -29,8 +29,14 @@ As of 29/5/19
     - parse dhcp to intuit network topology
     - Try to reconstruct arp table of devices inside of the broadcast domain.
 
+- [ ] Add packet filtering
+    - Create a status_subscriber to monitor the broker conn: [zeek docs](https://bro-broker.readthedocs.io/en/stable/comm.html#status-and-error-messages)
+    - analyze BPF syntax and zeek configuration
+    - add ui elements (text bar, minimal lookback)
+    - apply filters
+
 - [ ] Improve Scaling
-    - Dies at 65355 "too large scene" Corrade assert // handled with hardcoded limit for now
+    x Dies at 65355 "too large scene" Corrade assert // handled with hardcoded limit for now
     - Produce summary inside of zeek script that remains constant size
     - Use different levels of detail:
         - Every packet
@@ -45,6 +51,8 @@ As of 29/5/19
     - [ ] figure out how to force zeek_init instead of the deprecated bro_init
     - [ ] internal: ask for a strace of execution
     - [ ] plan binary distribution via static build
+    - [ ] scripting interface for: start interface, stop interface, check status,
+          get routes, get iface, get gateway
 
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)

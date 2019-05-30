@@ -23,8 +23,9 @@ corrade_add_resource(ebc_RESOURCES resources.conf)
 
 set(ebc_FILES
         evenbettercap.h
+        eth_device.cpp
+        figure.cpp
         evenbettercap.cpp
-        device_chart.cpp
     )
 
 add_executable(ebc ${ebc_FILES} ${ebc_RESOURCES})

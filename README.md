@@ -9,7 +9,7 @@ All reactions to this project including silly questions are appreciated. Open an
 
 New source code will live in `src/` and one-off tests in `src/expirements`
 
-## Compliation
+## Compilation
 The first builds of this project have been tested on arch systems.
 
 This project requires that the source of `magnum`, `corrade`, `imgui` `zeek` and its `broker` are installed on the system to build the target `ebc`.
@@ -27,7 +27,7 @@ The relevant docs are listed here for your reference. Compilation of this progra
 
 ### Steps
 
-0. The following requirements are common enough that we can assume they are already installed.
+#### 1. The following requirements are common enough that we can assume they are already installed.
 
 ```
 > cmake
@@ -39,14 +39,14 @@ The relevant docs are listed here for your reference. Compilation of this progra
 ```
 
 
-1. Install magnum and corrade
+#### 2. Install magnum and corrade
 
 ```bash
 > pacman -S magnum
 > pacman -S corrade
 ```
 
-2. Build the package imgui-src and install it.
+#### 3. Build the package imgui-src and install it.
 
 ```bash
 # in your scratch dir
@@ -56,7 +56,7 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > pacman -U name-of.pkg.tar.xz
 ```
 
-3. Build and install the package magnum-integration specifying usage with ImGui.
+#### 4. Build and install the package magnum-integration specifying usage with ImGui.
 
 ```bash
 > git clone https://github.com/mosra/magnum-integration
@@ -68,7 +68,7 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > pacman -U name-of.pkg.tar.xz
 ```
 
-4. Install the zeek broker and its dependencies.
+#### 5. Install the zeek broker and its dependencies.
 
 ```bash
 > git clone https://github.com/zeek/broker
@@ -83,7 +83,7 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > make -j7 install
 ```
 
-5. Install zeek
+#### 6. Install zeek
 
 ```bash
 > mkdir zeek; cd zeek;
@@ -97,7 +97,7 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/bro/bin/bro
 ```
 
-6. After resolving the dependencies compilation follows the cmake norm.
+#### 7. After resolving the dependencies compilation follows the cmake norm.
 
 ```bash
 > cd monopticon; mkdir build; cd build

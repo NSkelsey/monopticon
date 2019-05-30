@@ -16,368 +16,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <iostream>
-#include <math.h>
-#include <ctime>
-#include <set>
-#include <unordered_map>
-#include <unistd.h>
-
-#include <imgui.h>
-
-#include <Corrade/Containers/Optional.h>
-#include <Corrade/Containers/Pointer.h>
-#include <Corrade/Containers/Reference.h>
-#include <Corrade/Utility/Resource.h>
-
-#include <Magnum/Timeline.h>
-#include <Magnum/Math/Color.h>
-#include <Magnum/Image.h>
-#include <Magnum/PixelFormat.h>
-#include <Magnum/GL/AbstractShaderProgram.h>
-#include <Magnum/GL/Buffer.h>
-#include <Magnum/GL/Context.h>
-#include <Magnum/GL/Shader.h>
-#include <Magnum/GL/DefaultFramebuffer.h>
-#include <Magnum/GL/Framebuffer.h>
-#include <Magnum/GL/Mesh.h>
-#include <Magnum/GL/Renderbuffer.h>
-#include <Magnum/GL/RenderbufferFormat.h>
-#include <Magnum/GL/Renderer.h>
-#include <Magnum/GL/Texture.h>
-#include <Magnum/GL/Version.h>
-#include <Magnum/Math/Constants.h>
-#include <Magnum/Math/Vector2.h>
-#include <Magnum/Math/Vector3.h>
-#include <Magnum/MeshTools/Compile.h>
-#include <Magnum/MeshTools/Transform.h>
-#include <Magnum/MeshTools/CompressIndices.h>
-#include <Magnum/MeshTools/Interleave.h>
-#include <Magnum/ImGuiIntegration/Context.hpp>
-#include <Magnum/Platform/Sdl2Application.h>
-#include <Magnum/Primitives/Cube.h>
-#include <Magnum/Primitives/Circle.h>
-#include <Magnum/Primitives/Line.h>
-#include <Magnum/Primitives/UVSphere.h>
-#include <Magnum/SceneGraph/Camera.h>
-#include <Magnum/SceneGraph/Drawable.h>
-#include <Magnum/SceneGraph/MatrixTransformation3D.h>
-#include <Magnum/SceneGraph/Scene.h>
-#include <Magnum/Shaders/Flat.h>
-#include <Magnum/Shaders/MeshVisualizer.h>
-#include <Magnum/Shaders/Phong.h>
-#include <Magnum/Trade/MeshData3D.h>
-
-#include "broker/broker.hh"
-#include "broker/message.hh"
-#include "broker/bro.hh"
-
 #include "evenbettercap.h"
 
+namespace Monopticon { namespace Application {
+
 // Zeek broker components
-broker::endpoint ep;
-broker::subscriber subscriber = ep.make_subscriber({"monopt/l2"});
+broker::endpoint _ep;
+broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2"});
 
-namespace Magnum { namespace Monopticon {
-
-void parse_raw_packet(broker::bro::Event event);
-
+using namespace Magnum;
 using namespace Math::Literals;
-
-typedef SceneGraph::Object<SceneGraph::MatrixTransformation3D> Object3D;
-typedef SceneGraph::Scene<SceneGraph::MatrixTransformation3D> Scene3D;
-
-Vector2 randCirclePoint();
-Vector2 randOffset(float z);
-
-class DeviceStats;
-
-class PhongIdShader: public GL::AbstractShaderProgram {
-    public:
-        typedef GL::Attribute<0, Vector3> Position;
-        typedef GL::Attribute<1, Vector3> Normal;
-
-        enum: UnsignedInt {
-            ColorOutput = 0,
-            ObjectIdOutput = 1
-        };
-
-        explicit PhongIdShader();
-
-        PhongIdShader& setObjectId(UnsignedInt id) {
-            setUniform(_objectIdUniform, id);
-            return *this;
-        }
-
-        PhongIdShader& setLightPosition(const Vector3& position) {
-            setUniform(_lightPositionUniform, position);
-            return *this;
-        }
-
-        PhongIdShader& setAmbientColor(const Color3& color) {
-            setUniform(_ambientColorUniform, color);
-            return *this;
-        }
-
-        PhongIdShader& setColor(const Color3& color) {
-            setUniform(_colorUniform, color);
-            return *this;
-        }
-
-        PhongIdShader& setTimeIntensity(const float t) {
-            setUniform(_timeIntensityUniform, t);
-            return *this;
-        }
-
-        PhongIdShader& setTransformationMatrix(const Matrix4& matrix) {
-            setUniform(_transformationMatrixUniform, matrix);
-            return *this;
-        }
-
-        PhongIdShader& setNormalMatrix(const Matrix3x3& matrix) {
-            setUniform(_normalMatrixUniform, matrix);
-            return *this;
-        }
-
-        PhongIdShader& setProjectionMatrix(const Matrix4& matrix) {
-            setUniform(_projectionMatrixUniform, matrix);
-            return *this;
-        }
-
-    private:
-        Int _objectIdUniform,
-            _lightPositionUniform,
-            _ambientColorUniform,
-            _colorUniform,
-            _timeIntensityUniform,
-            _transformationMatrixUniform,
-            _normalMatrixUniform,
-            _projectionMatrixUniform;
-};
-
-PhongIdShader::PhongIdShader() {
-    Utility::Resource rs("picking-data");
-
-    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
-        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
-    vert.addSource(rs.get("shaders/phongid.vs"));
-    frag.addSource(rs.get("shaders/phongid.fs"));
-    CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
-    attachShaders({vert, frag});
-    CORRADE_INTERNAL_ASSERT(link());
-
-    _objectIdUniform = uniformLocation("objectId");
-    _lightPositionUniform = uniformLocation("light");
-    _ambientColorUniform = uniformLocation("ambientColor");
-    _colorUniform = uniformLocation("color");
-    _timeIntensityUniform = uniformLocation("timeIntensity");
-    _transformationMatrixUniform = uniformLocation("transformationMatrix");
-    _projectionMatrixUniform = uniformLocation("projectionMatrix");
-    _normalMatrixUniform = uniformLocation("normalMatrix");
-}
-
-
-class DeviceDrawable: public SceneGraph::Drawable3D {
-    public:
-        explicit DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables):
-            SceneGraph::Drawable3D{object, &drawables},
-            _id{id},
-            _selected{false},
-            _color{color},
-            _shader(shader),
-            _mesh(mesh),
-            _primitiveTransformation{primitiveTransformation} {
-              _t = 0.0f;
-            }
-
-        void setSelected(bool selected) {
-            _selected = selected;
-            if (selected) _t = 1.0f;
-        }
-
-        bool isSelected() {
-            return _selected;
-        }
-
-    private:
-        void draw(const Matrix4& transformation, SceneGraph::Camera3D& camera) override {
-            if (_t > 0.0f) {
-                _t = _t - 0.01f;
-            }
-
-            _shader.setTransformationMatrix(transformation*_primitiveTransformation)
-                   .setNormalMatrix(transformation.rotationScaling())
-                   .setProjectionMatrix(camera.projectionMatrix())
-                   .setAmbientColor(_selected ? _color*0.2f : Color3{})
-                   .setColor(_color*(_selected ? 1.5f : 0.9f))
-                   .setTimeIntensity(_t)
-                   /* relative to the camera */
-                   .setLightPosition({0.0f, 4.0f, 3.0f})
-                   .setObjectId(_id);
-            _mesh.draw(_shader);
-        }
-
-        UnsignedByte _id;
-        bool _selected;
-        Color3 _color;
-        PhongIdShader& _shader;
-        GL::Mesh& _mesh;
-        Matrix4 _primitiveTransformation;
-        float _t;
-};
-
-
-class RingDrawable: public SceneGraph::Drawable3D {
-    public:
-        explicit RingDrawable(Object3D& object, const Color4& color, SceneGraph::DrawableGroup3D& group):
-            SceneGraph::Drawable3D{object, &group}
-        {
-
-            _mesh = MeshTools::compile(Primitives::circle3DWireframe(70));
-            _color = color;
-            _shader = Shaders::MeshVisualizer{Shaders::MeshVisualizer::Flag::Wireframe|Shaders::MeshVisualizer::Flag::NoGeometryShader};
-        }
-
-    private:
-        void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override {
-            using namespace Math::Literals;
-
-            _shader.setColor(0xffffff_rgbf)
-                   .setWireframeColor(_color)
-                   .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
-            _mesh.draw(_shader);
-        }
-
-        Matrix4 scaling = Matrix4::scaling(Vector3{10});
-
-        GL::Mesh _mesh;
-        Color4 _color;
-        Shaders::MeshVisualizer _shader;
-};
-
-
-class ParaLineShader: public GL::AbstractShaderProgram {
-    public:
-        typedef GL::Attribute<0, Vector3> Position;
-
-        explicit ParaLineShader();
-
-        ParaLineShader& setColor(const Color3& color) {
-            setUniform(_colorUniform, color);
-            return *this;
-        }
-
-        ParaLineShader& setBPos(const Vector3& position) {
-            setUniform(_bPosUniform, position);
-            return *this;
-        }
-
-        ParaLineShader& setTParam(const float t) {
-            setUniform(_tParamUniform, t);
-            return *this;
-        }
-
-        ParaLineShader& setTransformationProjectionMatrix(const Matrix4& matrix) {
-            setUniform(_transformationProjectionMatrixUniform, matrix);
-            return *this;
-        }
-
-    private:
-        Int _colorUniform,
-            _bPosUniform,
-            _tParamUniform,
-            _transformationProjectionMatrixUniform;
-
-};
-
-ParaLineShader::ParaLineShader() {
-    Utility::Resource rs("picking-data");
-
-    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
-        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
-    vert.addSource(rs.get("shaders/packetline.vs"));
-    frag.addSource(rs.get("shaders/packetline.fs"));
-    CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
-    attachShaders({vert, frag});
-    CORRADE_INTERNAL_ASSERT(link());
-
-    _bPosUniform = uniformLocation("bPos");
-    _colorUniform = uniformLocation("color");
-    _tParamUniform = uniformLocation("tParam");
-    _transformationProjectionMatrixUniform = uniformLocation("transformationProjectionMatrix");
-
-    //CORRADE_INTERNAL_ASSERT(_bPosUniform >= 0);
-}
-
-
-class PacketLineDrawable: public SceneGraph::Drawable3D {
-    public:
-        explicit PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group):
-            SceneGraph::Drawable3D{object, &group},
-            _object{object},
-            _shader{shader},
-            _b{b}
-        {
-            _t = 1.0f;
-            _mesh = MeshTools::compile(Primitives::line3D(a,b));
-            _expired = false;
-        }
-
-    Object3D &_object;
-    bool _expired;
-
-    private:
-        void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override {
-            if (_t < 1.001f && _t > 0.0f) {
-                _t -= 0.02f;
-                //Vector3 v = Vector3{0.02f, 0, 0.02f};
-                //_object.translate(v);
-            }
-            if (_t < 0.0f) {
-                _expired=true;
-                return;
-            }
-
-            _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix)
-                   .setBPos(_b)
-                   .setTParam(_t);
-            _mesh.draw(_shader);
-        }
-
-        GL::Mesh _mesh;
-        ParaLineShader& _shader;
-        Vector3 _b;
-        float _t;
-};
-
-
-class DeviceStats {
-  public:
-     DeviceStats(std::string macAddr, Vector2 pos, DeviceDrawable *dev):
-         mac_addr{macAddr},
-         circPoint{pos},
-         _drawable{dev}
-     {};
-
-     std::string create_device_string() {
-         std::ostringstream stringStream;
-         stringStream << this->mac_addr;
-         stringStream << " | ";
-         stringStream << this->num_pkts_sent;
-         stringStream << " | ";
-         stringStream << this->num_pkts_recv;
-         std::string c = stringStream.str();
-         return c;
-     };
-
-     std::string mac_addr;
-     Vector2 circPoint;
-     int num_pkts_sent = 0;
-     int num_pkts_recv = 0;
-     DeviceDrawable *_drawable;
-};
-
 
 class Optcon: public Platform::Application {
     public:
@@ -397,7 +45,7 @@ class Optcon: public Platform::Application {
         void textInputEvent(TextInputEvent& event) override;
 
         void parse_raw_packet(broker::bro::Event event);
-        DeviceStats* createCircle(const std::string);
+        Device::Stats* createCircle(const std::string);
         void createLine(Vector2, Vector2);
         void deselectAllDevices();
 
@@ -411,9 +59,9 @@ class Optcon: public Platform::Application {
         Color3 _pickColor = 0xffffff_rgbf;
 
         GL::Buffer _indexBuffer, _vertexBuffer;
-        PhongIdShader _phong_id_shader;
 
-        ParaLineShader _line_shader;
+        Figure::PhongIdShader _phong_id_shader;
+        Figure::ParaLineShader _line_shader;
 
         Scene3D _scene;
         SceneGraph::Camera3D* _camera;
@@ -429,21 +77,21 @@ class Optcon: public Platform::Application {
         GL::Buffer _sphereVertices, _sphereIndices;
 
         // Scene objects
-        std::vector<DeviceDrawable*> _device_objects{};
-        std::set<PacketLineDrawable*> _packet_line_queue{};
-        std::map<std::string, DeviceStats> _device_map{};
+        std::vector<Figure::DeviceDrawable*> _device_objects{};
+        std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
+        std::map<std::string, Device::Stats> _device_map{};
 
-        std::unordered_map<int, Poliopticon::DeviceWindowMngr> _inspected_device_window_map{};
+        std::unordered_map<int, Device::WindowMgr> _inspected_device_window_map{};
 
 
         // Custom ImGui interface components
-        Poliopticon::DeviceChartMngr ifaceChartMngr{240, 1.5f};
-        Poliopticon::DeviceChartMngr ifaceLongChartMngr{300, 3.0f};
+        Device::ChartMgr ifaceChartMgr{240, 1.5f};
+        Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
 
         int run_sum;
         int frame_cnt;
 
-        bool _drawCubes{true};
+        bool _orbit_toggle{false};
 };
 
 
@@ -457,7 +105,8 @@ Optcon::Optcon(const Arguments& arguments):
 {
     std::cout << "Waiting for broker connection" << std::endl;
 
-    ep.listen("127.0.0.1", 9999);
+    _ep.listen("127.0.0.1", 9999);
+    //_subscriber _ep.make_subscriber({"monopt/l2"});
 
     std::cout << "Connection received" << std::endl;
 
@@ -470,8 +119,8 @@ Optcon::Optcon(const Arguments& arguments):
     _framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _color)
                 .attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
                 .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, _depth)
-                .mapForDraw({{PhongIdShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
-                            {PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}});
+                .mapForDraw({{Figure::PhongIdShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
+                            {Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}});
     CORRADE_INTERNAL_ASSERT(_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 
     /* Camera setup */
@@ -493,13 +142,13 @@ Optcon::Optcon(const Arguments& arguments):
         _sphereIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
         _sphere.setCount(data.indices().size())
             .setPrimitive(data.primitive())
-            .addVertexBuffer(_sphereVertices, 0, PhongIdShader::Position{}, PhongIdShader::Normal{})
+            .addVertexBuffer(_sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
             .setIndexBuffer(_sphereIndices, 0, MeshIndexType::UnsignedShort);
     }
 
-    _line_shader = ParaLineShader{};
+    _line_shader = Figure::ParaLineShader{};
     _line_shader.setColor(0x00ffff_rgbf);
-    _phong_id_shader = PhongIdShader{};
+    _phong_id_shader = Figure::PhongIdShader{};
 
     srand(time(NULL));
 
@@ -510,7 +159,7 @@ Optcon::Optcon(const Arguments& arguments):
         cob->transform(scaling);
         cob->rotateX(90.0_degf);
         cob->translate(Vector3{5.0f, 0.0f, 5.0f});
-        new RingDrawable{*cob, 0x0000ff_rgbf, _drawables};
+        new Figure::RingDrawable{*cob, 0x0000ff_rgbf, _drawables};
     }
     { // Gateways
         Object3D *coy = new Object3D{&_scene};
@@ -518,7 +167,7 @@ Optcon::Optcon(const Arguments& arguments):
         coy->transform(scaling);
         coy->rotateX(90.0_degf);
         coy->translate(Vector3{5.0f, 0.0f, -5.0f});
-        new RingDrawable{*coy, 0xffff00_rgbf, _drawables};
+        new Figure::RingDrawable{*coy, 0xffff00_rgbf, _drawables};
     }
     { // Unknown devices
         Object3D *cor = new Object3D{&_scene};
@@ -526,7 +175,7 @@ Optcon::Optcon(const Arguments& arguments):
         cor->rotateX(90.0_degf);
         cor->transform(scaling);
         cor->translate(Vector3{-5.0f, 0.0f, -5.0f});
-        new RingDrawable{*cor, 0xff0000_rgbf, _drawables};
+        new Figure::RingDrawable{*cor, 0xff0000_rgbf, _drawables};
     }
     { // Broadcast addrs
         Object3D *cog = new Object3D{&_scene};
@@ -534,18 +183,18 @@ Optcon::Optcon(const Arguments& arguments):
         cog->rotateX(90.0_degf);
         cog->transform(scaling);
         cog->translate(Vector3{-5.0f, 0.0f, 5.0f});
-        new RingDrawable{*cog, 0x00ff00_rgbf, _drawables};
+        new Figure::RingDrawable{*cog, 0x00ff00_rgbf, _drawables};
     }
 
     Vector2 p1, p2;
     {
         std::string mac_dst = "ba:dd:be:ee:ef";
-        DeviceStats *d_s = createCircle(mac_dst);
+        Device::Stats *d_s = createCircle(mac_dst);
         p1 = d_s->circPoint;
     }
     {
         std::string mac_dst = "ca:ff:eb:ee:ef";
-        DeviceStats *d_s = createCircle(mac_dst);
+        Device::Stats *d_s = createCircle(mac_dst);
         p2 = d_s->circPoint;
     }
 
@@ -568,13 +217,14 @@ Optcon::Optcon(const Arguments& arguments):
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
 
-    //ifaceChartMngr = Poliopticon::DeviceChartMngr(240);
+    //ifaceChartMgr = DeviceChartMgr(240);
     run_sum = 0;
     frame_cnt = 0;
 
     setSwapInterval(1);
     setMinimalLoopPeriod(16);
     _timeline.start();
+
 }
 
 
@@ -603,7 +253,7 @@ void Optcon::parse_raw_packet(broker::bro::Event event) {
         return;
     }
 
-    DeviceStats *d_s;
+    Device::Stats *d_s;
 
     auto search = _device_map.find(*mac_src);
     if (search == _device_map.end()) {
@@ -633,16 +283,16 @@ void Optcon::parse_raw_packet(broker::bro::Event event) {
 
 void Optcon::deselectAllDevices() {
     /* Highlight object under mouse and deselect all other */
-    for(std::vector<DeviceDrawable*>::iterator it = _device_objects.begin(); it != _device_objects.end(); ++it) {
+    for(std::vector<Figure::DeviceDrawable*>::iterator it = _device_objects.begin(); it != _device_objects.end(); ++it) {
         (*it)->setSelected(false);
     }
 }
 
-DeviceStats* Optcon::createCircle(const std::string mac) {
+Device::Stats* Optcon::createCircle(const std::string mac) {
     Object3D* o = new Object3D{&_scene};
 
-    Vector2 v = 4.0f*randCirclePoint();
-    Vector2 z = randOffset(5.0f);
+    Vector2 v = 4.0f*Util::randCirclePoint();
+    Vector2 z = Util::randOffset(5.0f);
     v = v + z;
 
     o->translate({v.x(), 0.0f, v.y()});
@@ -650,12 +300,12 @@ DeviceStats* Optcon::createCircle(const std::string mac) {
     UnsignedByte id = static_cast<UnsignedByte>(_device_objects.size()+1);
 
     Color3 c = 0xa5c9ea_rgbf;
-    DeviceDrawable *dev = new DeviceDrawable{id, *o, _phong_id_shader, c, _sphere,
+    Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{id, *o, _phong_id_shader, c, _sphere,
         Matrix4::scaling(Vector3{0.25f}), _drawables};
 
     _device_objects.push_back(dev);
 
-    DeviceStats* d_s = new DeviceStats{mac, v, dev};
+    Device::Stats* d_s = new Device::Stats{mac, v, dev};
 
     _device_map.insert(std::make_pair(mac, *d_s));
 
@@ -668,14 +318,15 @@ void Optcon::createLine(Vector2 a, Vector2 b) {
         Vector3 a3 = Vector3{a.x(), 0.0f, a.y()};
         Vector3 b3 = Vector3{b.x(), 0.0f, b.y()};
 
-        auto *pl = new PacketLineDrawable{*line, _line_shader, a3, b3, _drawables};
+        auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a3, b3, _drawables};
         _packet_line_queue.insert(pl);
 }
 
 
 void Optcon::drawEvent() {
     int event_cnt = 0;
-    for (auto msg : subscriber.poll()) {
+    // Read and parse packets
+    for (auto msg : _subscriber.poll()) {
         event_cnt++;
         if (event_cnt < 500) {
             broker::topic topic = broker::get_topic(msg);
@@ -694,11 +345,12 @@ void Optcon::drawEvent() {
             }
         }
     }
+    // Update Iface packet statistics
     frame_cnt ++;
-    ifaceChartMngr.push(static_cast<float>(event_cnt));
+    ifaceChartMgr.push(static_cast<float>(event_cnt));
 
     if (frame_cnt % 15 == 0) {
-        ifaceLongChartMngr.push(static_cast<float>(run_sum));
+        ifaceLongChartMgr.push(static_cast<float>(run_sum));
         run_sum = 0;
         frame_cnt = 0;
     } else {
@@ -714,10 +366,11 @@ void Optcon::drawEvent() {
     // 2: create _expired member and update phongid draw
     // 3: remove expired devices
 
-    std::set<PacketLineDrawable *>::iterator it;
+    // Remove packet_lines that have expired for the queue
+    std::set<Figure::PacketLineDrawable *>::iterator it;
     for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
         // Note this is an O(N) operation
-        PacketLineDrawable *pl = *it;
+        Figure::PacketLineDrawable *pl = *it;
         if (pl->_expired) {
             it = _packet_line_queue.erase(it);
             delete pl;
@@ -727,10 +380,6 @@ void Optcon::drawEvent() {
     }
 
     // Actually draw things
-
-    /* Rotate the camera on an orbit */
-    //_cameraRig->rotateY(0.10_degf);
-
     /* Draw to custom framebuffer */
     _framebuffer
         .clearColor(0, _clearColor)
@@ -778,9 +427,9 @@ void Optcon::drawEvent() {
         1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
 
     ImGui::Separator();
-    ifaceChartMngr.draw();
+    ifaceChartMgr.draw();
     ImGui::Separator();
-    ifaceLongChartMngr.draw();
+    ifaceLongChartMgr.draw();
     ImGui::Separator();
 
     ImGui::End();
@@ -788,18 +437,32 @@ void Optcon::drawEvent() {
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display");
 
-    Poliopticon::DeviceWindowMngr *dwm;
+    Device::WindowMgr *dwm;
     if (ImGui::Button("Inspect", ImVec2(80,20))) {
         std::cout << "clicked inspect" << std::endl;
-        dwm = new Poliopticon::DeviceWindowMngr();
+        dwm = new Device::WindowMgr();
         _inspected_device_window_map.insert(std::make_pair(100, *dwm));
+    }
+
+
+    ImGui::SameLine(5.0f);
+    if (!_orbit_toggle) {
+        if (ImGui::Button("Start Orbit", ImVec2(80,20))) {
+               /* Rotate the camera on an orbit */
+               _orbit_toggle = true;
+        } else {
+           if (ImGui::Button("Stop Orbit", ImVec2(80,20))) {
+               _orbit_toggle = false;
+           }
+           _cameraRig->rotateY(0.10_degf);
+        }
     }
 
     ImGui::Text("Observed Addresses");
     ImGui::Separator();
     ImGui::BeginChild("Scrolling");
     for (auto it = _device_map.begin(); it != _device_map.end(); it++) {
-        DeviceStats *d_s = &(it->second);
+        Device::Stats *d_s = &(it->second);
         std::string s = d_s->create_device_string();
 
         if (d_s->_drawable->isSelected()) {
@@ -819,7 +482,7 @@ void Optcon::drawEvent() {
 
     // Render custom windows chosen by user
     for (auto it = _inspected_device_window_map.begin(); it != _inspected_device_window_map.end(); ++it) {
-        Poliopticon::DeviceWindowMngr *dwm = &(it->second);
+        Device::WindowMgr *dwm = &(it->second);
         dwm->draw();
     }
 
@@ -930,20 +593,21 @@ void Optcon::textInputEvent(TextInputEvent& event) {
     if(_imgui.handleTextInputEvent(event)) return;
 }
 
+}// Close Application namespace 
+}
 
-Vector2 randCirclePoint() {
+
+Vector2 Monopticon::Util::randCirclePoint() {
     float f =  rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
 
     return Vector2{cos(f), sin(f)};
 }
 
-Vector2 randOffset(float z) {
+Vector2 Monopticon::Util::randOffset(float z) {
     int x = rand() % 2;
     int y = rand() % 2;
     Vector2 v = Vector2{x ? z : -z, y ? z : -z};
     return v;
 }
 
-}}
-
-MAGNUM_APPLICATION_MAIN(Magnum::Monopticon::Optcon)
+MAGNUM_APPLICATION_MAIN(Monopticon::Application::Optcon)
