@@ -45,7 +45,7 @@ class Application: public Platform::Application {
         void textInputEvent(TextInputEvent& event) override;
 
         void parse_raw_packet(broker::bro::Event event);
-        Device::Stats* createCircle(const std::string);
+        Device::Stats* createSphere(const std::string);
         void createLine(Vector2, Vector2);
         void deselectDevice();
 
@@ -190,12 +190,12 @@ Application::Application(const Arguments& arguments):
     Vector2 p1, p2;
     {
         std::string mac_dst = "ba:dd:be:ee:ef";
-        Device::Stats *d_s = createCircle(mac_dst);
+        Device::Stats *d_s = createSphere(mac_dst);
         p1 = d_s->circPoint;
     }
     {
         std::string mac_dst = "ca:ff:eb:ee:ef";
-        Device::Stats *d_s = createCircle(mac_dst);
+        Device::Stats *d_s = createSphere(mac_dst);
         p2 = d_s->circPoint;
     }
 
@@ -258,7 +258,7 @@ void Application::parse_raw_packet(broker::bro::Event event) {
 
     auto search = _device_map.find(*mac_src);
     if (search == _device_map.end()) {
-        d_s = createCircle(*mac_src);
+        d_s = createSphere(*mac_src);
         _device_map.insert(std::make_pair(*mac_src, d_s));
     } else {
         d_s = search->second;
@@ -268,7 +268,7 @@ void Application::parse_raw_packet(broker::bro::Event event) {
 
     auto search_dst = _device_map.find(*mac_dst);
     if (search_dst == _device_map.end()) {
-        d_s = createCircle(*mac_dst);
+        d_s = createSphere(*mac_dst);
     } else {
         d_s = search_dst->second;
     }
@@ -285,7 +285,8 @@ void Application::deselectDevice() {
     }
 }
 
-Device::Stats* Application::createCircle(const std::string mac) {
+// TODO position create sphere in a specific ring
+Device::Stats* Application::createSphere(const std::string mac) {
     Object3D* o = new Object3D{&_scene};
 
     Vector2 v = 4.0f*Util::randCirclePoint();
@@ -469,7 +470,6 @@ void Application::drawEvent() {
     int i = 1;
     for (auto it = _device_map.begin(); it != _device_map.end(); it++) {
         Device::Stats *d_s = it->second;
-        std::string s = d_s->create_device_string();
 
         char b[4] = {};
         sprintf(b, "%d", i);
@@ -481,12 +481,7 @@ void Application::drawEvent() {
             _selectedDevice = d_s;
         }
         ImGui::SameLine(5.0f);
-
-        if (d_s->isSelected()) {
-            ImGui::TextColored(ImVec4(1,1,0,1), "%s", s.c_str());
-        } else {
-            ImGui::Text("%s", s.c_str());
-        }
+        d_s->renderText();
     }
 
     ImGui::EndChild();

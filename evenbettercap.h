@@ -109,6 +109,7 @@ class Stats {
      Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev);
 
      std::string create_device_string();
+     void renderText();
 
      void setSelected(bool selected);
      bool isSelected();
@@ -130,7 +131,12 @@ class WindowMgr {
 
         Stats *_stats;
         std::vector<ChartMgr*> chartMgrList;
+        ChartMgr* txChart;
+        ChartMgr* rxChart;
         std::vector<std::string> announced_ips;
+
+        int last_frame_tx;
+        int last_frame_rx;
 };
 
 class ChartMgr {

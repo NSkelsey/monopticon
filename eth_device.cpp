@@ -33,6 +33,15 @@ std::string Stats::create_device_string() {
     return c;
 }
 
+void Stats::renderText() {
+    std::string s = create_device_string();
+    if (isSelected()) {
+        ImGui::TextColored(ImVec4(1,1,0,1), "%s", s.c_str());
+    } else {
+        ImGui::Text("%s", s.c_str());
+    }
+}
+
 void Stats::setSelected(bool selected) {
     _selected = selected;
 
@@ -41,6 +50,54 @@ void Stats::setSelected(bool selected) {
 
 bool Stats::isSelected() {
     return _selected;
+}
+
+
+WindowMgr::WindowMgr(Stats *d_s) {
+    _stats = d_s;
+
+    chartMgrList = std::vector<ChartMgr*>();
+
+    txChart = new ChartMgr(240, 1.5f);
+    rxChart = new ChartMgr(240, 1.5f);
+
+    last_frame_tx = _stats->num_pkts_sent;
+    last_frame_rx = _stats->num_pkts_recv;
+}
+
+void WindowMgr::draw() {
+    // TODO place in chartUpdate
+    int cur_frame_tx = _stats->num_pkts_sent;
+    int diff = cur_frame_tx - last_frame_tx;
+
+    txChart->push(diff);
+    last_frame_tx = cur_frame_tx;
+
+    int cur_frame_rx = _stats->num_pkts_recv;
+    diff = cur_frame_rx - last_frame_rx;
+
+    rxChart->push(diff);
+    last_frame_rx = cur_frame_rx;
+
+    // TODO TODO TODO
+
+    ImGui::SetNextWindowSize(ImVec2(315, 200), ImGuiCond_FirstUseEver);
+    bool p_open = true;
+
+    if(!ImGui::Begin("Device", &p_open)) {
+        ImGui::End();
+        return;
+    }
+    _stats->renderText();
+
+    for (auto it = chartMgrList.begin(); it != chartMgrList.end(); it++) {
+        (*it)->draw();
+    }
+
+    txChart->draw();
+    rxChart->draw();
+
+    ImGui::End();
 }
 
 
@@ -90,32 +147,9 @@ void ChartMgr::push(float new_val) {
             n+=1;
         }
     }
-    moving_avg = sum/static_cast<float>(n);
-}
-
-
-WindowMgr::WindowMgr(Stats *d_s) {
-    _stats = d_s;
-
-    auto *c_m = new ChartMgr(240, 1.5f);
-    chartMgrList = std::vector<ChartMgr*>();
-    chartMgrList.push_back(c_m);
-}
-
-void WindowMgr::draw() {
-    ImGui::SetNextWindowSize(ImVec2(315, 200), ImGuiCond_FirstUseEver);
-    bool p_open = true;
-
-    if(!ImGui::Begin("Device", &p_open)) {
-        ImGui::End();
-        return;
+    if (n != 0) {
+        moving_avg = sum/static_cast<float>(n);
+    } else {
+        moving_avg = 0.0f;
     }
-    std::string s = _stats->create_device_string();
-    ImGui::Text(s.c_str());
-
-    for (auto it = chartMgrList.begin(); it != chartMgrList.end(); it++) {
-        (*it)->draw();
-    }
-
-    ImGui::End();
 }
