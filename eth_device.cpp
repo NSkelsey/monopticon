@@ -84,7 +84,7 @@ void WindowMgr::draw() {
 
     // TODO TODO TODO
 
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Once);
     bool p_open = true;
 
     if(!ImGui::Begin("Device", &p_open)) {

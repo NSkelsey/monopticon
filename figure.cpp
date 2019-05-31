@@ -124,6 +124,7 @@ ParaLineShader::ParaLineShader() {
     attachShaders({vert, frag});
     CORRADE_INTERNAL_ASSERT(link());
 
+    _aPosUniform = uniformLocation("aPos");
     _bPosUniform = uniformLocation("bPos");
     _colorUniform = uniformLocation("color");
     _tParamUniform = uniformLocation("tParam");
@@ -135,6 +136,11 @@ ParaLineShader::ParaLineShader() {
 
 ParaLineShader& ParaLineShader::setColor(const Color3& color) {
     setUniform(_colorUniform, color);
+    return *this;
+}
+
+ParaLineShader& ParaLineShader::setAPos(const Vector3& position) {
+    setUniform(_aPosUniform, position);
     return *this;
 }
 
@@ -157,26 +163,28 @@ PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader,
     SceneGraph::Drawable3D{object, &group},
     _object{object},
     _shader{shader},
+    _a{a},
     _b{b}
 {
-    _t = 1.0f;
+    _t = 0.0f;
     _mesh = MeshTools::compile(Primitives::line3D(a,b));
     _expired = false;
 }
 
 void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
-    if (_t < 1.001f && _t > 0.0f) {
-        _t -= 0.02f;
+    if (_t < 1.001f && _t >= 0.0f) {
+        _t += 0.04f;
         //Vector3 v = Vector3{0.02f, 0, 0.02f};
         //_object.translate(v);
     }
-    if (_t < 0.0f) {
+    if (_t > 1.0f) {
         _expired=true;
         return;
     }
 
     _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix)
            .setBPos(_b)
+           .setAPos(_a)
            .setTParam(_t);
     _mesh.draw(_shader);
 }

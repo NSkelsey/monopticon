@@ -101,7 +101,7 @@ Application::Application(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
             .setTitle("Monopticon")
             .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
-            .setSize(Vector2i{1600,1200}),
+            .setSize(Vector2i{1400,1000}),
             GLConfiguration{}.setSampleCount(16)},
         _framebuffer{GL::defaultFramebuffer.viewport()}
 {
@@ -438,7 +438,7 @@ void Application::drawEvent() {
 
     ImGui::End();
 
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display");
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {

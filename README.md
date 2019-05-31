@@ -75,12 +75,12 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > cd broker
 > git submodule init
 > git submodule update
-> cd 3rdpart/caf
+> cd 3rdparty/caf
 > git submodule init
 > git submodule update
 > cd ../..
-> ./configure
-> make -j7 install
+> ./configure --build-static
+> cd build; make -j7 install
 ```
 
 #### 6. Install zeek

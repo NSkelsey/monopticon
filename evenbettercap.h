@@ -231,6 +231,8 @@ class ParaLineShader: public GL::AbstractShaderProgram {
 
         ParaLineShader& setColor(const Color3& color);
 
+        ParaLineShader& setAPos(const Vector3& position);
+
         ParaLineShader& setBPos(const Vector3& position);
 
         ParaLineShader& setTParam(const float t);
@@ -239,6 +241,7 @@ class ParaLineShader: public GL::AbstractShaderProgram {
 
     private:
         Int _colorUniform,
+            _aPosUniform,
             _bPosUniform,
             _tParamUniform,
             _transformationProjectionMatrixUniform;
@@ -256,6 +259,7 @@ class PacketLineDrawable: public SceneGraph::Drawable3D {
 
         GL::Mesh _mesh;
         ParaLineShader& _shader;
+        Vector3 _a;
         Vector3 _b;
         float _t;
 };
