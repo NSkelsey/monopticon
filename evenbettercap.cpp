@@ -84,7 +84,7 @@ class Application: public Platform::Application {
 
         std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
-        Device::Stats* _selectedDevice{NULL};
+        Device::Stats* _selectedDevice{nullptr};
 
         // Custom ImGui interface components
         Device::ChartMgr ifaceChartMgr{240, 1.5f};
@@ -151,7 +151,7 @@ Application::Application(const Arguments& arguments):
     _line_shader.setColor(0x00ffff_rgbf);
     _phong_id_shader = Figure::PhongIdShader{};
 
-    srand(time(NULL));
+    srand(time(nullptr));
 
 
     { // Known devices
@@ -233,23 +233,23 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     broker::vector parent_content = event.args();
 
     broker::vector *raw_pkt_hdr = broker::get_if<broker::vector>(parent_content.at(0));
-    if (raw_pkt_hdr == NULL) {
+    if (raw_pkt_hdr == nullptr) {
         std::cout << "rph" << std::endl;
         return;
     }
     broker::vector *l2_pkt_hdr = broker::get_if<broker::vector>(raw_pkt_hdr->at(0));
-    if (l2_pkt_hdr == NULL || l2_pkt_hdr->size() != 9) {
+    if (l2_pkt_hdr == nullptr || l2_pkt_hdr->size() != 9) {
         std::cout << "lph" << std::endl;
         return;
     }
 
     std::string *mac_src = broker::get_if<std::string>(l2_pkt_hdr->at(3));
-    if (mac_src == NULL) {
+    if (mac_src == nullptr) {
         std::cout << "mac_src null" << std::endl;
         return;
     }
     std::string *mac_dst = broker::get_if<std::string>(l2_pkt_hdr->at(4));
-    if (mac_dst == NULL) {
+    if (mac_dst == nullptr) {
         std::cout << "mac_dst null" << std::endl;
         return;
     }
@@ -281,9 +281,9 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
 }
 
 void Application::deselectDevice() {
-    if (_selectedDevice != NULL) {
+    if (_selectedDevice != nullptr) {
         _selectedDevice->setSelected(false);
-        _selectedDevice = NULL;
+        _selectedDevice = nullptr;
     }
 }
 
@@ -444,7 +444,7 @@ void Application::drawEvent() {
     if (ImGui::Button("Watch", ImVec2(80,20))) {
         std::cout << "clicked watch" << std::endl;
 
-        if (_selectedDevice != NULL && _selectedDevice->_windowMgr == NULL) {
+        if (_selectedDevice != nullptr && _selectedDevice->_windowMgr == nullptr) {
             Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
             _selectedDevice->_windowMgr = dwm;
             _inspected_device_window_list.push_back(dwm);

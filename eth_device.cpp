@@ -16,8 +16,8 @@ using namespace Monopticon::Device;
 Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
          _drawable{dev},
+         _windowMgr{nullptr},
          _selected{false},
-         _windowMgr{NULL},
          circPoint{pos},
         num_pkts_sent{0},
         num_pkts_recv{0},
