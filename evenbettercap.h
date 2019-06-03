@@ -67,7 +67,7 @@
 
 #include "broker/broker.hh"
 #include "broker/message.hh"
-#include "broker/bro.hh"
+#include "broker/zeek.hh"
 
 
 using namespace Magnum;

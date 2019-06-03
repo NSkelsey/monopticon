@@ -9,6 +9,15 @@ All reactions to this project including silly questions are appreciated. Open an
 
 New source code will live in `src/` and one-off tests in `src/expirements`
 
+## Usage
+
+Build the software, prepare a suitable interface to capture packets on and then run the following command.
+
+```bash
+# launches the user interface
+> export LD_LIBRARY_PATH=/usr/local/lib; ./build/bin/ebc
+```
+
 ## Compilation
 The first builds of this project have been tested on arch systems.
 
@@ -68,17 +77,10 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > pacman -U name-of.pkg.tar.xz
 ```
 
-#### 5. Install the zeek broker and its dependencies.
+#### 5. Install the zeek broker with its git submodule dependencies.
 
 ```bash
-> git clone https://github.com/zeek/broker
-> cd broker
-> git submodule init
-> git submodule update
-> cd 3rdparty/caf
-> git submodule init
-> git submodule update
-> cd ../..
+> git clone --recursive https://github.com/zeek/broker
 > ./configure --build-static
 > cd build; make -j7 install
 ```
@@ -105,16 +107,3 @@ The relevant docs are listed here for your reference. Compilation of this progra
 > cmake --build .
 ```
 
-## Usage
-
-Select a suitable interface to capture packets on and simply run the following two commands in two different terminals.
-
-```bash
-# launches the user interface
-> export LD_LIBRARY_PATH=/usr/local/lib; ./build/bin/ebc
-```
-
-```bash
-# launches zeek for packet capture on the interface enp0s31f6
-> /usr/local/bro/bin/bro -i enp0s31f6 -b bro-peer-connector.bro
-```

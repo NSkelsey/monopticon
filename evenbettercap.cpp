@@ -44,7 +44,7 @@ class Application: public Platform::Application {
         void mouseScrollEvent(MouseScrollEvent& event) override;
         void textInputEvent(TextInputEvent& event) override;
 
-        void parse_raw_packet(broker::bro::Event event);
+        void parse_raw_packet(broker::zeek::Event event);
         Device::Stats* createSphere(const std::string);
         void createLine(Vector2, Vector2);
         void deselectDevice();
@@ -229,7 +229,7 @@ Application::Application(const Arguments& arguments):
 }
 
 
-void Application::parse_raw_packet(broker::bro::Event event) {
+void Application::parse_raw_packet(broker::zeek::Event event) {
     broker::vector parent_content = event.args();
 
     broker::vector *raw_pkt_hdr = broker::get_if<broker::vector>(parent_content.at(0));
@@ -337,7 +337,7 @@ void Application::drawEvent() {
         event_cnt++;
         if (event_cnt < 500) {
             broker::topic topic = broker::get_topic(msg);
-            broker::bro::Event event = broker::get_data(msg);
+            broker::zeek::Event event = broker::get_data(msg);
             std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
             if (event.name().compare("raw_packet_event")) {
                     parse_raw_packet(event);
