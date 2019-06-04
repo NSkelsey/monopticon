@@ -41,6 +41,17 @@ The relevant docs are listed here for your reference. Compilation of this progra
 
 Clone this repository.
 
+And install the packages:
+
+```
+> cd monopticon/pkg
+> sudo pacman -u magnum-integration-dev-1-x86_64.pkg.tar
+> sudo pacman -u zeek-broker-1.1.2-1-x86_64.pkg.tar
+> sudo pacman -u monopticon-0.1.0-1-x86_64.pkg.tar
+```
+
+
+
 #### Step 1
 
 Prepare the dependency not listed in the aur by simply running:
