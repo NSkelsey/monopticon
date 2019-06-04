@@ -53,6 +53,7 @@ As of 30/5/19
     - [ ] plan binary distribution via static build
     - [ ] scripting interface for: start interface, stop interface, check status,
           get routes, get iface, get gateway
+          - [ ] ensure that the script file is installed on the system
 
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)
