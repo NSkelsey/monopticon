@@ -11,11 +11,16 @@ New source code will live in `src/` and one-off tests in `src/expirements`
 
 ## Usage
 
-Build the software, prepare a suitable interface to capture packets on and then run the following command.
+1) Install the software following the commands documented in Compilation.
+2) Prepare a suitable interface to capture packets on
+
+Read the file mopt_iface_proto.sh to ensure that it will work with your system.
+
+3) Run the following command.
 
 ```bash
 # launches the user interface
-> export LD_LIBRARY_PATH=/usr/local/lib; ./build/bin/ebc
+> ebc
 ```
 
 ## Compilation
