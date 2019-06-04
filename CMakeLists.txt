@@ -49,3 +49,5 @@ target_compile_options(ebc PRIVATE)
 set_target_properties(ebc
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+install(TARGETS ebc RUNTIME DESTINATION ${MAGNUM_BINARY_INSTALL_DIR})
