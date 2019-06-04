@@ -45,11 +45,10 @@ And install the packages:
 
 ```
 > cd monopticon/pkg
-> sudo pacman -u magnum-integration-dev-1-x86_64.pkg.tar
-> sudo pacman -u zeek-broker-1.1.2-1-x86_64.pkg.tar
-> sudo pacman -u monopticon-0.1.0-1-x86_64.pkg.tar
+> sudo pacman -U magnum-integration-dev-1-x86_64.pkg.tar
+> sudo pacman -U zeek-broker-1.1.2.49-1-x86_64.pkg.tar
+> sudo pacman -U monopticon-0.1.0-1-x86_64.pkg.tar
 ```
-
 
 
 #### Step 1
