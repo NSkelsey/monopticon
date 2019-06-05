@@ -11,8 +11,8 @@ New source code will live in `src/` and one-off tests in `src/expirements`
 
 ## Usage
 
-1) Install the software following the commands documented in Compilation.
-2) Prepare a suitable interface to capture packets on
+1) Install the software following the commands documented below.
+2) Prepare a suitable interface to capture packets on.
 
 Read the file mopt_iface_proto.sh to ensure that it will work with your system.
 
@@ -23,7 +23,7 @@ Read the file mopt_iface_proto.sh to ensure that it will work with your system.
 > ebc
 ```
 
-## Compilation
+## Installation
 The first builds of this project have been tested on Arch systems.
 
 This project requires that the source of `magnum`, `corrade`, `imgui` `zeek` and its `broker` are installed on the system to build the target `ebc`.
@@ -42,41 +42,35 @@ The relevant docs are listed here for your reference. Compilation of this progra
 
 ### Arch Linux
 
-#### Step 0
+#### Install the pre-built packages
 
-Clone this repository.
+Clone this repository and install the packages:
 
-And install the packages:
-
-```
+```bash
 > cd monopticon/pkg
+> sudo pacman -U imgui-src-1.66b-1-any.pkg.tar
 > sudo pacman -U magnum-integration-dev-1-x86_64.pkg.tar
 > sudo pacman -U zeek-broker-1.1.2.49-1-x86_64.pkg.tar
 > sudo pacman -U monopticon-0.1.0-1-x86_64.pkg.tar
 ```
 
 
+#### Package Preparation
+
+These are the steps to produce the packages above.
+
 #### Step 1
 
-Prepare the dependency not listed in the aur by simply running:
-
-```bash
-> sudo pacman -U monopticon/pkg/imgui-src-1.66b-1-any.pkg.tar
-```
-
-Or build the package imgui-src yourself and install it.
+Build the package imgui-src yourself and install it.
 
 ```bash
 # in a tmp dir
 > git clone https://github.com/mosra/archlinux
 > cd archlinux/imgui-src
 > makepkg -fp PKGBUILD
-> sudo pacman -U imgui-src-1.66b-1-any.pkg.tar
 ```
 
 #### Step 2
-
-Install packages saved in the aur
 
 Build & install packages in the aur.
 
@@ -87,7 +81,7 @@ Build & install packages in the aur.
 ```bash
 # NOTE here the PKGBUILD file must be modified to specify WITH_IMGUI=ON and a path.
 # You can replace the file inside of mosra's directory with the one in this repository.
->  cp -f /path/to/monopticon/contrib/PKGBUILD ./PKGBUILD
+>  cp -f monopticon/contrib/PKGBUILD ./PKGBUILD
 
 > yay -S magnum-integration
 ```
@@ -104,9 +98,11 @@ Build and install the monopticon package
 ```
 
 
-### Other Less Fortunate Linuxes
+### Compiling on Unix systems
 
-#### 1. The following requirements are common enough that we can assume they are already installed.
+#### Step 1.
+
+The following requirements are common enough that we can assume they are already installed.
 
 ```
 > cmake
@@ -116,27 +112,24 @@ Build and install the monopticon package
 > sdl2
 ```
 
-#### 2. Install magnum and corrade
+#### Step 2.
 
-Left as an excerise for the reader
+Follow the instructions for magnum and corrade.
 
-#### 3. Build the package imgui-src and install it.
 
-ibid
+#### Step 3.
 
-#### 4. Build and install the package magnum-integration specifying usage with ImGui.
-
-ibid
-
-#### 5. Install the zeek broker with its git submodule dependencies.
+Install the zeek broker with its git submodule dependencies.
 
 ```bash
 > git clone --recursive https://github.com/zeek/broker
-> ./configure --build-static
+> ./configure --disable-python --disable-docs --disable-tests
 > cd build; make -j7 install
 ```
 
-#### 6. Install zeek
+#### Step 4.
+
+Install Zeek
 
 ```bash
 > mkdir zeek; cd zeek;
@@ -150,7 +143,9 @@ ibid
 > sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/bro/bin/bro
 ```
 
-#### 7. After resolving the dependencies compilation follows the cmake norm.
+#### Step 5.
+
+Compile Monopticon
 
 ```bash
 > cd monopticon; mkdir build; cd build
