@@ -95,6 +95,9 @@ class Application: public Platform::Application {
         int frame_cnt;
 
         bool _orbit_toggle{false};
+
+        std::vector<std::string> _iface_list;
+        std::string _zeek_pid;
 };
 
 
@@ -240,6 +243,8 @@ Application::Application(const Arguments& arguments):
     setMinimalLoopPeriod(16);
     _timeline.start();
 
+    _iface_list = Util::get_iface_list();
+    _zeek_pid = "#nop";
 }
 
 
@@ -380,6 +385,10 @@ void Application::drawEvent() {
         run_sum += event_cnt;
     }
 
+    if (frame_cnt % 60 == 0) {
+        _iface_list = Util::get_iface_list();
+    }
+
     // TODO TODO TODO TODO
     // Expire devices that haven't communicated in awhile
     // TODO TODO TODO TODO
@@ -429,18 +438,38 @@ void Application::drawEvent() {
     ImGui::Begin("Tap Status");
 
     static bool peer_connected = false;
-    if (!peer_connected) {
+    if (!peer_connected && _iface_list.size() > 0) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
-            std::cout << "Launched subprocess" << std::endl;
-            std::system("/usr/local/bro/bin/bro -i enp0s31f6 -b /home/synnick/projects/monopticon/bro-peer-connector.bro &");
+            std::string s = "monopt_iface_proto launch ";
+            std::string cmd = s.append(_iface_list.at(0));
+            _zeek_pid = Util::exec_output(cmd);
+            std::cout << "Launched subprocess with pid: " << _zeek_pid << std::endl;
             peer_connected = true;
         }
     } else {
         if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
-            std::system("pkill bro");
-            std::cout << "Disconnect" << std::endl;
+            std::string s = "monopt_iface_proto sstop ";
+            auto cmd = s.append(_zeek_pid);
+            int r = std::system(cmd.c_str());
+            if (r != 0) {
+                std::cout << "Listener shutdown failed" << std::endl;
+            }
+            std::cout << "Disconnected" << std::endl;
             peer_connected = false;
         }
+    }
+
+    int offset = 100;
+    for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
+        ImGui::SameLine(offset);
+        offset += 100;
+        auto green = ImVec4(0,1,0,1);
+        if (_iface_list.begin() == it) {
+            ImGui::TextColored(green, (*it).c_str(), ImVec2(80, 20));
+        } else {
+            ImGui::Text((*it).c_str(), ImVec2(80, 20));
+        }
+
     }
 
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
@@ -653,5 +682,30 @@ void Monopticon::Util::print_peer_subs() {
         std::cout << t << std::endl;
     }
 }
+
+std::string Monopticon::Util::exec_output(std::string cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
+std::vector<std::string> Monopticon::Util::get_iface_list() {
+    auto v = std::vector<std::string>{};
+    std::string s = Util::exec_output("monopt_iface_proto list_ifaces");
+    std::stringstream ss(s);
+    std::string t;
+    while (std::getline(ss,t,'\n')) {
+        v.push_back(t);
+    }
+    return v;
+}
+
 
 MAGNUM_APPLICATION_MAIN(Monopticon::Application)

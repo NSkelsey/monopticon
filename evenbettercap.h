@@ -1,11 +1,16 @@
 #ifndef _INCL_ebc
 #define _INCL_ebc
 
-#include <stdio.h>
+#include <array>
+#include <cstdio>
+#include <ctime>
 #include <iostream>
 #include <math.h>
-#include <ctime>
+#include <memory>
 #include <set>
+#include <stdexcept>
+#include <stdio.h>
+#include <string>
 #include <unordered_map>
 #include <unistd.h>
 
@@ -81,25 +86,27 @@ namespace Monopticon {
 
 namespace Figure {
 
-class DeviceDrawable;
-class PhongIdShader;
+    class DeviceDrawable;
+    class PhongIdShader;
 
 }
 
 namespace Device {
 
-class Stats;
-class WindowMgr;
-class ChartMgr;
+    class Stats;
+    class WindowMgr;
+    class ChartMgr;
 
 }
 
 // Definitions
 namespace Util {
 
-Vector2 randCirclePoint();
-Vector2 randOffset(float z);
-void print_peer_subs();
+    Vector2 randCirclePoint();
+    Vector2 randOffset(float z);
+    void print_peer_subs();
+    std::string exec_output(std::string cmd);
+    std::vector<std::string> get_iface_list();
 
 }
 

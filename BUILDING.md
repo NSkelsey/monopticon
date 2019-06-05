@@ -97,6 +97,15 @@ Compile Monopticon
 ```
 ## Arch Notes
 
+#### Custom Config
+
+
+Link local iface_proto script without the install target
+```zsh
+> sudo ln -s /path/to/monopticon/monopt_iface_proto.sh monopt_iface_proto
+```
+
+
 #### Package Preparation
 
 These are the steps to produce the packages above.
