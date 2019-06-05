@@ -23,6 +23,7 @@ namespace Monopticon {
 // Zeek broker components
 broker::endpoint _ep;
 broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2"});
+broker::status_subscriber _status_subscriber = _ep.make_status_subscriber({"monopt/l2"});
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -107,9 +108,22 @@ Application::Application(const Arguments& arguments):
 {
     std::cout << "Waiting for broker connection" << std::endl;
 
-    _ep.listen("127.0.0.1", 9999);
+    uint16_t listen_port = 9999;
+    std::string addr = "127.0.0.1";
+    auto res = _ep.listen(addr, listen_port);
+    if (res == 0) {
+        std::cout << "Could not listen on: ";
+        std::cout << addr << ":" << listen_port << std::endl;
+        exit(1);
+    } else {
+        std::cout << "Endpoint listening on: ";
+        std::cout << addr << ":" << listen_port << std::endl;
+    }
 
-    std::cout << "Connection received" << std::endl;
+
+    Util::print_peer_subs();
+
+
 
     /* Global renderer configuration */
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
@@ -360,6 +374,8 @@ void Application::drawEvent() {
         ifaceLongChartMgr.push(static_cast<float>(run_sum));
         run_sum = 0;
         frame_cnt = 0;
+
+        Util::print_peer_subs();
     } else {
         run_sum += event_cnt;
     }
@@ -628,6 +644,14 @@ Vector2 Monopticon::Util::randOffset(float z) {
     int y = rand() % 2;
     Vector2 v = Vector2{x ? z : -z, y ? z : -z};
     return v;
+}
+
+void Monopticon::Util::print_peer_subs() {
+    auto ts = _ep.peer_subscriptions();
+    for (auto it = ts.begin(); it != ts.end(); it++) {
+        auto t = *it;
+        std::cout << t << std::endl;
+    }
 }
 
 MAGNUM_APPLICATION_MAIN(Monopticon::Application)

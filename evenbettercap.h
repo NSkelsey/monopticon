@@ -99,6 +99,7 @@ namespace Util {
 
 Vector2 randCirclePoint();
 Vector2 randOffset(float z);
+void print_peer_subs();
 
 }
 

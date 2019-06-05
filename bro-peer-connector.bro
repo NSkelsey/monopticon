@@ -1,11 +1,5 @@
 # Usage:
 # sudo /usr/local/bro/bin/bro -b bro-peer-connector.bro
-# what we want:
-# /usr/local/bro/bin/bro -b bro-peer-connector.bro -r pcaps/local-sn.pcap
-redef exit_only_after_terminate = T;
-redef Log::enable_remote_logging = T;
-
-global my_event: event(msg: string, c: count);
 
 event bro_init()
 {
@@ -23,6 +17,6 @@ event Broker::peer_added(endpoint: Broker::EndpointInfo, msg: string)
 
 #TODO try reconnect when a peer is lost
 
-#event new_packet(c: connection, p: pkt_hdr) {
-#
-#}
+event new_packet(c: connection, p: pkt_hdr) {
+    print "y";
+}
