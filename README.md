@@ -19,7 +19,7 @@ Read the file mopt_iface_proto.sh to ensure that it will work with your system.
 3) Run:
 
 ```bash
-> ebc
+> monopticon
 ```
 
 ### Arch Linux
@@ -31,7 +31,8 @@ Download the imgui-src package for the imgui headers.
 > pacman -U imgui-src-1.66b-1-any.pkg.tar
 ```
 
-Install monopticon and its dependencies from the Arch User Repository.
+Install monopticon and its dependencies from the Arch user repository.
+
 ```bash
 > yay monopticon
 ```

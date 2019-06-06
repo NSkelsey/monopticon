@@ -33,6 +33,9 @@ set(ebc_FILES
     )
 
 add_executable(ebc ${ebc_FILES} ${ebc_RESOURCES})
+
+# included to reach libbroker and libcaf installed in non default locations
+link_directories("/usr/local/lib/")
 target_link_libraries(ebc PRIVATE
     broker
     caf_core
