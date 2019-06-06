@@ -18,7 +18,7 @@ Read the file mopt_iface_proto.sh to ensure that it will work with your system.
 
 3) Run:
 
-```bash
+```zsh
 > monopticon
 ```
 
@@ -26,13 +26,18 @@ Read the file mopt_iface_proto.sh to ensure that it will work with your system.
 
 Download the imgui-src package for the imgui headers.
 
-```bash
+```zsh
 > wget https://github.com/NSkelsey/monopticon/raw/master/pkg/imgui-src-1.66b-1-any.pkg.tar
-> pacman -U imgui-src-1.66b-1-any.pkg.tar
+> sudo pacman -U imgui-src-1.66b-1-any.pkg.tar
 ```
 
 Install monopticon and its dependencies from the Arch user repository.
 
-```bash
+```zsh
 > yay monopticon
+```
+
+Authorize the zeek binary to capture packets without sudo (for every user 0_o)
+```zsh
+> sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/bro/bin/zeek
 ```
