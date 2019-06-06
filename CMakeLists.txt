@@ -32,11 +32,11 @@ set(ebc_FILES
         evenbettercap.cpp
     )
 
-add_executable(ebc ${ebc_FILES} ${ebc_RESOURCES})
+add_executable(monopticon ${ebc_FILES} ${ebc_RESOURCES})
 
 # included to reach libbroker and libcaf installed in non default locations
 link_directories("/usr/local/lib/")
-target_link_libraries(ebc PRIVATE
+target_link_libraries(monopticon PRIVATE
     broker
     caf_core
     Magnum::Application
@@ -51,12 +51,13 @@ target_link_libraries(ebc PRIVATE
 )
 
 
-target_compile_options(ebc PRIVATE)
+target_compile_options(monopticon PRIVATE)
 
-set_target_properties(ebc
+set_target_properties(monopticon
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-install(TARGETS ebc RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME monopticon)
+install(TARGETS monopticon DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")
 
 install(PROGRAMS monopt_iface_proto.sh DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME monopt_iface_proto)
+install(DIRECTORY src/scripts DESTINATION ${CMAKE_INSTALL_PREFIX}/share/monopticon  FILES_MATCHING PATTERN "*.bro")

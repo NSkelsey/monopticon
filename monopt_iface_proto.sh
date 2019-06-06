@@ -24,8 +24,8 @@ launch() {
         return 0
     fi
     iface=$1
-    script_path=/home/synnick/projects/monopticon/bro-peer-connector.bro
-    bro_path=/usr/local/bro/bin/bro
+    script_path=/usr/local/share/monopticon/scripts/l2_eth_monitor.bro
+    bro_path=/usr/local/bro/bin/zeek
     $bro_path -i $iface -b $script_path >/dev/null &
     echo $!
 }

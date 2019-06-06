@@ -99,10 +99,10 @@ Compile Monopticon
 
 #### Custom Config
 
-
-Link local iface_proto script without the install target
+Soft link local scripts without repeating `make install`
 ```zsh
-> sudo ln -s /path/to/monopticon/monopt_iface_proto.sh monopt_iface_proto
+> sudo ln -fs /home/synnick/projects/monopticon/src/scripts/l2_eth_monitor.bro /usr/local/share/monopticon/scripts/l2_eth_monitor.bro
+> sudo ln -fs /home/synnick/projects/monopticon/monopt_iface_proto.sh /usr/local/bin/monopt_iface_proto
 ```
 
 

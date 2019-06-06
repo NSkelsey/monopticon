@@ -1,7 +1,10 @@
 # Usage:
 # sudo /usr/local/bro/bin/bro -b bro-peer-connector.bro
+#
 
-event bro_init()
+redef exit_only_after_terminate = T;
+
+event zeek_init()
 {
     print "trying to add peer";
     Broker::peer("127.0.0.1", 9999/tcp, 0sec);

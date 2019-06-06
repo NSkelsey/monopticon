@@ -23,7 +23,7 @@ namespace Monopticon {
 // Zeek broker components
 broker::endpoint _ep;
 broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2"});
-broker::status_subscriber _status_subscriber = _ep.make_status_subscriber({"monopt/l2"});
+broker::status_subscriber _status_subscriber = _ep.make_status_subscriber(true);
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -150,7 +150,7 @@ Application::Application(const Arguments& arguments):
         .rotateX(-25.0_degf);
     (_camera = new SceneGraph::Camera3D(*_cameraObject))
         ->setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::Extend)
-        .setProjectionMatrix(Matrix4::perspectiveProjection(40.0_degf, 1.0f, 0.001f, 100.0f))
+        .setProjectionMatrix(Matrix4::perspectiveProjection(50.0_degf, 1.0f, 0.001f, 100.0f))
         .setViewport(GL::defaultFramebuffer.viewport().size()); /* Drawing setup */
 
 
@@ -350,6 +350,25 @@ void Application::createLine(Vector2 a, Vector2 b) {
 
 
 void Application::drawEvent() {
+    // Process all messages from status_subscriber before doing anything
+    /*
+    if (_status_subscriber.available()) {
+        auto ss_res = _status_subscriber.get();
+        auto err = caf::get<broker::error>(ss_res);
+        std::cerr << "Broker error:" << err.code() << ", " << to_string(err) << std::endl;
+
+        if ( auto st = caf::get_if<broker::status>(&ss_res) ) {
+            if ( auto ctx = st->context<broker::endpoint_info>() ) {
+                std::cerr << "Broker status update regarding "
+                          << ctx->network->address
+                          << ":" << to_string(*st) << std::endl;
+            } else {
+               std::cerr << "Broker status update:"
+                         << to_string(*st) << std::endl;
+            }
+        }
+    }*/
+
     int event_cnt = 0;
     // Read and parse packets
     for (auto msg : _subscriber.poll()) {
@@ -357,7 +376,7 @@ void Application::drawEvent() {
         if (event_cnt < 500) {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
-            std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
             if (event.name().compare("raw_packet_event")) {
                     parse_raw_packet(event);
             } else {
