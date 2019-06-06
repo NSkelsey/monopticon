@@ -9,7 +9,7 @@ All reactions to this project including silly questions are appreciated. Open an
 
 New source code will live in `src/` and one-off tests in `src/expirements`
 
-![a demo interface](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/readme-photo.png)
+![a demo interface](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/readme-photo.jpg)
 
 ## Usage
 
