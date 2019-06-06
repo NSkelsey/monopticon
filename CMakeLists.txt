@@ -54,6 +54,6 @@ set_target_properties(ebc
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-install(TARGETS ebc RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/)
+install(TARGETS ebc RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME monopticon)
 
 install(PROGRAMS monopt_iface_proto.sh DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME monopt_iface_proto)
