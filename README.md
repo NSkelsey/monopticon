@@ -9,6 +9,8 @@ All reactions to this project including silly questions are appreciated. Open an
 
 New source code will live in `src/` and one-off tests in `src/expirements`
 
+![a demo interface](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/readme-photo.png)
+
 ## Usage
 
 1) Install the software following the commands documented below.
