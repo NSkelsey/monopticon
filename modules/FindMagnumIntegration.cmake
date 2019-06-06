@@ -71,6 +71,8 @@
 #
 
 # Magnum library dependencies
+
+
 set(_MAGNUMINTEGRATION_DEPENDENCIES )
 foreach(_component ${MagnumIntegration_FIND_COMPONENTS})
     if(_component STREQUAL Bullet)
