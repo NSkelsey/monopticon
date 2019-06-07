@@ -357,6 +357,15 @@ Device::Stats* Application::createSphere(const std::string mac) {
     _device_objects.push_back(dev);
     _device_map.insert(std::make_pair(mac, d_s));
 
+    {
+        Object3D *_cor = new Object3D{&_scene};
+        // TODO understand why scaling is inverted...
+        Matrix4 scaling = Matrix4::scaling(Vector3{2.0});
+        _cor->transform(scaling);
+        _cor->translate(Vector3{v.x(), 0.0f, v.y()});
+        new Figure::RingDrawable{*_cor, 0xff0000_rgbf, _drawables};
+    }
+
     return d_s;
 }
 

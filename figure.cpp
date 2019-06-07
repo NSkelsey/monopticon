@@ -107,9 +107,14 @@ RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::Dr
 void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     using namespace Math::Literals;
 
+    auto tm = transformationMatrix;
+    auto cm = camera.projectionMatrix();
+    auto sphericalBBoardMatrix =  Matrix4::from(cm.rotation(), tm.translation()*tm.scaling());
+    auto b = sphericalBBoardMatrix;
+
     _shader.setColor(0xffffff_rgbf)
            .setWireframeColor(_color)
-           .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
+           .setTransformationProjectionMatrix(camera.projectionMatrix()*b);
     _mesh.draw(_shader);
 }
 
