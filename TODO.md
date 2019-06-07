@@ -5,13 +5,13 @@ As of 7/6/19
     - [ ] bounding box for selected objects
     - [ ] text label above object
     - [ ] semi-opaque line that connects imgui window with watched device
-
-- [ ] OpenGL shader:
-    - animate movement to point B for packetline shader
-    - remove fade to black (should be fade to white)
-
     - [ ] Selection of objects
         - Increase area of object with highlight or bounding box
+
+- [ ] OpenGL shader:
+    - [ ] Fix parametric eqn to window a to b correctly
+    - [x] remove fade to black (should be fade to white)
+
 
 - [ ] Improve layout:
     - demo circle layout that expands
@@ -24,7 +24,7 @@ As of 7/6/19
         - starts a graph of traffic using CharMngr
 
 - [ ] Improve analysis
-    - add colors for ARP req/resp
+    - [ ] add colors for ARP req/resp
         - figure out how to filter to deduplicate arp from raw packets
     - parse dhcp to intuit network topology
     - Try to reconstruct arp table of devices inside of the broadcast domain.

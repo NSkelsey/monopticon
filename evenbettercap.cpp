@@ -272,38 +272,28 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
         return;
     }
 
-    std::string *l3_str = broker::get_if<std::string>(l2_pkt_hdr->at(8));
-    if (l3_str == nullptr) {
-        std::cout << "l3_str null" << std::endl;
-    }
-
-    auto *l3_i = broker::get_if<broker::enum_value>(l2_pkt_hdr->at(8));
-    if (l3_i == nullptr) {
+    auto *l3_t = broker::get_if<broker::enum_value>(l2_pkt_hdr->at(8));
+    if (l3_t == nullptr) {
         std::cout << "l3_i null" << std::endl;
         return;
-    } else {
-        std::cout << "l3_i: " <<  *l3_i << std::endl;
-        std::cout << "l3_name: " <<  l3_i->name << std::endl;
     }
+
     using namespace Util;
 
     L3Type t;
-    switch (l3_i->name.back()) {
+    switch (l3_t->name.back()) {
         case L3Type::ARP:
             t = L3Type::ARP;
             break;
         case L3Type::IPV4:
             t = L3Type::IPV4;
-            std::cout << "IPV4 " << l3_str << std::endl;
             break;
         case L3Type::IPV6:
-            std::cout << "IPV6 " << l3_str << std::endl;
             t = L3Type::IPV6;
             break;
         default:
             t = L3Type::UNKNOWN;
     }
-    std::cout << "type: " << t << std::endl;
 
     Device::Stats *d_s;
 
