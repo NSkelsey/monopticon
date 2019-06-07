@@ -1,10 +1,10 @@
 TODO
 =====
-As of 30/5/19
-
-- [ ] Release source
-    - Split files from single source file
-    - Add version
+As of 7/6/19
+- [ ] Implment Billboards
+    - [ ] bounding box for selected objects
+    - [ ] text label above object
+    - [ ] semi-opaque line that connects imgui window with watched device
 
 - [ ] OpenGL shader:
     - animate movement to point B for packetline shader
@@ -18,7 +18,7 @@ As of 30/5/19
     - maybe implement  a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
 - [ ] Improve interface:
-    - [ ] Temporarily fade out devices after 60 seconds
+    - [x] Temporarily fade out devices after 60 seconds
     - add GUI display for devices
         - selected device displays detailed info if we have it.
         - starts a graph of traffic using CharMngr
@@ -31,12 +31,12 @@ As of 30/5/19
 
 - [ ] Add packet filtering
     - Create a status_subscriber to monitor the broker conn: [zeek docs](https://bro-broker.readthedocs.io/en/stable/comm.html#status-and-error-messages)
-    - analyze BPF syntax and zeek configuration
+    - analyze BPF syntax and zeek configuration - exclude filters via zeek module
     - add ui elements (text bar, minimal lookback)
     - apply filters
 
 - [ ] Improve Scaling
-    x Dies at 65355 "too large scene" Corrade assert // handled with hardcoded limit for now
+    - [x] Dies at 65355 "too large scene" Corrade assert // handled with hardcoded limit for now
     - Produce summary inside of zeek script that remains constant size
     - Use different levels of detail:
         - Every packet
@@ -44,16 +44,13 @@ As of 30/5/19
         - High (summarizes of connections)
 
 - [ ] Improve Logging
-    - [ ] Broker does not log well
+    - [x] Broker does not log well (compile time options)
+    - [ ] Use log levels inside of monopticon
+        - [ ] configurable with a command line flag
 
-- [ ] Improve Portability:
-    - [ ] create and maintain a package for zeek to ease the installation
-    - [ ] figure out how to force zeek_init instead of the deprecated bro_init
-    - [ ] internal: ask for a strace of execution
-    - [ ] plan binary distribution via static build
-    - [ ] scripting interface for: start interface, stop interface, check status,
+- [ ] Tap functionality
+    - [o] scripting interface for: start interface, stop interface, check status,
           get routes, get iface, get gateway
-          - [ ] ensure that the script file is installed on the system
 
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)
@@ -61,6 +58,16 @@ As of 30/5/19
 
 DONE
 ====
+- [x] Improve Portability:
+    - [x] create and maintain a package for zeek to ease the installation
+    - [x] figure out how to force zeek_init instead of the deprecated bro_init
+    - [x] internal: ask for a strace of execution
+    - [x] plan binary distribution via static build (not possible)
+          - [x] ensure that the script file is installed on the system
+
+- [x] Release source
+    - Split files from single source file
+    - Add version
 
 - [x] Test Portability:
     - Try to run program on Diego's machine:

@@ -351,14 +351,18 @@ void Application::createLine(Vector2 a, Vector2 b) {
 
 void Application::drawEvent() {
     // Process all messages from status_subscriber before doing anything
-    /*
     if (_status_subscriber.available()) {
         auto ss_res = _status_subscriber.get();
-        auto err = caf::get<broker::error>(ss_res);
-        std::cerr << "Broker error:" << err.code() << ", " << to_string(err) << std::endl;
 
-        if ( auto st = caf::get_if<broker::status>(&ss_res) ) {
-            if ( auto ctx = st->context<broker::endpoint_info>() ) {
+        auto err = caf::get_if<broker::error>(&ss_res);
+        if (err != nullptr) {
+            std::cerr << "Broker status error: " << err->code() << ", " << to_string(*err) << std::endl;
+        }
+
+        auto st = caf::get_if<broker::status>(&ss_res);
+        if (st != nullptr) {
+            auto ctx = st->context<broker::endpoint_info>();
+            if (ctx != nullptr) {
                 std::cerr << "Broker status update regarding "
                           << ctx->network->address
                           << ":" << to_string(*st) << std::endl;
@@ -367,7 +371,7 @@ void Application::drawEvent() {
                          << to_string(*st) << std::endl;
             }
         }
-    }*/
+    }
 
     int event_cnt = 0;
     // Read and parse packets

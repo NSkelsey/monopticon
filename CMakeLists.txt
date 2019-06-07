@@ -23,16 +23,16 @@ find_package(Magnum REQUIRED
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_resource(ebc_RESOURCES resources.conf)
+corrade_add_resource(monopticon_RESOURCES resources.conf)
 
-set(ebc_FILES
+set(monopticon_FILES
         evenbettercap.h
         eth_device.cpp
         figure.cpp
         evenbettercap.cpp
     )
 
-add_executable(monopticon ${ebc_FILES} ${ebc_RESOURCES})
+add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 
 # included to reach libbroker and libcaf installed in non default locations
 link_directories("/usr/local/lib/")
