@@ -19,6 +19,6 @@ void main() {
     if (nposition.x > x_t && nposition.x < (x_t + 0.6)) {
         fragmentColor = vec4(color.x, color.y, color.z, 1.0);
     } else {
-        fragmentColor = vec4(0.0,0.0,0.0,0.0);
+        discard;
     }
 }

@@ -47,7 +47,7 @@ class Application: public Platform::Application {
 
         void parse_raw_packet(broker::zeek::Event event);
         Device::Stats* createSphere(const std::string);
-        void createLine(Vector2, Vector2);
+        void createLine(Vector2, Vector2, Util::L3Type);
         void deselectDevice();
 
     private:
@@ -165,7 +165,6 @@ Application::Application(const Arguments& arguments):
     }
 
     _line_shader = Figure::ParaLineShader{};
-    _line_shader.setColor(0x00ffff_rgbf);
     _phong_id_shader = Figure::PhongIdShader{};
 
     srand(time(nullptr));
@@ -216,7 +215,7 @@ Application::Application(const Arguments& arguments):
         p2 = d_s->circPoint;
     }
 
-    createLine(p1, p2);
+    createLine(p1, p2, Util::L3Type::ARP);
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
@@ -273,6 +272,39 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
         return;
     }
 
+    std::string *l3_str = broker::get_if<std::string>(l2_pkt_hdr->at(8));
+    if (l3_str == nullptr) {
+        std::cout << "l3_str null" << std::endl;
+    }
+
+    auto *l3_i = broker::get_if<broker::enum_value>(l2_pkt_hdr->at(8));
+    if (l3_i == nullptr) {
+        std::cout << "l3_i null" << std::endl;
+        return;
+    } else {
+        std::cout << "l3_i: " <<  *l3_i << std::endl;
+        std::cout << "l3_name: " <<  l3_i->name << std::endl;
+    }
+    using namespace Util;
+
+    L3Type t;
+    switch (l3_i->name.back()) {
+        case L3Type::ARP:
+            t = L3Type::ARP;
+            break;
+        case L3Type::IPV4:
+            t = L3Type::IPV4;
+            std::cout << "IPV4 " << l3_str << std::endl;
+            break;
+        case L3Type::IPV6:
+            std::cout << "IPV6 " << l3_str << std::endl;
+            t = L3Type::IPV6;
+            break;
+        default:
+            t = L3Type::UNKNOWN;
+    }
+    std::cout << "type: " << t << std::endl;
+
     Device::Stats *d_s;
 
     auto search = _device_map.find(*mac_src);
@@ -296,7 +328,7 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     d_s->health = 60*30;
     Vector2 p2 = d_s->circPoint;
 
-    createLine(p1, p2);
+    createLine(p1, p2, t);
 }
 
 void Application::deselectDevice() {
@@ -339,13 +371,30 @@ Device::Stats* Application::createSphere(const std::string mac) {
 }
 
 
-void Application::createLine(Vector2 a, Vector2 b) {
-        Object3D* line = new Object3D{&_scene};
-        Vector3 a3 = Vector3{a.x(), 0.0f, a.y()};
-        Vector3 b3 = Vector3{b.x(), 0.0f, b.y()};
+void Application::createLine(Vector2 a, Vector2 b, Util::L3Type t) {
+    Object3D* line = new Object3D{&_scene};
+    Vector3 a3 = Vector3{a.x(), 0.0f, a.y()};
+    Vector3 b3 = Vector3{b.x(), 0.0f, b.y()};
 
-        auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a3, b3, _drawables};
-        _packet_line_queue.insert(pl);
+    using namespace Util;
+
+    Color3 c;
+    switch (t) {
+        case L3Type::ARP:
+            c = 0xffff00_rgbf;
+            break;
+        case L3Type::IPV4:
+            c = 0x00ffff_rgbf;
+            break;
+        case L3Type::IPV6:
+            c = 0x007777_rgbf;
+            break;
+        default:
+            c = 0xff0000_rgbf;
+    }
+
+    auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a3, b3, _drawables, c};
+    _packet_line_queue.insert(pl);
 }
 
 
@@ -380,7 +429,7 @@ void Application::drawEvent() {
         if (event_cnt < 500) {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
-            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+            std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
             if (event.name().compare("raw_packet_event")) {
                     parse_raw_packet(event);
             } else {

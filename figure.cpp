@@ -159,7 +159,7 @@ ParaLineShader& ParaLineShader::setTransformationProjectionMatrix(const Matrix4&
     return *this;
 }
 
-PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group):
+PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group, Color3 c):
     SceneGraph::Drawable3D{object, &group},
     _object{object},
     _shader{shader},
@@ -169,6 +169,7 @@ PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader,
     _t = 0.0f;
     _mesh = MeshTools::compile(Primitives::line3D(a,b));
     _expired = false;
+    _shader.setColor(c);
 }
 
 void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {

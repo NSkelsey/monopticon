@@ -108,6 +108,13 @@ namespace Util {
     std::string exec_output(std::string cmd);
     std::vector<std::string> get_iface_list();
 
+    enum L3Type {
+        ARP = 'P',
+        IPV4 = '4',
+        IPV6 = '6',
+        UNKNOWN = 'N'
+    };
+
 }
 
 namespace Device {
@@ -257,7 +264,7 @@ class ParaLineShader: public GL::AbstractShaderProgram {
 
 class PacketLineDrawable: public SceneGraph::Drawable3D {
     public:
-        explicit PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group);
+        explicit PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group, Color3 c);
 
         Object3D &_object;
         bool _expired;
