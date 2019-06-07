@@ -5,6 +5,19 @@ This was a fork of Wireshark version [2.6.8](https://github.com/wireshark/wiresh
 
 Now it is a stand alone application that visualizes ethernet traffic in realtime. It leverages Zeek to capture packets and broker messages and then renders traffic flow with [Magnum](https://magnum.graphics/) and OpenGL.
 
+The goal of the software is four fold:
+- Provide simple visual network diagnostics to resolve configuration issues.
+- Demonstrate attacks, information leakage and erroneous devices in local networks and traffic flows.
+- Simplify network reconnaissance and manage man-in-the-middle attacks.
+- Define network elements symbolically to simplify the explanation and diffusion of knowledge about computer networks.
+
+This software might be useful to you if you:
+- must configure local networks
+- must defend networks
+- try to penetrate networks
+- make _"pew pew"_ sounds when pinging 8.8.8.8
+
+
 All reactions to this project including silly questions are appreciated. Open an issue here or contact [Nick](https://nskelsey.com) directly.
 
 New source code will live in `src/` and one-off tests in `src/expirements`
