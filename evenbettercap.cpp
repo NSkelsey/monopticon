@@ -71,6 +71,7 @@ class Application: public Platform::Application {
         Scene3D _scene;
         SceneGraph::Camera3D* _camera;
         SceneGraph::DrawableGroup3D _drawables;
+        SceneGraph::DrawableGroup3D _billboard_drawables;
         Timeline _timeline;
 
         Object3D *_cameraRig, *_cameraObject;
@@ -349,7 +350,7 @@ void Application::highlightDevice(Device::Stats *d_s) {
 
     d_s->_highlightedDrawable = new Figure::UnitBoardDrawable{*o,
                                                                _bbitem_shader,
-                                                               _drawables,
+                                                               _billboard_drawables,
                                                                0x00ff00_rgbf};
 }
 
@@ -516,6 +517,9 @@ void Application::drawEvent() {
         .bind();
     _camera->draw(_drawables);
 
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+
+    _camera->draw(_billboard_drawables);
 
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
