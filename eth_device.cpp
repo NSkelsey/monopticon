@@ -16,6 +16,7 @@ using namespace Monopticon::Device;
 Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
          _drawable{dev},
+         _highlightedDrawable{nullptr},
          _windowMgr{nullptr},
          _selected{false},
          circPoint{pos},
@@ -48,7 +49,9 @@ void Stats::renderText() {
 void Stats::setSelected(bool selected) {
     _selected = selected;
 
-    if (selected) _drawable->resetTParam();
+    if (selected) {
+        _drawable->resetTParam();
+    }
 }
 
 bool Stats::isSelected() {

@@ -105,16 +105,9 @@ RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::Dr
 }
 
 void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
-    using namespace Math::Literals;
-
-    auto tm = transformationMatrix;
-    auto cm = camera.projectionMatrix();
-    auto sphericalBBoardMatrix =  Matrix4::from(cm.rotation(), tm.translation()*tm.scaling());
-    auto b = sphericalBBoardMatrix;
-
     _shader.setColor(0xffffff_rgbf)
            .setWireframeColor(_color)
-           .setTransformationProjectionMatrix(camera.projectionMatrix()*b);
+           .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
     _mesh.draw(_shader);
 }
 
@@ -192,5 +185,25 @@ void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::C
            .setBPos(_b)
            .setAPos(_a)
            .setTParam(_t);
+    _mesh.draw(_shader);
+}
+
+UnitBoardDrawable::UnitBoardDrawable(Object3D& object, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D& group, Color3 c):
+    SceneGraph::Drawable3D{object, &group},
+    _object{object},
+    _shader{shader}
+{
+    _mesh = MeshTools::compile(Primitives::planeWireframe());
+    _shader.setColor(c);
+}
+
+
+void UnitBoardDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
+    auto tm = transformationMatrix;
+    auto cm = camera.projectionMatrix();
+    auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.translation()*tm.scaling());
+    auto b = sphericalBBoardMatrix;
+
+    _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*b);
     _mesh.draw(_shader);
 }

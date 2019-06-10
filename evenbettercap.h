@@ -60,6 +60,7 @@
 #include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Circle.h>
 #include <Magnum/Primitives/Line.h>
+#include <Magnum/Primitives/Plane.h>
 #include <Magnum/Primitives/UVSphere.h>
 #include <Magnum/SceneGraph/Camera.h>
 #include <Magnum/SceneGraph/Drawable.h>
@@ -88,6 +89,7 @@ namespace Figure {
 
     class DeviceDrawable;
     class PhongIdShader;
+    class UnitBoardDrawable;
 
 }
 
@@ -131,6 +133,7 @@ class Stats {
 
      std::string            mac_addr;
      Figure::DeviceDrawable *_drawable;
+     Figure::UnitBoardDrawable *_highlightedDrawable;
      WindowMgr              *_windowMgr;
      bool                   _selected;
 
@@ -277,6 +280,19 @@ class PacketLineDrawable: public SceneGraph::Drawable3D {
         Vector3 _a;
         Vector3 _b;
         float _t;
+};
+
+class UnitBoardDrawable: public SceneGraph::Drawable3D {
+    public:
+        explicit UnitBoardDrawable(Object3D& object, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D& group, Color3 c);
+
+        Object3D &_object;
+
+    private:
+        void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;
+
+        GL::Mesh _mesh;
+        Shaders::Flat3D& _shader;
 };
 
 }

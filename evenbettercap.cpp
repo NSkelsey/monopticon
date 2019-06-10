@@ -48,7 +48,10 @@ class Application: public Platform::Application {
         void parse_raw_packet(broker::zeek::Event event);
         Device::Stats* createSphere(const std::string);
         void createLine(Vector2, Vector2, Util::L3Type);
+
         void deselectDevice();
+        void deviceClicked(Device::Stats *d_s);
+        void highlightDevice(Device::Stats *d_s);
 
     private:
         // UI fields
@@ -63,6 +66,7 @@ class Application: public Platform::Application {
 
         Figure::PhongIdShader _phong_id_shader;
         Figure::ParaLineShader _line_shader;
+        Shaders::Flat3D _bbitem_shader;
 
         Scene3D _scene;
         SceneGraph::Camera3D* _camera;
@@ -166,6 +170,8 @@ Application::Application(const Arguments& arguments):
 
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
+    _bbitem_shader = Shaders::Flat3D{};
+    _bbitem_shader.setColor(0x00ff00_rgbf);
 
     srand(time(nullptr));
 
@@ -324,8 +330,36 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
 void Application::deselectDevice() {
     if (_selectedDevice != nullptr) {
         _selectedDevice->setSelected(false);
+
+        if (_selectedDevice->_highlightedDrawable != nullptr) {
+            delete _selectedDevice->_highlightedDrawable;
+            _selectedDevice->_highlightedDrawable = nullptr;
+        }
+
         _selectedDevice = nullptr;
     }
+}
+
+void Application::highlightDevice(Device::Stats *d_s) {
+    Object3D *o = new Object3D{&_scene};
+
+    Matrix4 scaling = Matrix4::scaling(Vector3{2.5});
+    o->transform(scaling);
+    o->translate(Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()});
+
+    d_s->_highlightedDrawable = new Figure::UnitBoardDrawable{*o,
+                                                               _bbitem_shader,
+                                                               _drawables,
+                                                               0x00ff00_rgbf};
+}
+
+void Application::deviceClicked(Device::Stats *d_s) {
+    deselectDevice();
+
+    d_s->setSelected(true);
+    _selectedDevice = d_s;
+
+    highlightDevice(d_s);
 }
 
 // TODO position create sphere in a specific ring
@@ -356,15 +390,6 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
     _device_objects.push_back(dev);
     _device_map.insert(std::make_pair(mac, d_s));
-
-    {
-        Object3D *_cor = new Object3D{&_scene};
-        // TODO understand why scaling is inverted...
-        Matrix4 scaling = Matrix4::scaling(Vector3{2.0});
-        _cor->transform(scaling);
-        _cor->translate(Vector3{v.x(), 0.0f, v.y()});
-        new Figure::RingDrawable{*_cor, 0xff0000_rgbf, _drawables};
-    }
 
     return d_s;
 }
@@ -593,10 +618,7 @@ void Application::drawEvent() {
         sprintf(b, "%d", i);
         i++;
         if (ImGui::Button(b, ImVec2(200, 18))) {
-            deselectDevice();
-
-            d_s->setSelected(true);
-            _selectedDevice = d_s;
+            deviceClicked(d_s);
         }
         ImGui::SameLine(5.0f);
         d_s->renderText();
@@ -685,8 +707,8 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     deselectDevice();
     UnsignedByte id = data.data<UnsignedByte>()[0];
     if(id > 0 && id < _device_objects.size()+1) {
-        _selectedDevice = _device_objects.at(id-1)->_deviceStats;
-        _selectedDevice->setSelected(true);
+        Device::Stats *d_s = _device_objects.at(id-1)->_deviceStats;
+        deviceClicked(d_s);
     } else {
         std::cout << "Could not find device" << std::endl;
     }
