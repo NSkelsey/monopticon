@@ -515,11 +515,14 @@ void Application::drawEvent() {
         .clearColor(1, Vector4ui{})
         .clearDepth(1.0f)
         .bind();
+
     _camera->draw(_drawables);
 
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
 
     _camera->draw(_billboard_drawables);
+
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
@@ -638,10 +641,10 @@ void Application::drawEvent() {
         dwm->draw();
     }
 
-    GL::Renderer::enable(GL::Renderer::Feature::Blending);
+    GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
     GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
 
     _imgui.drawFrame();
 

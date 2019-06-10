@@ -15,7 +15,7 @@ This software might be useful to you if you:
 - must configure local networks
 - must defend networks
 - try to penetrate networks
-- make _"pew pew"_ sounds when pinging 8.8.8.8
+- make _pew pew_ noises when pinging 8.8.8.8
 
 
 All reactions to this project including silly questions are appreciated. Open an issue here or contact [Nick](https://nskelsey.com) directly.
