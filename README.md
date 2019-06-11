@@ -3,7 +3,7 @@ Monopticon
 
 This was a fork of Wireshark version [2.6.8](https://github.com/wireshark/wireshark/tree/wireshark-2.6.8).
 
-Now it is a stand alone application that visualizes ethernet traffic in realtime. It leverages Zeek to capture packets and broker messages and then renders traffic flow with [Magnum](https://magnum.graphics/) and OpenGL.
+Now it is a stand alone application that visualizes ethernet traffic in realtime. It leverages [Zeek](https://www.zeek.org/) to capture packets and broker messages and then renders traffic flow with [Magnum](https://magnum.graphics/) and OpenGL.
 
 The goal of the software is four fold:
 - Provide simple visual network diagnostics to resolve configuration issues.

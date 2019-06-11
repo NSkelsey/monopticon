@@ -62,8 +62,6 @@ class Application: public Platform::Application {
         Color4 _clearColor = 0x002b36_rgbf;
         Color3 _pickColor = 0xffffff_rgbf;
 
-        GL::Buffer _indexBuffer, _vertexBuffer;
-
         Figure::PhongIdShader _phong_id_shader;
         Figure::ParaLineShader _line_shader;
         Shaders::Flat3D _bbitem_shader;
