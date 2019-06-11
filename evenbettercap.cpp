@@ -285,12 +285,6 @@ void Application::prepare3DFont() {
            .setOutlineRange(0.45f, 0.40f);
 
 
-    Object3D *obj = new Object3D{&_scene};
-    Matrix4 scaling = Matrix4::scaling(Vector3{40.0f});
-    obj->transform(scaling);
-    obj->translate(Vector3{0.0f, 0.0f, 0.0f});
-
-    _dynamicText = new Figure::TextDrawable("Hello, world!", _font, &_glyphCache, _text_shader, *obj, _text_drawables);
 }
 
 void Application::drawTextElements() {
@@ -400,13 +394,25 @@ void Application::highlightDevice(Device::Stats *d_s) {
     Object3D *o = new Object3D{&_scene};
 
     Matrix4 scaling = Matrix4::scaling(Vector3{2.5});
+
+
     o->transform(scaling);
-    o->translate(Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()});
+
+    auto t = Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()};
+    o->translate(t);
 
     d_s->_highlightedDrawable = new Figure::UnitBoardDrawable{*o,
                                                                _bbitem_shader,
                                                                _billboard_drawables,
                                                                0x00ff00_rgbf};
+
+    Object3D *obj = new Object3D{&_scene};
+    scaling = Matrix4::scaling(Vector3{0.10f});
+    obj->transform(scaling);
+
+    obj->translate(t+Vector3(0.0f, 0.7f, 0.0f));
+
+    _dynamicText = new Figure::TextDrawable("10.0.1.0", _font, &_glyphCache, _text_shader, *obj, _text_drawables);
 }
 
 void Application::deviceClicked(Device::Stats *d_s) {

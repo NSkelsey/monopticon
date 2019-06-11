@@ -206,10 +206,13 @@ UnitBoardDrawable::UnitBoardDrawable(Object3D& object, Shaders::Flat3D& shader, 
 void UnitBoardDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     auto tm = transformationMatrix;
     auto cm = camera.projectionMatrix();
-    auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.translation()*tm.scaling());
-    auto b = sphericalBBoardMatrix;
+    auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.scaling()*tm.translation());
+    auto b = camera.projectionMatrix()*sphericalBBoardMatrix;
 
-    _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*b);
+    Utility::Debug{} << "UnitBoardDrawable\n";
+    Utility::Debug{} << b;
+
+    _shader.setTransformationProjectionMatrix(b);
     _mesh.draw(_shader);
 }
 
@@ -222,7 +225,7 @@ TextDrawable::TextDrawable(std::string msg,
         SceneGraph::DrawableGroup3D& drawables):
     Object3D{&parent}, SceneGraph::Drawable3D{*this, &drawables}, _shader(shader) {
 
-    _textRenderer.reset(new Text::Renderer3D(*font.get(), *cache, 0.035f, Text::Alignment::LineCenter));
+    _textRenderer.reset(new Text::Renderer3D(*font.get(), *cache, 0.030f, Text::Alignment::LineCenter));
     _textRenderer->reserve(msg.size(), GL::BufferUsage::DynamicDraw, GL::BufferUsage::StaticDraw);
 
     updateText(msg);
@@ -235,10 +238,19 @@ void TextDrawable::updateText(std::string s) {
 void TextDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     auto tm = transformationMatrix;
     auto cm = camera.projectionMatrix();
-    auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.translation()*tm.scaling());
-    auto b = sphericalBBoardMatrix;
+    auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.scaling()*tm.translation());
+    auto b = cm*sphericalBBoardMatrix;
+
+    Utility::Debug{} << "TextDrawable";
+    Utility::Debug{} << "cm*tm\n" << cm*tm;
 
     _shader.setTransformationProjectionMatrix(cm*tm)
            .setSmoothness(0.025f/transformationMatrix.uniformScaling());
+
+    _textRenderer->mesh().draw(_shader);
+
+    Utility::Debug{} << "b\n" << b;
+
+    _shader.setTransformationProjectionMatrix(b);
     _textRenderer->mesh().draw(_shader);
 }

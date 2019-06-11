@@ -1,8 +1,9 @@
 TODO
 =====
-As of 7/6/19
+As of 10/6/19
+
 - [ ] Implment Billboards
-    - [ ] bounding box for selected objects
+    - [x] bounding box for selected objects
     - [ ] text label above object
     - [ ] semi-opaque line that connects imgui window with watched device
     - [ ] Selection of objects
@@ -12,10 +13,9 @@ As of 7/6/19
     - [ ] Fix parametric eqn to window a to b correctly
     - [x] remove fade to black (should be fade to white)
 
-
 - [ ] Improve layout:
     - demo circle layout that expands
-    - maybe implement  a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
+    - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
 - [ ] Improve interface:
     - [x] Temporarily fade out devices after 60 seconds
@@ -55,6 +55,9 @@ As of 7/6/19
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)
     - [ ] Port Manifold Shader and Setup
+
+- [ ] Improve Portability v2:
+    - [ ] Package application in .deb
 
 DONE
 ====
