@@ -18,6 +18,7 @@ find_package(Magnum REQUIRED
                     SceneGraph
                     Sdl2Application
                     Shaders
+                    Text
                     Trade
                     )
 
@@ -46,6 +47,7 @@ target_link_libraries(monopticon PRIVATE
     Magnum::Primitives
     Magnum::SceneGraph
     Magnum::Shaders
+    Magnum::Text
     Magnum::Trade
     MagnumIntegration::ImGui
 )

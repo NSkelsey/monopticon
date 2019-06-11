@@ -2,6 +2,7 @@
 
 using namespace Monopticon::Figure;
 
+
 PhongIdShader::PhongIdShader() {
     Utility::Resource rs("picking-data");
 
@@ -63,6 +64,7 @@ PhongIdShader& PhongIdShader::setProjectionMatrix(const Matrix4& matrix) {
     return *this;
 }
 
+
 DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables):
     SceneGraph::Drawable3D{object, &drawables},
     _id{id},
@@ -96,6 +98,7 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
     }
 }
 
+
 RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::DrawableGroup3D& group):
             SceneGraph::Drawable3D{object, &group}
 {
@@ -110,6 +113,7 @@ void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
            .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
     _mesh.draw(_shader);
 }
+
 
 ParaLineShader::ParaLineShader() {
     Utility::Resource rs("picking-data");
@@ -157,6 +161,7 @@ ParaLineShader& ParaLineShader::setTransformationProjectionMatrix(const Matrix4&
     return *this;
 }
 
+
 PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group, Color3 c):
     SceneGraph::Drawable3D{object, &group},
     _object{object},
@@ -188,6 +193,7 @@ void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::C
     _mesh.draw(_shader);
 }
 
+
 UnitBoardDrawable::UnitBoardDrawable(Object3D& object, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D& group, Color3 c):
     SceneGraph::Drawable3D{object, &group},
     _object{object},
@@ -197,7 +203,6 @@ UnitBoardDrawable::UnitBoardDrawable(Object3D& object, Shaders::Flat3D& shader, 
     _shader.setColor(c);
 }
 
-
 void UnitBoardDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     auto tm = transformationMatrix;
     auto cm = camera.projectionMatrix();
@@ -206,4 +211,34 @@ void UnitBoardDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Ca
 
     _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*b);
     _mesh.draw(_shader);
+}
+
+
+TextDrawable::TextDrawable(std::string msg,
+        Containers::Pointer<Text::AbstractFont> &font,
+        Text::DistanceFieldGlyphCache *cache,
+        Shaders::DistanceFieldVector3D& shader,
+        Object3D& parent,
+        SceneGraph::DrawableGroup3D& drawables):
+    Object3D{&parent}, SceneGraph::Drawable3D{*this, &drawables}, _shader(shader) {
+
+    _textRenderer.reset(new Text::Renderer3D(*font.get(), *cache, 0.035f, Text::Alignment::LineCenter));
+    _textRenderer->reserve(msg.size(), GL::BufferUsage::DynamicDraw, GL::BufferUsage::StaticDraw);
+
+    updateText(msg);
+}
+
+void TextDrawable::updateText(std::string s) {
+    _textRenderer->render(s);
+}
+
+void TextDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
+    auto tm = transformationMatrix;
+    auto cm = camera.projectionMatrix();
+    auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.translation()*tm.scaling());
+    auto b = sphericalBBoardMatrix;
+
+    _shader.setTransformationProjectionMatrix(cm*tm)
+           .setSmoothness(0.025f/transformationMatrix.uniformScaling());
+    _textRenderer->mesh().draw(_shader);
 }

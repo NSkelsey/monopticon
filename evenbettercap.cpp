@@ -32,6 +32,9 @@ class Application: public Platform::Application {
     public:
         explicit Application(const Arguments& arguments);
 
+        void prepare3DFont();
+
+        void drawTextElements();
         void drawEvent() override;
 
         void viewportEvent(ViewportEvent& event) override;
@@ -58,7 +61,7 @@ class Application: public Platform::Application {
         ImGuiIntegration::Context _imgui{NoCreate};
 
         // Graphic fields
-        GL::Mesh _sphere, _circle{NoCreate};
+        GL::Mesh _sphere{}, _circle{NoCreate};
         Color4 _clearColor = 0x002b36_rgbf;
         Color3 _pickColor = 0xffffff_rgbf;
 
@@ -70,6 +73,7 @@ class Application: public Platform::Application {
         SceneGraph::Camera3D* _camera;
         SceneGraph::DrawableGroup3D _drawables;
         SceneGraph::DrawableGroup3D _billboard_drawables;
+        SceneGraph::DrawableGroup3D _text_drawables;
         Timeline _timeline;
 
         Object3D *_cameraRig, *_cameraObject;
@@ -79,6 +83,15 @@ class Application: public Platform::Application {
         GL::Renderbuffer _color, _objectId, _depth;
 
         GL::Buffer _sphereVertices, _sphereIndices;
+
+        // Font graphics fields
+        PluginManager::Manager<Text::AbstractFont> _manager;
+        Containers::Pointer<Text::AbstractFont> _font;
+
+        Text::DistanceFieldGlyphCache _glyphCache;
+        Shaders::DistanceFieldVector3D _text_shader;
+
+        Figure::TextDrawable *_dynamicText;
 
         // Scene objects
         std::vector<Figure::DeviceDrawable*> _device_objects{};
@@ -110,7 +123,8 @@ Application::Application(const Arguments& arguments):
             .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
             .setSize(Vector2i{1400,1000}),
             GLConfiguration{}.setSampleCount(16)},
-        _framebuffer{GL::defaultFramebuffer.viewport()}
+        _framebuffer{GL::defaultFramebuffer.viewport()},
+        _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
     std::cout << "Waiting for broker connection" << std::endl;
 
@@ -126,10 +140,7 @@ Application::Application(const Arguments& arguments):
         std::cout << addr << ":" << listen_port << std::endl;
     }
 
-
     Util::print_peer_subs();
-
-
 
     /* Global renderer configuration */
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
@@ -249,6 +260,52 @@ Application::Application(const Arguments& arguments):
 
     _iface_list = Util::get_iface_list();
     _zeek_pid = "#nop";
+
+    prepare3DFont();
+}
+
+void Application::prepare3DFont() {
+    /* Load FreeTypeFont plugin */
+    _font = _manager.loadAndInstantiate("FreeTypeFont");
+    if(!_font) std::exit(1);
+
+    /* Open the font and fill glyph cache */
+    Utility::Resource rs("picking-data");
+    if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 110.0f)) {
+        Error() << "Cannot open font file";
+        std::exit(1);
+    }
+
+    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-+,.! ");
+
+     auto inner = 0x00ff00_rgbf;
+     auto outline = 0x00ff00_rgbf;
+    _text_shader.setColor(inner)
+           .setOutlineColor(outline)
+           .setOutlineRange(0.45f, 0.40f);
+
+
+    Object3D *obj = new Object3D{&_scene};
+    Matrix4 scaling = Matrix4::scaling(Vector3{40.0f});
+    obj->transform(scaling);
+    obj->translate(Vector3{0.0f, 0.0f, 0.0f});
+
+    _dynamicText = new Figure::TextDrawable("Hello, world!", _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+}
+
+void Application::drawTextElements() {
+
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
+
+    _text_shader.bindVectorTexture(_glyphCache.texture());
+
+    _camera->draw(_text_drawables);
+
+    GL::Renderer::disable(GL::Renderer::Feature::Blending);
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One, GL::Renderer::BlendFunction::Zero);
+    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
 }
 
 
@@ -482,6 +539,9 @@ void Application::drawEvent() {
 
     if (frame_cnt % 60 == 0) {
         _iface_list = Util::get_iface_list();
+
+        //_dynamicText->updateText("womp womp");
+        //redraw();
     }
 
     // TODO TODO TODO TODO
@@ -506,6 +566,7 @@ void Application::drawEvent() {
         }
     }
 
+
     // Actually draw things
     /* Draw to custom framebuffer */
     _framebuffer
@@ -522,9 +583,11 @@ void Application::drawEvent() {
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
+
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
         .bind();
+
 
     GL::Renderer::setClearColor(_clearColor);
 
@@ -532,6 +595,8 @@ void Application::drawEvent() {
     _framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
     GL::AbstractFramebuffer::blit(_framebuffer, GL::defaultFramebuffer,
         {{}, _framebuffer.viewport().size()}, GL::FramebufferBlit::Color);
+
+    drawTextElements();
 
     _imgui.newFrame();
 
@@ -602,7 +667,7 @@ void Application::drawEvent() {
     ImGui::SameLine(100.0f);
     if (!_orbit_toggle) {
         if (ImGui::Button("Start Orbit", ImVec2(90,20))) {
-               /* Rotate the camera on an orbit */
+               // Rotate the camera on an orbit
                _orbit_toggle = true;
         }
     } else {
@@ -644,11 +709,16 @@ void Application::drawEvent() {
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
 
+    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+        GL::Renderer::BlendEquation::Add);
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+
     _imgui.drawFrame();
 
     GL::Renderer::disable(GL::Renderer::Feature::ScissorTest);
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
     swapBuffers();
@@ -804,6 +874,5 @@ std::vector<std::string> Monopticon::Util::get_iface_list() {
     }
     return v;
 }
-
 
 MAGNUM_APPLICATION_MAIN(Monopticon::Application)

@@ -19,7 +19,9 @@
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Containers/Reference.h>
+#include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Resource.h>
+#include <Corrade/Utility/FormatStl.h>
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Mesh.h>
@@ -66,9 +68,13 @@
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/SceneGraph/Scene.h>
+#include <Magnum/Shaders/DistanceFieldVector.h>
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Shaders/MeshVisualizer.h>
 #include <Magnum/Shaders/Phong.h>
+#include <Magnum/Text/AbstractFont.h>
+#include <Magnum/Text/DistanceFieldGlyphCache.h>
+#include <Magnum/Text/Renderer.h>
 #include <Magnum/Trade/MeshData3D.h>
 
 #include "broker/broker.hh"
@@ -90,6 +96,7 @@ namespace Figure {
     class DeviceDrawable;
     class PhongIdShader;
     class UnitBoardDrawable;
+    class TextDrawable;
 
 }
 
@@ -295,8 +302,25 @@ class UnitBoardDrawable: public SceneGraph::Drawable3D {
         Shaders::Flat3D& _shader;
 };
 
-}
+class TextDrawable: public Object3D, SceneGraph::Drawable3D {
+    public:
+        explicit TextDrawable(std::string msg,
+                Containers::Pointer<Text::AbstractFont> &font,
+                Text::DistanceFieldGlyphCache *cache,
+                Shaders::DistanceFieldVector3D& shader,
+                Object3D& parent,
+                SceneGraph::DrawableGroup3D& drawables);
 
+        void updateText(std::string s);
+
+    private:
+        virtual void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera);
+
+        Containers::Pointer<Text::Renderer3D> _textRenderer;
+        Shaders::DistanceFieldVector3D& _shader;
+};
+
+}
 }
 
 #endif
