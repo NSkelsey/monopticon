@@ -20,6 +20,7 @@ Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
          _windowMgr{nullptr},
          _selected{false},
          circPoint{pos},
+         ip_src{nullptr},
         num_pkts_sent{0},
         num_pkts_recv{0},
         health{60*30}

@@ -209,9 +209,6 @@ void UnitBoardDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Ca
     auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.scaling()*tm.translation());
     auto b = camera.projectionMatrix()*sphericalBBoardMatrix;
 
-    Utility::Debug{} << "UnitBoardDrawable\n";
-    Utility::Debug{} << b;
-
     _shader.setTransformationProjectionMatrix(b);
     _mesh.draw(_shader);
 }
@@ -241,15 +238,10 @@ void TextDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
     auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.scaling()*tm.translation());
     auto b = cm*sphericalBBoardMatrix;
 
-    Utility::Debug{} << "TextDrawable";
-    Utility::Debug{} << "cm*tm\n" << cm*tm;
-
     _shader.setTransformationProjectionMatrix(cm*tm)
            .setSmoothness(0.025f/transformationMatrix.uniformScaling());
 
     _textRenderer->mesh().draw(_shader);
-
-    Utility::Debug{} << "b\n" << b;
 
     _shader.setTransformationProjectionMatrix(b);
     _textRenderer->mesh().draw(_shader);

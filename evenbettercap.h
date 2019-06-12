@@ -141,8 +141,10 @@ class Stats {
      std::string            mac_addr;
      Figure::DeviceDrawable *_drawable;
      Figure::UnitBoardDrawable *_highlightedDrawable;
+     Figure::TextDrawable   *_label;
      WindowMgr              *_windowMgr;
      bool                   _selected;
+     std::string            *ip_src;
 
      Vector2 circPoint;
      int num_pkts_sent;

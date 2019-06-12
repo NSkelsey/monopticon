@@ -52,6 +52,8 @@ class Application: public Platform::Application {
         Device::Stats* createSphere(const std::string);
         void createLine(Vector2, Vector2, Util::L3Type);
 
+        void addLabel(Device::Stats *d_s);
+
         void deselectDevice();
         void deviceClicked(Device::Stats *d_s);
         void highlightDevice(Device::Stats *d_s);
@@ -337,12 +339,30 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     using namespace Util;
 
     L3Type t;
+    std::string ip_src;
+    broker::address *ip_src_addr;
+
     switch (l3_t->name.back()) {
         case L3Type::ARP:
             t = L3Type::ARP;
             break;
         case L3Type::IPV4:
             t = L3Type::IPV4;
+            {
+                broker::vector *ip_pkt_hdr = broker::get_if<broker::vector>(raw_pkt_hdr->at(1));
+                if (ip_pkt_hdr == nullptr || ip_pkt_hdr->size() != 8) {
+                    std::cout << "ip_pkt_hdr" << std::endl;
+                    break;
+                }
+                ip_src_addr = broker::get_if<broker::address>(ip_pkt_hdr->at(6));
+                if (ip_src_addr == nullptr) {
+                    std::cout << "ip_src null" << std::endl;
+                    break;
+                } else {
+                    ip_src = broker::to_string(*ip_src_addr);
+                }
+            }
+
             break;
         case L3Type::IPV6:
             t = L3Type::IPV6;
@@ -363,6 +383,11 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     d_s->num_pkts_sent += 1;
     d_s->health = 60*30;
     Vector2 p1 = d_s->circPoint;
+
+    if (ip_src_addr != nullptr && d_s->ip_src == nullptr) {
+        d_s->ip_src = new std::string(ip_src);
+        addLabel(d_s);
+    }
 
     auto search_dst = _device_map.find(*mac_dst);
     if (search_dst == _device_map.end()) {
@@ -390,6 +415,17 @@ void Application::deselectDevice() {
     }
 }
 
+void Application::addLabel(Device::Stats *d_s) {
+    Object3D *obj = new Object3D{&_scene};
+    auto scaling = Matrix4::scaling(Vector3{0.10f});
+    obj->transform(scaling);
+
+    auto t = Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()};
+    obj->translate(t+Vector3(0.0f, 0.7f, 0.0f));
+
+    d_s->_label = new Figure::TextDrawable(*d_s->ip_src, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+}
+
 void Application::highlightDevice(Device::Stats *d_s) {
     Object3D *o = new Object3D{&_scene};
 
@@ -405,14 +441,6 @@ void Application::highlightDevice(Device::Stats *d_s) {
                                                                _bbitem_shader,
                                                                _billboard_drawables,
                                                                0x00ff00_rgbf};
-
-    Object3D *obj = new Object3D{&_scene};
-    scaling = Matrix4::scaling(Vector3{0.10f});
-    obj->transform(scaling);
-
-    obj->translate(t+Vector3(0.0f, 0.7f, 0.0f));
-
-    _dynamicText = new Figure::TextDrawable("10.0.1.0", _font, &_glyphCache, _text_shader, *obj, _text_drawables);
 }
 
 void Application::deviceClicked(Device::Stats *d_s) {
