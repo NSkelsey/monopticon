@@ -223,7 +223,8 @@ TextDrawable::TextDrawable(std::string msg,
     Object3D{&parent}, SceneGraph::Drawable3D{*this, &drawables}, _shader(shader) {
 
     _textRenderer.reset(new Text::Renderer3D(*font.get(), *cache, 0.030f, Text::Alignment::LineCenter));
-    _textRenderer->reserve(msg.size(), GL::BufferUsage::DynamicDraw, GL::BufferUsage::StaticDraw);
+    // TODO Note hardcoded limit:
+    _textRenderer->reserve(1000, GL::BufferUsage::DynamicDraw, GL::BufferUsage::StaticDraw);
 
     updateText(msg);
 }
@@ -245,4 +246,23 @@ void TextDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
 
     _shader.setTransformationProjectionMatrix(b);
     _textRenderer->mesh().draw(_shader);
+}
+
+
+RouteDrawable::RouteDrawable(Object3D& object, Vector3& a, Vector3& b, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D& group):
+    SceneGraph::Drawable3D{object, &group},
+    _object{object},
+    _shader{shader},
+    _a{a},
+    _b{b}
+{
+    Vector3 int_point = (_b + _a)/3.0f;
+
+    _mesh = MeshTools::compile(Primitives::line3D(a,int_point));
+}
+
+void RouteDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
+    _shader.setColor(0xffffff_rgbf)
+           .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
+    _mesh.draw(_shader);
 }

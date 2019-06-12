@@ -20,7 +20,6 @@ Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
          _windowMgr{nullptr},
          _selected{false},
          circPoint{pos},
-         ip_src{nullptr},
         num_pkts_sent{0},
         num_pkts_recv{0},
         health{60*30}
@@ -57,6 +56,18 @@ void Stats::setSelected(bool selected) {
 
 bool Stats::isSelected() {
     return _selected;
+}
+
+void Stats::updateMaps(std::string mac_src, std::string ip_src, std::string mac_dst, std::string ip_dst) {
+
+    // TODO update internal structures
+
+    std::stringstream all_src_ips;
+    for (auto it = _emitted_src_ips.begin(); it != _emitted_src_ips.end(); it++) {
+        all_src_ips << *it << "\n";
+    }
+
+    _ip_label->updateText(all_src_ips.str());
 }
 
 

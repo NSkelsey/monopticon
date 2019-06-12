@@ -93,8 +93,6 @@ class Application: public Platform::Application {
         Text::DistanceFieldGlyphCache _glyphCache;
         Shaders::DistanceFieldVector3D _text_shader;
 
-        Figure::TextDrawable *_dynamicText;
-
         // Scene objects
         std::vector<Figure::DeviceDrawable*> _device_objects{};
         std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
@@ -278,7 +276,7 @@ void Application::prepare3DFont() {
         std::exit(1);
     }
 
-    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-+,.! ");
+    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-+,.! \n");
 
      auto inner = 0x00ff00_rgbf;
      auto outline = 0x00ff00_rgbf;
@@ -339,8 +337,8 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     using namespace Util;
 
     L3Type t;
-    std::string ip_src;
-    broker::address *ip_src_addr;
+    std::string ip_src, ip_dst;
+    broker::address *ip_src_addr, *ip_dst_addr;
 
     switch (l3_t->name.back()) {
         case L3Type::ARP:
@@ -361,6 +359,14 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
                 } else {
                     ip_src = broker::to_string(*ip_src_addr);
                 }
+
+                ip_dst_addr = broker::get_if<broker::address>(ip_pkt_hdr->at(6));
+                if (ip_dst_addr == nullptr) {
+                    std::cout << "ip_src null" << std::endl;
+                    break;
+                } else {
+                    ip_dst = broker::to_string(*ip_dst_addr);
+                }
             }
 
             break;
@@ -371,33 +377,35 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
             t = L3Type::UNKNOWN;
     }
 
-    Device::Stats *d_s;
+    Device::Stats *tran_d_s;
 
     auto search = _device_map.find(*mac_src);
     if (search == _device_map.end()) {
-        d_s = createSphere(*mac_src);
-        _device_map.insert(std::make_pair(*mac_src, d_s));
+        tran_d_s = createSphere(*mac_src);
+        _device_map.insert(std::make_pair(*mac_src, tran_d_s));
     } else {
-        d_s = search->second;
+        tran_d_s = search->second;
     }
-    d_s->num_pkts_sent += 1;
-    d_s->health = 60*30;
-    Vector2 p1 = d_s->circPoint;
+    tran_d_s->num_pkts_sent += 1;
+    tran_d_s->health = 60*30;
+    Vector2 p1 = tran_d_s->circPoint;
 
-    if (ip_src_addr != nullptr && d_s->ip_src == nullptr) {
-        d_s->ip_src = new std::string(ip_src);
-        addLabel(d_s);
+    if (ip_src_addr != nullptr && ip_dst_addr != nullptr) {
+        tran_d_s->updateMaps(*mac_src, ip_src, *mac_dst, ip_dst);
     }
+
+    Device::Stats *recv_d_s;
 
     auto search_dst = _device_map.find(*mac_dst);
     if (search_dst == _device_map.end()) {
-        d_s = createSphere(*mac_dst);
+        recv_d_s = createSphere(*mac_dst);
     } else {
-        d_s = search_dst->second;
+        recv_d_s = search_dst->second;
     }
-    d_s->num_pkts_recv += 1;
-    d_s->health = 60*30;
-    Vector2 p2 = d_s->circPoint;
+    recv_d_s->num_pkts_recv += 1;
+    recv_d_s->health = 60*30;
+    Vector2 p2 = recv_d_s->circPoint;
+
 
     createLine(p1, p2, t);
 }
@@ -423,7 +431,7 @@ void Application::addLabel(Device::Stats *d_s) {
     auto t = Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()};
     obj->translate(t+Vector3(0.0f, 0.7f, 0.0f));
 
-    d_s->_label = new Figure::TextDrawable(*d_s->ip_src, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+    d_s->_ip_label = new Figure::TextDrawable("TEMP", _font, &_glyphCache, _text_shader, *obj, _text_drawables);
 }
 
 void Application::highlightDevice(Device::Stats *d_s) {
@@ -573,9 +581,6 @@ void Application::drawEvent() {
 
     if (frame_cnt % 60 == 0) {
         _iface_list = Util::get_iface_list();
-
-        //_dynamicText->updateText("womp womp");
-        //redraw();
     }
 
     // TODO TODO TODO TODO

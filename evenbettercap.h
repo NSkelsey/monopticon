@@ -8,6 +8,7 @@
 #include <math.h>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <stdio.h>
 #include <string>
@@ -97,6 +98,7 @@ namespace Figure {
     class PhongIdShader;
     class UnitBoardDrawable;
     class TextDrawable;
+    class RouteDrawable;
 
 }
 
@@ -105,6 +107,7 @@ namespace Device {
     class Stats;
     class WindowMgr;
     class ChartMgr;
+    class RouteMgr;
 
 }
 
@@ -138,13 +141,20 @@ class Stats {
      void setSelected(bool selected);
      bool isSelected();
 
-     std::string            mac_addr;
-     Figure::DeviceDrawable *_drawable;
-     Figure::UnitBoardDrawable *_highlightedDrawable;
-     Figure::TextDrawable   *_label;
+     void updateMaps(std::string mac_src, std::string ip_src_addr, std::string mac_dst, std::string ip_dst_addr);
+
+     std::string                mac_addr;
+     Figure::DeviceDrawable     *_drawable;
+     Figure::UnitBoardDrawable  *_highlightedDrawable;
+
+     Figure::TextDrawable   *_ip_label;
+     Figure::TextDrawable   *_mac_label;
      WindowMgr              *_windowMgr;
      bool                   _selected;
-     std::string            *ip_src;
+
+     //map<std::string, std::string>    src_arp_map;
+     std::vector<std::string>              _emitted_src_ips{};
+     std::map<std::string, RouteMgr>       _dst_arp_map{};
 
      Vector2 circPoint;
      int num_pkts_sent;
@@ -181,6 +191,15 @@ class ChartMgr {
         float moving_avg;
         float max_val;
         float scaling_factor;
+};
+
+class RouteMgr {
+    public:
+        Device::Stats *src;
+        Device::Stats *dst;
+
+        Figure::TextDrawable  *label;
+        Figure::RouteDrawable *path;
 };
 
 }
@@ -321,6 +340,22 @@ class TextDrawable: public Object3D, SceneGraph::Drawable3D {
         Containers::Pointer<Text::Renderer3D> _textRenderer;
         Shaders::DistanceFieldVector3D& _shader;
 };
+
+class RouteDrawable: public SceneGraph::Drawable3D {
+    public:
+        explicit RouteDrawable(Object3D& object, Vector3& a, Vector3& b, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D& group);
+
+        Object3D &_object;
+
+    private:
+        void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;
+
+        GL::Mesh _mesh;
+        Shaders::Flat3D& _shader;
+        Vector3 _a;
+        Vector3 _b;
+};
+
 
 }
 }
