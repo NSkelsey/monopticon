@@ -17,8 +17,12 @@ Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
          _drawable{dev},
          _highlightedDrawable{nullptr},
+         _ip_label{nullptr},
+         _mac_label{nullptr},
          _windowMgr{nullptr},
          _selected{false},
+         _emitted_src_ips{},
+         _dst_arp_map{},
          circPoint{pos},
         num_pkts_sent{0},
         num_pkts_recv{0},
@@ -62,14 +66,22 @@ void Stats::updateMaps(std::string mac_src, std::string ip_src, std::string mac_
 
     // TODO update internal structures
 
-    std::stringstream all_src_ips;
-    for (auto it = _emitted_src_ips.begin(); it != _emitted_src_ips.end(); it++) {
-        all_src_ips << *it << "\n";
+    auto test = [&ip_src](std::string s){ return ip_src==s; };
+
+    if (!std::any_of(_emitted_src_ips.begin(), _emitted_src_ips.end(), test)) {
+        _emitted_src_ips.push_back(ip_src);
     }
 
-    _ip_label->updateText(all_src_ips.str());
+    //_ip_label->updateText(all_src_ips.str());
 }
 
+std::string Stats::makeIpLabel() {
+    std::stringstream ss;
+    for (auto it = _emitted_src_ips.begin(); it != _emitted_src_ips.end(); it++) {
+        ss << *it << "\n";
+    }
+    return ss.str();
+}
 
 WindowMgr::WindowMgr(Stats *d_s) {
     _stats = d_s;
@@ -139,7 +151,6 @@ void ChartMgr::draw() {
     // TODO split TX and RX
     ImGui::PlotHistogram("", arr_ptr, len, 0, txt, 0.0f, y_max, ImVec2(300,60));
 }
-
 
 void ChartMgr::clear() {
 

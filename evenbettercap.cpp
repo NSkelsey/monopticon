@@ -52,7 +52,7 @@ class Application: public Platform::Application {
         Device::Stats* createSphere(const std::string);
         void createLine(Vector2, Vector2, Util::L3Type);
 
-        void addLabel(Device::Stats *d_s);
+        void addDirectLabels(Device::Stats *d_s);
 
         void deselectDevice();
         void deviceClicked(Device::Stats *d_s);
@@ -106,6 +106,13 @@ class Application: public Platform::Application {
         // Custom ImGui interface components
         Device::ChartMgr ifaceChartMgr{240, 1.5f};
         Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
+
+        int num_rings = 7;
+        int elems_per_ring[7]{4, 8, 16, 32, 64, 256, 10000};
+        float ring_radii[7]{4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
+
+        int ring_level{0};
+        int pos_in_ring{0};
 
         int run_sum;
         int frame_cnt;
@@ -185,53 +192,13 @@ Application::Application(const Arguments& arguments):
 
     srand(time(nullptr));
 
+    //Util::createLayoutRing(_scene, _drawables, ring_radii[0]);
 
-    { // Known devices
-        Object3D *cob = new Object3D{&_scene};
-        Matrix4 scaling = Matrix4::scaling(Vector3{4.8});
-        cob->transform(scaling);
-        cob->rotateX(90.0_degf);
-        cob->translate(Vector3{5.0f, 0.0f, 5.0f});
-        new Figure::RingDrawable{*cob, 0x0000ff_rgbf, _drawables};
-    }
-    { // Gateways
-        Object3D *coy = new Object3D{&_scene};
-        Matrix4 scaling = Matrix4::scaling(Vector3{4.8});
-        coy->transform(scaling);
-        coy->rotateX(90.0_degf);
-        coy->translate(Vector3{5.0f, 0.0f, -5.0f});
-        new Figure::RingDrawable{*coy, 0xffff00_rgbf, _drawables};
-    }
-    { // Unknown devices
-        Object3D *cor = new Object3D{&_scene};
-        Matrix4 scaling = Matrix4::scaling(Vector3{4.8});
-        cor->rotateX(90.0_degf);
-        cor->transform(scaling);
-        cor->translate(Vector3{-5.0f, 0.0f, -5.0f});
-        new Figure::RingDrawable{*cor, 0xff0000_rgbf, _drawables};
-    }
-    { // Broadcast addrs
-        Object3D *cog = new Object3D{&_scene};
-        Matrix4 scaling = Matrix4::scaling(Vector3{4.8});
-        cog->rotateX(90.0_degf);
-        cog->transform(scaling);
-        cog->translate(Vector3{-5.0f, 0.0f, 5.0f});
-        new Figure::RingDrawable{*cog, 0x00ff00_rgbf, _drawables};
-    }
-
-    Vector2 p1, p2;
+    // TODO determine the gateway from iface call
     {
-        std::string mac_dst = "ba:dd:be:ee:ef";
-        Device::Stats *d_s = createSphere(mac_dst);
-        p1 = d_s->circPoint;
+        //std::string mac_dst = "ba:dd:be:ee:ef";
+        //Device::Stats *d_s = createSphere(mac_dst);
     }
-    {
-        std::string mac_dst = "ca:ff:eb:ee:ef";
-        Device::Stats *d_s = createSphere(mac_dst);
-        p2 = d_s->circPoint;
-    }
-
-    createLine(p1, p2, Util::L3Type::ARP);
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
@@ -338,7 +305,8 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
 
     L3Type t;
     std::string ip_src, ip_dst;
-    broker::address *ip_src_addr, *ip_dst_addr;
+    broker::address *ip_src_addr = nullptr;
+    broker::address *ip_dst_addr = nullptr;
 
     switch (l3_t->name.back()) {
         case L3Type::ARP:
@@ -392,7 +360,11 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
 
     if (ip_src_addr != nullptr && ip_dst_addr != nullptr) {
         tran_d_s->updateMaps(*mac_src, ip_src, *mac_dst, ip_dst);
+        // TODO TODO TODO TODO
+        // TODO TODO TODO TODO
     }
+
+    addDirectLabels(tran_d_s);
 
     Device::Stats *recv_d_s;
 
@@ -423,15 +395,34 @@ void Application::deselectDevice() {
     }
 }
 
-void Application::addLabel(Device::Stats *d_s) {
-    Object3D *obj = new Object3D{&_scene};
+void Application::addDirectLabels(Device::Stats *d_s) {
     auto scaling = Matrix4::scaling(Vector3{0.10f});
-    obj->transform(scaling);
-
     auto t = Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()};
-    obj->translate(t+Vector3(0.0f, 0.7f, 0.0f));
 
-    d_s->_ip_label = new Figure::TextDrawable("TEMP", _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+    int num_ips = d_s->_emitted_src_ips.size();
+    if (num_ips > 0) {
+        if (d_s->_ip_label != nullptr) {
+            delete d_s->_ip_label;
+        }
+
+        Object3D *obj = new Object3D{&_scene};
+        obj->transform(scaling);
+
+        float offset = num_ips*0.2f;
+        obj->translate(t+Vector3(0.0f, 0.5f+offset, 0.0f));
+
+        auto c = 0xeeeeee_rgbf;
+        d_s->_ip_label = new Figure::TextDrawable(d_s->makeIpLabel(), c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+    }
+
+    if (d_s->_mac_label == nullptr) {
+        Object3D *obj = new Object3D{&_scene};
+        obj->transform(scaling);
+        obj->translate(t+Vector3(0.0f, -0.7f, 0.0f));
+
+        auto c = 0xaaaaaa_rgbf;
+        d_s->_mac_label = new Figure::TextDrawable(d_s->mac_addr, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+    }
 }
 
 void Application::highlightDevice(Device::Stats *d_s) {
@@ -460,13 +451,31 @@ void Application::deviceClicked(Device::Stats *d_s) {
     highlightDevice(d_s);
 }
 
-// TODO position create sphere in a specific ring
 Device::Stats* Application::createSphere(const std::string mac) {
     Object3D* o = new Object3D{&_scene};
 
-    Vector2 v = 4.0f*Util::randCirclePoint();
-    Vector2 z = Util::randOffset(5.0f);
-    v = v + z;
+    int num_objs = _device_objects.size();
+
+    // Sequentially add elements to rings of increasing radius
+    int j = num_objs;
+    int pos = 0;
+    int ring = 0;
+
+    for (int i = 0; i < num_rings; i++) {
+        ring = i;
+        if (j < elems_per_ring[i]) {
+            pos = j;
+            if (pos == 0) {
+                Util::createLayoutRing(_scene, _drawables, ring_radii[i]);
+            }
+            break;
+        }
+        j = j - elems_per_ring[i];
+    }
+
+    float ring_radius = ring_radii[ring];
+    Vector2 v = ring_radius*Util::paramCirclePoint(elems_per_ring[ring], pos);
+    std::cout << "ring " << ring << " pos " << pos << std::endl;
 
     o->translate({v.x(), 0.0f, v.y()});
 
@@ -605,7 +614,6 @@ void Application::drawEvent() {
         }
     }
 
-
     // Actually draw things
     /* Draw to custom framebuffer */
     _framebuffer
@@ -622,11 +630,9 @@ void Application::drawEvent() {
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
-
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
         .bind();
-
 
     GL::Renderer::setClearColor(_clearColor);
 
@@ -875,6 +881,21 @@ Vector2 Monopticon::Util::randCirclePoint() {
     return Vector2{cos(res), sin(res)};
 }
 
+Vector2 Monopticon::Util::paramCirclePoint(int num_elem, int pos) {
+    float steps = static_cast<float>(num_elem);
+    float posf = static_cast<float>(pos);
+
+    float r = (2*Math::Constants<float>::pi()) * (posf/steps);
+
+    float max = 2*Math::Constants<float>::pi();
+    float min = 0.0f;
+
+    float zerone = std::round((r-min)*(steps/(max-min)))/steps;
+    float res = zerone*(max-min) + min;
+
+    return Vector2{cos(res), sin(res)};
+}
+
 Vector2 Monopticon::Util::randOffset(float z) {
     int x = rand() % 2;
     int y = rand() % 2;
@@ -912,6 +933,16 @@ std::vector<std::string> Monopticon::Util::get_iface_list() {
         v.push_back(t);
     }
     return v;
+}
+
+
+void Monopticon::Util::createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r) {
+    Object3D *obj = new Object3D{&scene};
+    Matrix4 scaling = Matrix4::scaling(Vector3{r});
+    obj->transform(scaling);
+    obj->rotateX(90.0_degf);
+    obj->translate(Vector3{0.0f, 0.0f, 0.0f});
+    new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
 }
 
 MAGNUM_APPLICATION_MAIN(Monopticon::Application)

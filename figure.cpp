@@ -83,8 +83,6 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
         _t = _t - 0.01f;
     }
 
-    if (_deviceStats->health > 0) {
-        _deviceStats->health --;
     _shader.setTransformationMatrix(transformation*_primitiveTransformation)
            .setNormalMatrix(transformation.rotationScaling())
            .setProjectionMatrix(camera.projectionMatrix())
@@ -95,7 +93,6 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
            .setLightPosition({0.0f, 4.0f, 3.0f})
            .setObjectId(_id);
     _mesh.draw(_shader);
-    }
 }
 
 
@@ -215,12 +212,17 @@ void UnitBoardDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Ca
 
 
 TextDrawable::TextDrawable(std::string msg,
+        Color3 c,
         Containers::Pointer<Text::AbstractFont> &font,
         Text::DistanceFieldGlyphCache *cache,
         Shaders::DistanceFieldVector3D& shader,
         Object3D& parent,
         SceneGraph::DrawableGroup3D& drawables):
-    Object3D{&parent}, SceneGraph::Drawable3D{*this, &drawables}, _shader(shader) {
+    _c{c},
+    Object3D{&parent},
+    SceneGraph::Drawable3D{*this, &drawables},
+    _shader(shader)
+{
 
     _textRenderer.reset(new Text::Renderer3D(*font.get(), *cache, 0.030f, Text::Alignment::LineCenter));
     // TODO Note hardcoded limit:
@@ -240,6 +242,8 @@ void TextDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
     auto b = cm*sphericalBBoardMatrix;
 
     _shader.setTransformationProjectionMatrix(cm*tm)
+           .setOutlineColor(_c)
+           .setColor(_c)
            .setSmoothness(0.025f/transformationMatrix.uniformScaling());
 
     _textRenderer->mesh().draw(_shader);

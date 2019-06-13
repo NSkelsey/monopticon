@@ -115,7 +115,10 @@ namespace Device {
 namespace Util {
 
     Vector2 randCirclePoint();
+    Vector2 paramCirclePoint(int num_elem, int pos);
     Vector2 randOffset(float z);
+    void createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r);
+
     void print_peer_subs();
     std::string exec_output(std::string cmd);
     std::vector<std::string> get_iface_list();
@@ -142,6 +145,7 @@ class Stats {
      bool isSelected();
 
      void updateMaps(std::string mac_src, std::string ip_src_addr, std::string mac_dst, std::string ip_dst_addr);
+     std::string makeIpLabel();
 
      std::string                mac_addr;
      Figure::DeviceDrawable     *_drawable;
@@ -153,8 +157,8 @@ class Stats {
      bool                   _selected;
 
      //map<std::string, std::string>    src_arp_map;
-     std::vector<std::string>              _emitted_src_ips{};
-     std::map<std::string, RouteMgr>       _dst_arp_map{};
+     std::vector<std::string>              _emitted_src_ips;
+     std::map<std::string, RouteMgr>       _dst_arp_map;
 
      Vector2 circPoint;
      int num_pkts_sent;
@@ -326,6 +330,7 @@ class UnitBoardDrawable: public SceneGraph::Drawable3D {
 class TextDrawable: public Object3D, SceneGraph::Drawable3D {
     public:
         explicit TextDrawable(std::string msg,
+                Color3 c,
                 Containers::Pointer<Text::AbstractFont> &font,
                 Text::DistanceFieldGlyphCache *cache,
                 Shaders::DistanceFieldVector3D& shader,
@@ -337,6 +342,7 @@ class TextDrawable: public Object3D, SceneGraph::Drawable3D {
     private:
         virtual void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera);
 
+        Color3 _c;
         Containers::Pointer<Text::Renderer3D> _textRenderer;
         Shaders::DistanceFieldVector3D& _shader;
 };
