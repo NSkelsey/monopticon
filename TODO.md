@@ -4,9 +4,9 @@ As of 10/6/19
 
 - [ ] Implment Billboards
     - [x] bounding box for selected objects
-    - [ ] text label above object
+    - [x] text label above object
     - [ ] semi-opaque line that connects imgui window with watched device
-    - [ ] Selection of objects
+    - [x] Selection of objects
         - Increase area of object with highlight or bounding box
 
 - [ ] OpenGL shader:
@@ -14,14 +14,20 @@ As of 10/6/19
     - [x] remove fade to black (should be fade to white)
 
 - [ ] Improve layout:
-    - demo circle layout that expands
+    - [x] demo circle layout that expands
+        - [ ] Add list of known positions for known devices
     - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
 - [ ] Improve interface:
     - [x] Temporarily fade out devices after 60 seconds
-    - add GUI display for devices
-        - selected device displays detailed info if we have it.
-        - starts a graph of traffic using CharMngr
+    - [x] add GUI display for devices
+        - [ ]  selected device displays detailed info if we have it.
+        - [x] starts a graph of traffic using CharMngr
+
+- [ ] Add Strict Ordering:
+    - [ ] figure out how to generate raw packet events from pcaps
+    - [ ] determine how the timeline works
+    - [ ] slow down time to step through packet interactions
 
 - [ ] Improve analysis
     - [ ] add colors for ARP req/resp
@@ -58,6 +64,10 @@ As of 10/6/19
 
 - [ ] Improve Portability v2:
     - [ ] Package application in .deb
+
+- [ ] Make more bello:
+    - [ ] Add a skybox that simulates __cyberspace__
+    - [ ] Add for specific events sounds
 
 DONE
 ====
