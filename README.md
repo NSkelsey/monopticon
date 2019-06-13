@@ -20,9 +20,10 @@ This software might be useful to you if you:
 
 All reactions to this project including silly questions are appreciated. Open an issue here or contact [Nick](https://nskelsey.com) directly.
 
-New source code will live in `src/` and one-off tests in `src/expirements`
 
-![a demo interface](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/readme-photo.jpg)
+The animation below demonstrates the output of Monopticon (v0.2.0) while capturing packets from a machine arp-scanning a local network. For more examples visit `src/expirements`.
+
+![what it looks like](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/screens/arp-scan.gif)
 
 ## Usage
 
