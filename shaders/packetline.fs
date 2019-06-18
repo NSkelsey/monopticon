@@ -12,11 +12,11 @@ void main() {
     vec4 x = vec4(tParam);
 
     float x_t = (bPos.x - aPos.x)*tParam+aPos.x;
-    float m = (bPos.z - aPos.z)/(bPos.x - aPos.x);
-    float q = aPos.z - m*aPos.x;
-    float y_t = m*x_t;
+    float z_t = (bPos.z - aPos.z)*tParam+aPos.z;
+    float c = 0.3;
 
-    if (nposition.x > x_t && nposition.x < (x_t + 0.6)) {
+    if (nposition.x > x_t && nposition.x < (x_t + c) && nposition.z > z_t && nposition.z < (z_t + c)) {
+
         fragmentColor = vec4(color.x, color.y, color.z, 1.0);
     } else {
         discard;
