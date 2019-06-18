@@ -1,11 +1,12 @@
 Introduction
 ------------
 
-The goal of this expirement is to demonstrate how ARP posioning changes values
-inside of the ARP table attacked devices, as well as, demonstrate how `bettercap`
-can inject javascript into http streams when performing a Man-in-The-Middle.
+The goal of this expirement is to demonstrate how `bettercap` can inject
+javascript into http streams when performing a Man-in-The-Middle and how its
+possibile to visually confirm the attack is working with `monopticon`.
 
 The video posted to [Youtube](https://youtube.com/TODO) describes the expirement well.
+The injected javascript that changes the page is available [here](https://github.com/nskelsey/monopticon/master/src/expirements/arp-spoof/script.js).
 
 Expiremental Setup
 ------------------
@@ -13,27 +14,33 @@ Inside of an isolated unmanaged network, an attacker performing an ARP spoofing
 attack, man in the middles http requests to a website running on a device in the
 local network.
 
-- 1 Netgear Max Unmanaged Switch
-- 2 Raspberry Pi 3 running Raspbian-Stretch (v4.14)
+- 1 Netgear Max GS724 24 port switch
+- 2 Raspberry Pi 3 running Raspbian-Stretch v4.14
 - 1 Lenovo T480 running Monopticon v0.2.0 and Bettercap v2.22
+- 3 RJ45 0.5m cables
 
 ### Network Design
 
-The photo below shows the yellow ethernet cables
+```
+[ pi C ] [ pi B ] [ lenovo ]
+   \        |         /
+    \       |        /
+     \      |       /
+      \     |      /
+    [ netgear switch ]
+```
 
-[img-src](should-be-in-contrib.jpg)
 
-
-### Normal ARP Table
-The addresses are statically shown below in the diagram.
+### Normal ARP Mappings
+The addresses are shown below in the diagram if the network was properly configured.
 
 ```
+10.0.0.1 00:50:b6:b7:2b:eb # Attacker
 10.0.0.2 b8:27:eb:71:b2:3e # Bruno
-10.0.0.3 b8:27:eb:71: # Cocco
-         aa:aa: # Attacker
+10.0.0.3 b8:27:eb:71:0f:5d # Cocco
 ```
 
-### Poisioning machine
+### Man in the Middle Machine
 
 ```zsh
 > ip address add dev enp0s31f6 10.0.0.1/24
@@ -43,17 +50,16 @@ The addresses are statically shown below in the diagram.
 ```
 
 
-After Poisioning
-----------------
+### Manipulated ARP Tables
 
 ARP Table of Bruno
 ```
-10.0.0.3 aa:aa: # Attacker
+10.0.0.3 00:50:b6:b7:2b:eb # Attacker
 ```
 
 ARP Table of Cocco
 ```
-10.0.0.2 aa:aa: # Attacker
+10.0.0.2 00:50:b6:b7:2b:eb # Attacker
 ```
 
 
@@ -78,7 +84,7 @@ Appendix
 > wget -r https://soapbox.nskelsey.com --convert-links
 > systemctl enable nginx
 > cp -fr soapbox.nskelsey.com/* /var/www/html/
-> arp -s 10.0.0.2 aa:aa
+> arp -s 10.0.0.2 00:50:b6:b7:2b:eb
 ```
 
 ### Bruno
@@ -86,7 +92,7 @@ Appendix
 > sudo apt install vim tmux
 > enable sshd w/ password
 # idem w/o nginx
-> arp -s 10.0.0.3 aa:aa
+> arp -s 10.0.0.3 00:50:b6:b7:2b:eb
 ```
 
 ### Attacker
