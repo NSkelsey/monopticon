@@ -1,6 +1,6 @@
 TODO
 =====
-As of 10/6/19
+As of 19/6/19
 
 - [ ] Implment Billboards
     - [x] bounding box for selected objects
@@ -9,10 +9,6 @@ As of 10/6/19
     - [x] Selection of objects
         - Increase area of object with highlight or bounding box
 
-- [ ] OpenGL shader:
-    - [ ] Fix parametric eqn to window a to b correctly
-    - [x] remove fade to black (should be fade to white)
-
 - [ ] Improve layout:
     - [x] demo circle layout that expands
         - [ ] Add list of known positions for known devices
@@ -20,8 +16,11 @@ As of 10/6/19
 
 - [ ] Improve interface:
     - [x] Temporarily fade out devices after 60 seconds
+    - [ ] Fix device select menu
+        - change to buttons
+        - remove packet counts
     - [x] add GUI display for devices
-        - [ ]  selected device displays detailed info if we have it.
+        - [ ] selected device displays detailed info if we have it.
         - [x] starts a graph of traffic using CharMngr
 
 - [ ] Add Strict Ordering:
@@ -54,10 +53,6 @@ As of 10/6/19
     - [ ] Use log levels inside of monopticon
         - [ ] configurable with a command line flag
 
-- [ ] Tap functionality
-    - [o] scripting interface for: start interface, stop interface, check status,
-          get routes, get iface, get gateway
-
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)
     - [ ] Port Manifold Shader and Setup
@@ -71,6 +66,14 @@ As of 10/6/19
 
 DONE
 ====
+- [x] OpenGL shader:
+    - [x] Fix parametric eqn to window a to b correctly
+    - [x] remove fade to black (should be fade to white)
+
+- [x] Tap functionality
+    - [x] scripting interface for: start interface, stop interface, check status,
+          get routes, get iface, get gateway
+
 - [x] Improve Portability:
     - [x] create and maintain a package for zeek to ease the installation
     - [x] figure out how to force zeek_init instead of the deprecated bro_init

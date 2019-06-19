@@ -102,14 +102,16 @@ class Application: public Platform::Application {
         std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
         Device::Stats* _selectedDevice{nullptr};
+        Device::Stats* _listeningDevice{nullptr};
+        Device::Stats* _activeGateway{nullptr};
 
         // Custom ImGui interface components
         Device::ChartMgr ifaceChartMgr{240, 1.5f};
         Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
 
-        int num_rings = 7;
-        int elems_per_ring[7]{4, 8, 16, 32, 64, 256, 10000};
-        float ring_radii[7]{4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
+        int num_rings = 8;
+        int elems_per_ring[8]{1, 4, 8, 16, 32, 64, 256, 10000};
+        float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
 
         int ring_level{0};
         int pos_in_ring{0};
@@ -230,7 +232,6 @@ Application::Application(const Arguments& arguments):
     _iface_list = Util::get_iface_list();
     _zeek_pid = "#nop";
 
-    Util::createLayoutRing(_scene, _drawables, 2.0f, Vector3{0.0f, -2.0f, 0.0f});
 
     prepare3DFont();
 }
@@ -661,8 +662,47 @@ void Application::drawEvent() {
     static bool peer_connected = false;
     if (!peer_connected && _iface_list.size() > 0) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
-            std::string s = "monopt_iface_proto launch ";
-            std::string cmd = s.append(_iface_list.at(0));
+            std::string chosen_iface = _iface_list.at(0);
+            std::string s, cmd;
+
+            if (_listeningDevice == nullptr) {
+                s = "monopt_iface_proto mac_addr ";
+                cmd = s.append(chosen_iface);
+                std::string mac_addr = Util::exec_output(cmd);
+
+                _listeningDevice = createSphere(mac_addr);
+                Util::createLayoutRing(_scene, _drawables, 2.0f, Vector3{0.0f, -2.0f, 0.0f});
+                deviceClicked(_listeningDevice);
+
+                s = "monopt_iface_proto ipv4_addr ";
+                cmd = s.append(chosen_iface);
+                std::string ipv4_addr = Util::exec_output(cmd);
+
+                if (ipv4_addr.size() > 0) {
+                    _listeningDevice->updateMaps(mac_addr, ipv4_addr, "", "");
+                }
+                addDirectLabels(_listeningDevice);
+            }
+
+            s = "monopt_iface_proto gateway_ipv4_addr ";
+            cmd = s.append(chosen_iface);
+            std::string gw_ipv4_addr = Util::exec_output(cmd);
+
+            if (_activeGateway == nullptr && gw_ipv4_addr.size() > 0) {
+                s = "monopt_iface_proto gateway_mac_addr ";
+                cmd = s.append(chosen_iface)
+                       .append(" ")
+                       .append(gw_ipv4_addr);
+                std::string gw_mac_addr = Util::exec_output(cmd);
+
+                _activeGateway = createSphere(gw_mac_addr);
+                _activeGateway->updateMaps(gw_mac_addr, gw_ipv4_addr, "", "");
+
+                addDirectLabels(_activeGateway);
+            }
+
+            s = "monopt_iface_proto launch ";
+            cmd = s.append(chosen_iface);
             _zeek_pid = Util::exec_output(cmd);
             std::cout << "Launched subprocess with pid: " << _zeek_pid << std::endl;
             peer_connected = true;
