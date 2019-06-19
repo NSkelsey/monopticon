@@ -230,6 +230,8 @@ Application::Application(const Arguments& arguments):
     _iface_list = Util::get_iface_list();
     _zeek_pid = "#nop";
 
+    Util::createLayoutRing(_scene, _drawables, 2.0f, Vector3{0.0f, -2.0f, 0.0f});
+
     prepare3DFont();
 }
 
@@ -468,7 +470,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
         if (j < elems_per_ring[i]) {
             pos = j;
             if (pos == 0) {
-                Util::createLayoutRing(_scene, _drawables, ring_radii[i]);
+                Util::createLayoutRing(_scene, _drawables, ring_radii[i], Vector3{0.0f, 0.0f, 0.0f});
             }
             break;
         }
@@ -946,12 +948,12 @@ std::vector<std::string> Monopticon::Util::get_iface_list() {
 }
 
 
-void Monopticon::Util::createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r) {
+void Monopticon::Util::createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
     Object3D *obj = new Object3D{&scene};
     Matrix4 scaling = Matrix4::scaling(Vector3{r});
     obj->transform(scaling);
     obj->rotateX(90.0_degf);
-    obj->translate(Vector3{0.0f, 0.0f, 0.0f});
+    obj->translate(trans);
     new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
 }
 

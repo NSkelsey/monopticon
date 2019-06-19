@@ -117,7 +117,7 @@ namespace Util {
     Vector2 randCirclePoint();
     Vector2 paramCirclePoint(int num_elem, int pos);
     Vector2 randOffset(float z);
-    void createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r);
+    void createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans);
 
     void print_peer_subs();
     std::string exec_output(std::string cmd);
