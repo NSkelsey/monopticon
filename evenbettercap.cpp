@@ -119,6 +119,8 @@ class Application: public Platform::Application {
 
         bool _orbit_toggle{false};
 
+        int inv_sample_rate{1};
+
         std::vector<std::string> _iface_list;
         std::string _zeek_pid;
 };
@@ -475,7 +477,6 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
     float ring_radius = ring_radii[ring];
     Vector2 v = ring_radius*Util::paramCirclePoint(elems_per_ring[ring], pos);
-    std::cout << "ring " << ring << " pos " << pos << std::endl;
 
     o->translate({v.x(), 0.0f, v.y()});
 
@@ -554,26 +555,33 @@ void Application::drawEvent() {
     }
 
     int event_cnt = 0;
+    int processed_event_cnt = 0;
+
     // Read and parse packets
     for (auto msg : _subscriber.poll()) {
         event_cnt++;
-        if (event_cnt < 500) {
+        if (event_cnt % inv_sample_rate == 0) {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
-            std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
             if (event.name().compare("raw_packet_event")) {
                     parse_raw_packet(event);
             } else {
                 std::cout << "Unhandled Event: " << event.name() << std::endl;
             }
-        } else {
-            // This an overflow handler that drops n packets from the visualization
-            // before moving to rendering
-            if (event_cnt > 1000) {
-                break;
+            processed_event_cnt ++;
+        }
+        if (event_cnt % 25 == 0) {
+            if (inv_sample_rate < 16384) {
+                inv_sample_rate = inv_sample_rate * 2;
             }
         }
     }
+
+    if (event_cnt < 25 ) {
+        inv_sample_rate = 1;
+    }
+
     // Update Iface packet statistics
     frame_cnt ++;
     ifaceChartMgr.push(static_cast<float>(event_cnt));
@@ -684,7 +692,9 @@ void Application::drawEvent() {
     }
 
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
-        1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
+            1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
+    ImGui::Text("Sample rate %.3f SPS event cnt %d",
+        1.0f/static_cast<float>(inv_sample_rate), event_cnt);
 
     ImGui::Separator();
     ifaceChartMgr.draw();
