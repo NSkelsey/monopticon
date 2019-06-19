@@ -5,9 +5,6 @@ uniform highp float tParam;
 
 layout(location = 0) in highp vec4 position;
 
-out highp vec4 nposition;
-
-
 vec3 calc_pos(vec3 a, vec3 b, float t) {
     vec3 c = vec3(0.0, -4.0, 0.0);
 

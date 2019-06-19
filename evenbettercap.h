@@ -136,7 +136,7 @@ namespace Device {
 
 class Stats {
   public:
-     Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev);
+     Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev);
 
      std::string create_device_string();
      void renderText();
@@ -160,7 +160,7 @@ class Stats {
      std::vector<std::string>              _emitted_src_ips;
      std::map<std::string, RouteMgr>       _dst_arp_map;
 
-     Vector2 circPoint;
+     Vector3 circPoint;
      int num_pkts_sent;
      int num_pkts_recv;
      int health;
@@ -362,8 +362,44 @@ class RouteDrawable: public SceneGraph::Drawable3D {
         Vector3 _b;
 };
 
+class PoolShader: public GL::AbstractShaderProgram {
+    public:
+        typedef GL::Attribute<0, Vector3> Position;
+
+        explicit PoolShader();
+
+        PoolShader& setColor(const Color3& color);
+
+        PoolShader& setOriginPos(const Vector3& position);
+
+        PoolShader& setTParam(const float t);
+
+        PoolShader& setTransformationProjectionMatrix(const Matrix4& matrix);
+
+    private:
+        Int _colorUniform,
+            _originPosUniform,
+            _tParamUniform,
+            _transformationProjectionMatrixUniform;
+};
+
+class MulticastDrawable: public SceneGraph::Drawable3D {
+    public:
+        explicit MulticastDrawable(Object3D& object, Vector3& origin, PoolShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh);
+
+        Object3D &_object;
+
+    private:
+        void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;
+
+        PoolShader& _shader;
+        Vector3 _origin;
+        GL::Mesh &_mesh;
+        float _t;
+};
 
 }
+
 }
 
 #endif

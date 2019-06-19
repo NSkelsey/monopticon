@@ -50,7 +50,11 @@ class Application: public Platform::Application {
 
         void parse_raw_packet(broker::zeek::Event event);
         Device::Stats* createSphere(const std::string);
-        void createLine(Vector2, Vector2, Util::L3Type);
+
+        Device::Stats* createBroadcastPool(const std::string);
+
+
+        void createLine(Vector3, Vector3, Util::L3Type);
 
         void addDirectLabels(Device::Stats *d_s);
 
@@ -63,12 +67,13 @@ class Application: public Platform::Application {
         ImGuiIntegration::Context _imgui{NoCreate};
 
         // Graphic fields
-        GL::Mesh _sphere{}, _circle{NoCreate};
+        GL::Mesh _sphere{}, _poolCircle{NoCreate};
         Color4 _clearColor = 0x002b36_rgbf;
         Color3 _pickColor = 0xffffff_rgbf;
 
         Figure::PhongIdShader _phong_id_shader;
         Figure::ParaLineShader _line_shader;
+        Figure::PoolShader _pool_shader;
         Shaders::Flat3D _bbitem_shader;
 
         Scene3D _scene;
@@ -171,7 +176,7 @@ Application::Application(const Arguments& arguments):
         //.translate(Vector3::yAxis(3.0f))
         .rotateY(40.0_degf);
     (*(_cameraObject = new Object3D{_cameraRig}))
-        .translate(Vector3::zAxis(30.0f))
+        .translate(Vector3::zAxis(20.0f))
         .rotateX(-25.0_degf);
     (_camera = new SceneGraph::Camera3D(*_cameraObject))
         ->setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::Extend)
@@ -189,20 +194,16 @@ Application::Application(const Arguments& arguments):
             .setIndexBuffer(_sphereIndices, 0, MeshIndexType::UnsignedShort);
     }
 
+    _poolCircle = MeshTools::compile(Primitives::circle3DSolid(20));
+
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
+    _pool_shader = Figure::PoolShader{};
+
     _bbitem_shader = Shaders::Flat3D{};
     _bbitem_shader.setColor(0x00ff00_rgbf);
 
     srand(time(nullptr));
-
-    //Util::createLayoutRing(_scene, _drawables, ring_radii[0]);
-
-    // TODO determine the gateway from iface call
-    {
-        //std::string mac_dst = "ba:dd:be:ee:ef";
-        //Device::Stats *d_s = createSphere(mac_dst);
-    }
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
@@ -234,6 +235,8 @@ Application::Application(const Arguments& arguments):
 
 
     prepare3DFont();
+
+    createBroadcastPool("ff:ff:ff:ff:ff:ff");
 }
 
 void Application::prepare3DFont() {
@@ -242,7 +245,7 @@ void Application::prepare3DFont() {
     if(!_font) std::exit(1);
 
     /* Open the font and fill glyph cache */
-    Utility::Resource rs("picking-data");
+    Utility::Resource rs("monopticon");
     if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 110.0f)) {
         Error() << "Cannot open font file";
         std::exit(1);
@@ -361,7 +364,7 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     }
     tran_d_s->num_pkts_sent += 1;
     tran_d_s->health = 60*30;
-    Vector2 p1 = tran_d_s->circPoint;
+    Vector3 p1 = tran_d_s->circPoint;
 
     if (ip_src_addr != nullptr && ip_dst_addr != nullptr) {
         tran_d_s->updateMaps(*mac_src, ip_src, *mac_dst, ip_dst);
@@ -381,7 +384,7 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     }
     recv_d_s->num_pkts_recv += 1;
     recv_d_s->health = 60*30;
-    Vector2 p2 = recv_d_s->circPoint;
+    Vector3 p2 = recv_d_s->circPoint;
 
 
     createLine(p1, p2, t);
@@ -405,7 +408,7 @@ void Application::addDirectLabels(Device::Stats *d_s) {
     auto t = Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()};
 
     int num_ips = d_s->_emitted_src_ips.size();
-    if (num_ips > 0) {
+    if (num_ips > 0 && num_ips < 5) {
         if (d_s->_ip_label != nullptr) {
             delete d_s->_ip_label;
         }
@@ -480,6 +483,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
     float ring_radius = ring_radii[ring];
     Vector2 v = ring_radius*Util::paramCirclePoint(elems_per_ring[ring], pos);
+    Vector3 w = Vector3{v.x(), 0.0f, v.y()};
 
     o->translate({v.x(), 0.0f, v.y()});
 
@@ -496,7 +500,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
         _drawables};
 
 
-    Device::Stats* d_s = new Device::Stats{mac, v, dev};
+    Device::Stats* d_s = new Device::Stats{mac, w, dev};
     dev->_deviceStats = d_s;
 
     _device_objects.push_back(dev);
@@ -505,11 +509,24 @@ Device::Stats* Application::createSphere(const std::string mac) {
     return d_s;
 }
 
+Device::Stats* Application::createBroadcastPool(const std::string mac) {
+    auto scaling = Matrix4::scaling(Vector3{2.00f});
+    Vector3 pos = Vector3{1.0f, -2.0f, 1.0f};
 
-void Application::createLine(Vector2 a, Vector2 b, Util::L3Type t) {
+    Object3D* o = new Object3D{&_scene};
+    o->transform(scaling);
+    o->translate(pos);
+
+    Device::Stats* d_s = new Device::Stats{mac, pos, nullptr};
+
+    Figure::MulticastDrawable(*o,  pos, _pool_shader,  _drawables, _poolCircle);
+
+    return d_s;
+}
+
+
+void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     Object3D* line = new Object3D{&_scene};
-    Vector3 a3 = Vector3{a.x(), 0.0f, a.y()};
-    Vector3 b3 = Vector3{b.x(), 0.0f, b.y()};
 
     using namespace Util;
 
@@ -528,7 +545,7 @@ void Application::createLine(Vector2 a, Vector2 b, Util::L3Type t) {
             c = 0xff0000_rgbf;
     }
 
-    auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a3, b3, _drawables, c};
+    auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a, b, _drawables, c};
     _packet_line_queue.insert(pl);
 }
 
@@ -784,7 +801,7 @@ void Application::drawEvent() {
         char b[4] = {};
         sprintf(b, "%d", i);
         i++;
-        if (ImGui::Button(b, ImVec2(200, 18))) {
+        if (ImGui::InvisibleButton(b, ImVec2(200, 18))) {
             deviceClicked(d_s);
         }
         ImGui::SameLine(5.0f);

@@ -4,7 +4,7 @@ using namespace Monopticon::Figure;
 
 
 PhongIdShader::PhongIdShader() {
-    Utility::Resource rs("picking-data");
+    Utility::Resource rs("monopticon");
 
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
         frag{GL::Version::GL330, GL::Shader::Type::Fragment};
@@ -113,7 +113,7 @@ void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
 
 
 ParaLineShader::ParaLineShader() {
-    Utility::Resource rs("picking-data");
+    Utility::Resource rs("monopticon");
 
     GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
         frag{GL::Version::GL330, GL::Shader::Type::Fragment};
@@ -167,6 +167,7 @@ PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader,
     _b{b}
 {
     _t = 0.0f;
+    // TODO more efficient to initialize in caller
     _mesh = MeshTools::compile(Primitives::line3D(a,b));
     _expired = false;
     _shader.setColor(c);
@@ -268,5 +269,68 @@ RouteDrawable::RouteDrawable(Object3D& object, Vector3& a, Vector3& b, Shaders::
 void RouteDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     _shader.setColor(0xffffff_rgbf)
            .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
+    _mesh.draw(_shader);
+}
+
+
+
+PoolShader::PoolShader() {
+    Utility::Resource rs("monopticon");
+
+    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
+        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
+    vert.addSource(rs.get("shaders/pool.vs"));
+    frag.addSource(rs.get("shaders/pool.fs"));
+    CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
+    attachShaders({vert, frag});
+    CORRADE_INTERNAL_ASSERT(link());
+
+    _originPosUniform = uniformLocation("originPos");
+    _colorUniform = uniformLocation("color");
+    _tParamUniform = uniformLocation("tParam");
+    _transformationProjectionMatrixUniform = uniformLocation("transformationProjectionMatrix");
+}
+
+PoolShader& PoolShader::setColor(const Color3& color) {
+    setUniform(_colorUniform, color);
+    return *this;
+}
+
+PoolShader& PoolShader::setOriginPos(const Vector3& position) {
+    setUniform(_originPosUniform, position);
+    return *this;
+}
+
+PoolShader& PoolShader::setTParam(const float t) {
+    setUniform(_tParamUniform, t);
+    return *this;
+}
+
+PoolShader& PoolShader::setTransformationProjectionMatrix(const Matrix4& matrix) {
+    setUniform(_transformationProjectionMatrixUniform, matrix);
+    return *this;
+}
+
+MulticastDrawable::MulticastDrawable(Object3D& object, Vector3& origin, PoolShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh):
+    SceneGraph::Drawable3D{object, &group},
+    _object{object},
+    _shader{shader},
+    _origin{origin},
+    _mesh(mesh)
+{
+    _t = 0.0f;
+}
+
+void MulticastDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
+    if (_t < 1.001f && _t >= 0.0f) {
+        _t += 0.04f;
+    }
+    if (_t > 1.0f) {
+        return;
+    }
+
+    _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix)
+           .setOriginPos(_origin)
+           .setTParam(_t);
     _mesh.draw(_shader);
 }

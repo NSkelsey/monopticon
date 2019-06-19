@@ -13,7 +13,7 @@
 
 using namespace Monopticon::Device;
 
-Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
+Stats::Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
          _drawable{dev},
          _highlightedDrawable{nullptr},
@@ -33,10 +33,6 @@ Stats::Stats(std::string macAddr, Vector2 pos, Figure::DeviceDrawable *dev):
 std::string Stats::create_device_string() {
     std::ostringstream stringStream;
     stringStream << this->mac_addr;
-    stringStream << " | ";
-    stringStream << this->num_pkts_sent;
-    stringStream << " | ";
-    stringStream << this->num_pkts_recv;
     std::string c = stringStream.str();
     return c;
 }
@@ -64,8 +60,6 @@ bool Stats::isSelected() {
 
 void Stats::updateMaps(std::string mac_src, std::string ip_src, std::string mac_dst, std::string ip_dst) {
 
-    // TODO update internal structures
-
     auto test = [&ip_src](std::string s){ return ip_src==s; };
 
     if (!std::any_of(_emitted_src_ips.begin(), _emitted_src_ips.end(), test)) {
@@ -77,8 +71,14 @@ void Stats::updateMaps(std::string mac_src, std::string ip_src, std::string mac_
 
 std::string Stats::makeIpLabel() {
     std::stringstream ss;
+    int i = 0;
     for (auto it = _emitted_src_ips.begin(); it != _emitted_src_ips.end(); it++) {
         ss << *it << "\n";
+        if (i > 3) {
+            ss << "..." << "\n";
+            break;
+        }
+        i++;
     }
     return ss.str();
 }
