@@ -92,32 +92,34 @@ typedef Magnum::SceneGraph::Scene<Magnum::SceneGraph::MatrixTransformation3D> Sc
 // Generic hoists for intra-object references
 namespace Monopticon {
 
-namespace Figure {
+  namespace Figure {
 
     class DeviceDrawable;
     class PhongIdShader;
     class UnitBoardDrawable;
     class TextDrawable;
     class RouteDrawable;
+    class RingDrawable;
+    class MulticastDrawable;
 
-}
+  }
 
-namespace Device {
+  namespace Device {
 
     class Stats;
     class WindowMgr;
     class ChartMgr;
     class RouteMgr;
 
-}
+  }
 
-// Definitions
+  // Definitions
 namespace Util {
 
     Vector2 randCirclePoint();
     Vector2 paramCirclePoint(int num_elem, int pos);
     Vector2 randOffset(float z);
-    void createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans);
+    Figure::RingDrawable* createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans);
 
     void print_peer_subs();
     std::string exec_output(std::string cmd);
@@ -164,6 +166,18 @@ class Stats {
      int num_pkts_sent;
      int num_pkts_recv;
      int health;
+};
+
+class PrefixStats {
+  public:
+    PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawable* ring);
+
+    std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> contacts;
+
+    std::string _prefix;
+    Vector3     _position;
+    Figure::RingDrawable *ring;
+
 };
 
 class WindowMgr {
@@ -385,14 +399,16 @@ class PoolShader: public GL::AbstractShaderProgram {
 
 class MulticastDrawable: public SceneGraph::Drawable3D {
     public:
-        explicit MulticastDrawable(Object3D& object, Vector3& origin, PoolShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh);
+        explicit MulticastDrawable(Object3D& object, Color3 c, Vector3& origin, PoolShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh);
 
         Object3D &_object;
+        bool expired;
 
     private:
         void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;
 
         PoolShader& _shader;
+        Color3 _c;
         Vector3 _origin;
         GL::Mesh &_mesh;
         float _t;

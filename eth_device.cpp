@@ -83,6 +83,16 @@ std::string Stats::makeIpLabel() {
     return ss.str();
 }
 
+
+PrefixStats::PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawable* ring):
+    contacts{},
+    _prefix{macPrefix},
+    _position{pos},
+    ring{ring}
+{
+
+}
+
 WindowMgr::WindowMgr(Stats *d_s) {
     _stats = d_s;
 

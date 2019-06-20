@@ -174,7 +174,7 @@ PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader,
 }
 
 void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
-    if (_t < 1.001f && _t >= 0.0f) {
+    if (_t <= 1.000f && _t >= 0.0f) {
         _t += 0.04f;
         //Vector3 v = Vector3{0.02f, 0, 0.02f};
         //_object.translate(v);
@@ -311,26 +311,29 @@ PoolShader& PoolShader::setTransformationProjectionMatrix(const Matrix4& matrix)
     return *this;
 }
 
-MulticastDrawable::MulticastDrawable(Object3D& object, Vector3& origin, PoolShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh):
+MulticastDrawable::MulticastDrawable(Object3D& object, Color3 c, Vector3& origin, PoolShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh):
     SceneGraph::Drawable3D{object, &group},
+    expired{false},
     _object{object},
     _shader{shader},
+    _c{c},
     _origin{origin},
     _mesh{mesh}
 {
-    _t = 0.0f;
+    _t = -1.0f;
 }
 
 void MulticastDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
-    if (_t >= 0.0f) {
-        _t += 0.030f;
+    if (expired || _t > 1.4f) {
+        expired = true;
+        return;
     }
-    if (_t > 1.4f) {
-        _t = 0.0f;
-    }
+
+    _t += 0.04f;
 
     _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix)
            .setOriginPos(_origin)
+           .setColor(_c)
            .setTParam(_t);
     _mesh.draw(_shader);
 }

@@ -51,7 +51,8 @@ class Application: public Platform::Application {
         void parse_raw_packet(broker::zeek::Event event);
         Device::Stats* createSphere(const std::string);
 
-        Device::Stats* createBroadcastPool(const std::string);
+        Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
+        void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
 
 
         void createLine(Vector3, Vector3, Util::L3Type);
@@ -103,6 +104,7 @@ class Application: public Platform::Application {
         std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
 
         std::map<std::string, Device::Stats*> _device_map{};
+        std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
 
         std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
@@ -194,7 +196,7 @@ Application::Application(const Arguments& arguments):
             .setIndexBuffer(_sphereIndices, 0, MeshIndexType::UnsignedShort);
     }
 
-    _poolCircle = MeshTools::compile(Primitives::circle3DSolid(100));
+    _poolCircle = MeshTools::compile(Primitives::circle3DSolid(4));
 
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
@@ -236,7 +238,15 @@ Application::Application(const Arguments& arguments):
 
     prepare3DFont();
 
-    createBroadcastPool("ff:ff:ff:ff:ff:ff");
+    Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
+    Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
+
+    _dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 }
 
 void Application::prepare3DFont() {
@@ -353,6 +363,7 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
             t = L3Type::UNKNOWN;
     }
 
+
     Device::Stats *tran_d_s;
 
     auto search = _device_map.find(*mac_src);
@@ -374,18 +385,35 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
 
     addDirectLabels(tran_d_s);
 
-    Device::Stats *recv_d_s;
+    Vector3 p2;
 
-    auto search_dst = _device_map.find(*mac_dst);
-    if (search_dst == _device_map.end()) {
-        recv_d_s = createSphere(*mac_dst);
+    // Check for multicast addresses
+    char b = mac_dst->at(1);
+    if (b == 'f') {
+        Device::PrefixStats *dp_s = _dst_prefix_group_map.at("ff");
+        p2 = dp_s->_position;
+        createPoolHit(dp_s, Color3(1.0f));
+    } else if (b == '3') {
+        Device::PrefixStats *dp_s = _dst_prefix_group_map.at("33");
+        p2 = dp_s->_position;
+        createPoolHit(dp_s, Color3(1.0f));
+    } else if (b == '1') {
+        Device::PrefixStats *dp_s = _dst_prefix_group_map.at("01");
+        p2 = dp_s->_position;
+        createPoolHit(dp_s, Color3(1.0f));
     } else {
-        recv_d_s = search_dst->second;
-    }
-    recv_d_s->num_pkts_recv += 1;
-    recv_d_s->health = 60*30;
-    Vector3 p2 = recv_d_s->circPoint;
+        Device::Stats *recv_d_s;
 
+        auto search_dst = _device_map.find(*mac_dst);
+        if (search_dst == _device_map.end()) {
+            recv_d_s = createSphere(*mac_dst);
+        } else {
+            recv_d_s = search_dst->second;
+        }
+        recv_d_s->num_pkts_recv += 1;
+        recv_d_s->health = 60*30;
+        p2 = recv_d_s->circPoint;
+    }
 
     createLine(p1, p2, t);
 }
@@ -508,10 +536,17 @@ Device::Stats* Application::createSphere(const std::string mac) {
     return d_s;
 }
 
-Device::Stats* Application::createBroadcastPool(const std::string mac) {
-    auto scaling = Matrix4::scaling(Vector3{1.0f});
-    Vector3 pos = Vector3{4.0f, -2.0f, 3.0f};
+Device::PrefixStats* Application::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
+    auto ring = Util::createLayoutRing(_scene, _drawables, 1.0f, pos);
+    Device::PrefixStats* dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
 
+    return dp_s;
+}
+
+void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
+    auto pos = dp_s->_position;
+
+    auto scaling = Matrix4::scaling(Vector3{1.0f});
     Object3D* o = new Object3D{&_scene};
     o->transform(scaling);
     o->rotateX(90.0_degf);
@@ -522,16 +557,12 @@ Device::Stats* Application::createBroadcastPool(const std::string mac) {
     u->rotateX(270.0_degf);
     u->translate(pos);
 
-    Device::Stats* d_s = new Device::Stats{mac, pos, nullptr};
-    _device_map.insert(std::make_pair(mac, d_s));
+    auto top = new Figure::MulticastDrawable(*u, c, pos, _pool_shader, _drawables, _poolCircle);
+    auto bot = new Figure::MulticastDrawable(*o, c, pos, _pool_shader, _drawables, _poolCircle);
+    auto pair = std::make_pair(top, bot);
 
-    Util::createLayoutRing(_scene, _drawables, 1.0f, pos);
-    new Figure::MulticastDrawable(*u, pos, _pool_shader, _drawables, _poolCircle);
-    new Figure::MulticastDrawable(*o, pos, _pool_shader, _drawables, _poolCircle);
-
-    return d_s;
+    dp_s->contacts.push_back(pair);
 }
-
 
 void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     Object3D* line = new Object3D{&_scene};
@@ -591,7 +622,7 @@ void Application::drawEvent() {
         if (event_cnt % inv_sample_rate == 0) {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
-            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+            std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
             if (event.name().compare("raw_packet_event")) {
                     parse_raw_packet(event);
             } else {
@@ -649,6 +680,23 @@ void Application::drawEvent() {
             ++it;
         }
     }
+
+    /*
+    // Remove mcast drawables that have expired
+    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
+        Device::PrefixStats *dp_s = (*it2).second;
+        auto c = dp_s->contacts;
+        for (auto it3 = c.begin(); it3 != c.end(); ) {
+            auto pair = *it3;
+            if ((pair.first)->expired) {
+                it3 = c.erase(it3);
+                delete pair.first;
+                delete pair.second;
+            } else {
+                ++it3;
+            }
+        }
+    }*/
 
     // Actually draw things
     /* Draw to custom framebuffer */
@@ -727,7 +775,7 @@ void Application::drawEvent() {
                 _activeGateway = createSphere(gw_mac_addr);
                 _activeGateway->updateMaps(gw_mac_addr, gw_ipv4_addr, "", "");
 
-                addDirectLabels(_activeGateway);
+                //addDirectLabels(_activeGateway);
             }
 
             s = "monopt_iface_proto launch ";
@@ -1015,13 +1063,13 @@ std::vector<std::string> Monopticon::Util::get_iface_list() {
 }
 
 
-void Monopticon::Util::createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
+Monopticon::Figure::RingDrawable* Monopticon::Util::createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
     Object3D *obj = new Object3D{&scene};
     Matrix4 scaling = Matrix4::scaling(Vector3{r});
     obj->transform(scaling);
     obj->rotateX(90.0_degf);
     obj->translate(trans);
-    new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
+    return new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
 }
 
 MAGNUM_APPLICATION_MAIN(Monopticon::Application)

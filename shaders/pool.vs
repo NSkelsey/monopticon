@@ -13,8 +13,12 @@ void main() {
     if (distance(position.xyz, originPos) < 0.001) {
         gl_Position = transformationProjectionMatrix*position;
     } else {
-
-        vec3 new_pos = calc_pos(position.xyz, originPos, tParam);
+        vec3 new_pos;
+        if (tParam < 0.0) {
+            new_pos = originPos;
+        } else {
+            new_pos = calc_pos(position.xyz, originPos, tParam);
+        }
 
         gl_Position = transformationProjectionMatrix*vec4(new_pos, 1.0);
     }

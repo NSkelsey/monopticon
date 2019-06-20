@@ -1,9 +1,10 @@
 out highp vec4 fragmentColor;
 uniform lowp float tParam;
+uniform lowp vec3 color;
 
 void main() {
 
     float alpha = 0.7 - tParam/2.0;
 
-    fragmentColor = vec4(0.0, 1.0, 1.0, alpha);
+    fragmentColor = vec4(color.rgb, alpha);
 }
