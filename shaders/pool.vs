@@ -5,7 +5,8 @@ uniform lowp float tParam;
 layout(location = 0) in highp vec4 position;
 
 vec3 calc_pos(vec3 a, vec3 b, float t) {
-    return a*(t)*(t);
+    float g = min(t, 1.0);
+    return a*(g)*(g);
 }
 
 void main() {

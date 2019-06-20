@@ -322,10 +322,10 @@ MulticastDrawable::MulticastDrawable(Object3D& object, Vector3& origin, PoolShad
 }
 
 void MulticastDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
-    if (_t < 1.001f && _t >= 0.0f) {
+    if (_t >= 0.0f) {
         _t += 0.030f;
     }
-    if (_t > 1.0f) {
+    if (_t > 1.4f) {
         _t = 0.0f;
     }
 
