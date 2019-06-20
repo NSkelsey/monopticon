@@ -25,7 +25,7 @@ mac_addr() {
     fi
     iface=$1
 
-    mac=`ip addr show $iface | grep -oP "([a-fA-F0-9]{2}:){5}([a-fA-F0-9]{2})" | grep -Pv "ff:ff:ff:ff:ff:ff" | head -n1`
+    mac=`ip addr show $iface | grep -oP "([a-f0-9]{2}:){5}([a-f0-9]{2})" | grep -Pv "ff:ff:ff:ff:ff:ff" | head -n1`
     echo -en "$mac"
 }
 
@@ -62,7 +62,7 @@ gateway_mac_addr() {
     iface=$1
     gateway_ip=$2
 
-    gateway_mac=`ip neighbour show dev usb0 | grep $gateway_ip | grep REACHABLE | grep -oP "([a-fA-F0-9]{2}:){5}([a-fA-F0-9]{2})"`
+    gateway_mac=`ip neighbour show dev usb0 | grep $gateway_ip | grep REACHABLE | grep -oP "([a-f0-9]{2}:){5}([a-f0-9]{2})"`
 
     echo -en "$gateway_mac"
 }

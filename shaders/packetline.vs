@@ -6,7 +6,7 @@ uniform highp float tParam;
 layout(location = 0) in highp vec4 position;
 
 vec3 calc_pos(vec3 a, vec3 b, float t) {
-    vec3 c = vec3(0.0, -4.0, 0.0);
+    vec3 c = vec3(0.0, 4.0, 0.0);
 
     vec3 pos = (1-t)*((1-t)*a + t*c) + t*((1-t)*c + t*b);
 

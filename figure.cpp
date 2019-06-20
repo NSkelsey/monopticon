@@ -316,17 +316,17 @@ MulticastDrawable::MulticastDrawable(Object3D& object, Vector3& origin, PoolShad
     _object{object},
     _shader{shader},
     _origin{origin},
-    _mesh(mesh)
+    _mesh{mesh}
 {
     _t = 0.0f;
 }
 
 void MulticastDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     if (_t < 1.001f && _t >= 0.0f) {
-        _t += 0.04f;
+        _t += 0.030f;
     }
     if (_t > 1.0f) {
-        return;
+        _t = 0.0f;
     }
 
     _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix)

@@ -194,7 +194,7 @@ Application::Application(const Arguments& arguments):
             .setIndexBuffer(_sphereIndices, 0, MeshIndexType::UnsignedShort);
     }
 
-    _poolCircle = MeshTools::compile(Primitives::circle3DSolid(20));
+    _poolCircle = MeshTools::compile(Primitives::circle3DSolid(100));
 
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
@@ -405,7 +405,7 @@ void Application::deselectDevice() {
 
 void Application::addDirectLabels(Device::Stats *d_s) {
     auto scaling = Matrix4::scaling(Vector3{0.10f});
-    auto t = Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()};
+    auto t = d_s->circPoint;
 
     int num_ips = d_s->_emitted_src_ips.size();
     if (num_ips > 0 && num_ips < 5) {
@@ -438,10 +438,9 @@ void Application::highlightDevice(Device::Stats *d_s) {
 
     Matrix4 scaling = Matrix4::scaling(Vector3{2.5});
 
-
     o->transform(scaling);
 
-    auto t = Vector3{d_s->circPoint.x(), 0.0f, d_s->circPoint.y()};
+    auto t = d_s->circPoint;
     o->translate(t);
 
     d_s->_highlightedDrawable = new Figure::UnitBoardDrawable{*o,
@@ -510,16 +509,25 @@ Device::Stats* Application::createSphere(const std::string mac) {
 }
 
 Device::Stats* Application::createBroadcastPool(const std::string mac) {
-    auto scaling = Matrix4::scaling(Vector3{2.00f});
-    Vector3 pos = Vector3{1.0f, -2.0f, 1.0f};
+    auto scaling = Matrix4::scaling(Vector3{1.0f});
+    Vector3 pos = Vector3{4.0f, -2.0f, 3.0f};
 
     Object3D* o = new Object3D{&_scene};
     o->transform(scaling);
+    o->rotateX(90.0_degf);
     o->translate(pos);
 
-    Device::Stats* d_s = new Device::Stats{mac, pos, nullptr};
+    Object3D* u = new Object3D{&_scene};
+    u->transform(scaling);
+    u->rotateX(270.0_degf);
+    u->translate(pos);
 
-    Figure::MulticastDrawable(*o,  pos, _pool_shader,  _drawables, _poolCircle);
+    Device::Stats* d_s = new Device::Stats{mac, pos, nullptr};
+    _device_map.insert(std::make_pair(mac, d_s));
+
+    Util::createLayoutRing(_scene, _drawables, 1.0f, pos);
+    new Figure::MulticastDrawable(*u, pos, _pool_shader, _drawables, _poolCircle);
+    new Figure::MulticastDrawable(*o, pos, _pool_shader, _drawables, _poolCircle);
 
     return d_s;
 }
@@ -650,7 +658,11 @@ void Application::drawEvent() {
         .clearDepth(1.0f)
         .bind();
 
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
+
     _camera->draw(_drawables);
+
+    GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
 
@@ -898,8 +910,6 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     if(id > 0 && id < _device_objects.size()+1) {
         Device::Stats *d_s = _device_objects.at(id-1)->_deviceStats;
         deviceClicked(d_s);
-    } else {
-        std::cout << "Could not find device" << std::endl;
     }
 
     event.setAccepted();
