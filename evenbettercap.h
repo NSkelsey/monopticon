@@ -132,6 +132,7 @@ namespace Util {
         UNKNOWN = 'N'
     };
 
+    Color3 typeColor(L3Type t);
 }
 
 namespace Device {

@@ -196,7 +196,7 @@ Application::Application(const Arguments& arguments):
             .setIndexBuffer(_sphereIndices, 0, MeshIndexType::UnsignedShort);
     }
 
-    _poolCircle = MeshTools::compile(Primitives::circle3DSolid(4));
+    _poolCircle = MeshTools::compile(Primitives::circle3DWireframe(20));
 
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
@@ -238,6 +238,7 @@ Application::Application(const Arguments& arguments):
 
     prepare3DFont();
 
+    Util::createLayoutRing(_scene, _drawables, 2.5f, Vector3{0.0f, -4.0f, 0.0f});
     Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
     Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
     Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
@@ -386,21 +387,18 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
     addDirectLabels(tran_d_s);
 
     Vector3 p2;
+    Color3 c = Util::typeColor(t);
 
     // Check for multicast addresses
-    char b = mac_dst->at(1);
-    if (b == 'f') {
-        Device::PrefixStats *dp_s = _dst_prefix_group_map.at("ff");
+    auto s = (mac_dst->substr(0,2)).c_str();
+    int l = strtol(s, nullptr, 16);
+    if (l%2 == 1) {
+        Device::PrefixStats *dp_s = _dst_prefix_group_map.at(std::string(s));
+        if (dp_s == nullptr) {
+            dp_s = _dst_prefix_group_map.at("odd");
+        }
         p2 = dp_s->_position;
-        createPoolHit(dp_s, Color3(1.0f));
-    } else if (b == '3') {
-        Device::PrefixStats *dp_s = _dst_prefix_group_map.at("33");
-        p2 = dp_s->_position;
-        createPoolHit(dp_s, Color3(1.0f));
-    } else if (b == '1') {
-        Device::PrefixStats *dp_s = _dst_prefix_group_map.at("01");
-        p2 = dp_s->_position;
-        createPoolHit(dp_s, Color3(1.0f));
+        createPoolHit(dp_s, c);
     } else {
         Device::Stats *recv_d_s;
 
@@ -544,6 +542,11 @@ Device::PrefixStats* Application::createBroadcastPool(const std::string mac_pref
 }
 
 void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
+    // No-op if the contact pool is already drawing lots of rings
+    if (dp_s->contacts.size() > 9) {
+        std::cout << "size: " << dp_s->contacts.size() << std::endl;
+        return;
+    }
     auto pos = dp_s->_position;
 
     auto scaling = Matrix4::scaling(Vector3{1.0f});
@@ -567,22 +570,7 @@ void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
 void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     Object3D* line = new Object3D{&_scene};
 
-    using namespace Util;
-
-    Color3 c;
-    switch (t) {
-        case L3Type::ARP:
-            c = 0xffff00_rgbf;
-            break;
-        case L3Type::IPV4:
-            c = 0x00ffff_rgbf;
-            break;
-        case L3Type::IPV6:
-            c = 0x007777_rgbf;
-            break;
-        default:
-            c = 0xff0000_rgbf;
-    }
+    Color3 c = Util::typeColor(t);
 
     auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a, b, _drawables, c};
     _packet_line_queue.insert(pl);
@@ -622,7 +610,7 @@ void Application::drawEvent() {
         if (event_cnt % inv_sample_rate == 0) {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
-            std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
             if (event.name().compare("raw_packet_event")) {
                     parse_raw_packet(event);
             } else {
@@ -681,11 +669,10 @@ void Application::drawEvent() {
         }
     }
 
-    /*
     // Remove mcast drawables that have expired
     for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
         Device::PrefixStats *dp_s = (*it2).second;
-        auto c = dp_s->contacts;
+        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
         for (auto it3 = c.begin(); it3 != c.end(); ) {
             auto pair = *it3;
             if ((pair.first)->expired) {
@@ -696,7 +683,9 @@ void Application::drawEvent() {
                 ++it3;
             }
         }
-    }*/
+        // TODO get answers from xenomit
+        dp_s->contacts = c;
+    }
 
     // Actually draw things
     /* Draw to custom framebuffer */
@@ -748,7 +737,6 @@ void Application::drawEvent() {
                 std::string mac_addr = Util::exec_output(cmd);
 
                 _listeningDevice = createSphere(mac_addr);
-                Util::createLayoutRing(_scene, _drawables, 2.0f, Vector3{0.0f, -2.0f, 0.0f});
                 deviceClicked(_listeningDevice);
 
                 s = "monopt_iface_proto ipv4_addr ";
@@ -1060,6 +1048,26 @@ std::vector<std::string> Monopticon::Util::get_iface_list() {
         v.push_back(t);
     }
     return v;
+}
+
+Color3 Monopticon::Util::typeColor(Monopticon::Util::L3Type t) {
+    using namespace Monopticon::Util;
+
+    Color3 c;
+    switch (t) {
+        case L3Type::ARP:
+            c = 0xffff00_rgbf;
+            break;
+        case L3Type::IPV4:
+            c = 0x00ffff_rgbf;
+            break;
+        case L3Type::IPV6:
+            c = 0x007777_rgbf;
+            break;
+        default:
+            c = 0xff0000_rgbf;
+    }
+    return c;
 }
 
 
