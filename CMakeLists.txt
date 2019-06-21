@@ -27,10 +27,11 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 corrade_add_resource(monopticon_RESOURCES resources.conf)
 
 set(monopticon_FILES
-        evenbettercap.h
-        eth_device.cpp
-        figure.cpp
-        evenbettercap.cpp
+        src/evenbettercap.h
+        src/eth_device.cpp
+        src/figure.cpp
+        src/util.cpp
+        src/evenbettercap.cpp
     )
 
 add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})

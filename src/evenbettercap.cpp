@@ -25,8 +25,11 @@ broker::endpoint _ep;
 broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2"});
 broker::status_subscriber _status_subscriber = _ep.make_status_subscriber(true);
 
+void print_peer_subs();
+
 using namespace Magnum;
 using namespace Math::Literals;
+
 
 class Application: public Platform::Application {
     public:
@@ -159,7 +162,7 @@ Application::Application(const Arguments& arguments):
         std::cout << addr << ":" << listen_port << std::endl;
     }
 
-    Util::print_peer_subs();
+    print_peer_subs();
 
     /* Global renderer configuration */
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
@@ -654,7 +657,7 @@ void Application::drawEvent() {
         run_sum = 0;
         frame_cnt = 0;
 
-        Util::print_peer_subs();
+        print_peer_subs();
     } else {
         run_sum += event_cnt;
     }
@@ -997,103 +1000,14 @@ void Application::textInputEvent(TextInputEvent& event) {
     if(_imgui.handleTextInputEvent(event)) return;
 }
 
-}
-
-Vector2 Monopticon::Util::randCirclePoint() {
-    float r = rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
-
-    float steps = 16.0f;
-    float max = 2*Math::Constants<float>::pi();
-    float min = 0.0f;
-
-    float zerone = std::round((r-min)*(steps/(max-min)))/steps;
-    float res = zerone*(max-min) + min;
-
-    return Vector2{cos(res), sin(res)};
-}
-
-Vector2 Monopticon::Util::paramCirclePoint(int num_elem, int pos) {
-    float steps = static_cast<float>(num_elem);
-    float posf = static_cast<float>(pos);
-
-    float r = (2*Math::Constants<float>::pi()) * (posf/steps);
-
-    float max = 2*Math::Constants<float>::pi();
-    float min = 0.0f;
-
-    float zerone = std::round((r-min)*(steps/(max-min)))/steps;
-    float res = zerone*(max-min) + min;
-
-    return Vector2{cos(res), sin(res)};
-}
-
-Vector2 Monopticon::Util::randOffset(float z) {
-    int x = rand() % 2;
-    int y = rand() % 2;
-    Vector2 v = Vector2{x ? z : -z, y ? z : -z};
-    return v;
-}
-
-void Monopticon::Util::print_peer_subs() {
-    auto ts = _ep.peer_subscriptions();
+void print_peer_subs() {
+    auto ts = Monopticon::_ep.peer_subscriptions();
     for (auto it = ts.begin(); it != ts.end(); it++) {
         auto t = *it;
         std::cout << t << std::endl;
     }
 }
 
-std::string Monopticon::Util::exec_output(std::string cmd) {
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
-        throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-    return result;
-}
-
-std::vector<std::string> Monopticon::Util::get_iface_list() {
-    auto v = std::vector<std::string>{};
-    std::string s = Util::exec_output("monopt_iface_proto list_ifaces");
-    std::stringstream ss(s);
-    std::string t;
-    while (std::getline(ss,t,'\n')) {
-        v.push_back(t);
-    }
-    return v;
-}
-
-Color3 Monopticon::Util::typeColor(Monopticon::Util::L3Type t) {
-    using namespace Monopticon::Util;
-
-    Color3 c;
-    switch (t) {
-        case L3Type::ARP:
-            c = 0xffff00_rgbf;
-            break;
-        case L3Type::IPV4:
-            c = 0x00ffff_rgbf;
-            break;
-        case L3Type::IPV6:
-            c = 0xff00ff_rgbf;
-            break;
-        default:
-            c = 0xff0000_rgbf;
-    }
-    return c;
-}
-
-
-Monopticon::Figure::RingDrawable* Monopticon::Util::createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
-    Object3D *obj = new Object3D{&scene};
-    Matrix4 scaling = Matrix4::scaling(Vector3{r});
-    obj->transform(scaling);
-    obj->rotateX(90.0_degf);
-    obj->translate(trans);
-    return new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
 }
 
 MAGNUM_APPLICATION_MAIN(Monopticon::Application)
