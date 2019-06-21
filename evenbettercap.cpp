@@ -636,15 +636,13 @@ void Application::drawEvent() {
             }
             processed_event_cnt ++;
         }
-        if (event_cnt % 200 == 0) {
-            if (inv_sample_rate <= 4196) {
-                inv_sample_rate = inv_sample_rate * 2;
-            }
+        if (event_cnt % 256 == 0 && inv_sample_rate <= 256) {
+            inv_sample_rate = inv_sample_rate * 2;
         }
     }
 
-    if (event_cnt < 25 ) {
-        inv_sample_rate = 1;
+    if (event_cnt < 25 && inv_sample_rate > 1) {
+        inv_sample_rate = inv_sample_rate/2;
     }
 
     // Update Iface packet statistics
