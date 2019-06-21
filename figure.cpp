@@ -97,11 +97,17 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
 
 
 RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::DrawableGroup3D& group):
-            SceneGraph::Drawable3D{object, &group}
+        Object3D{&object},
+        SceneGraph::Drawable3D{object, &group}
 {
     _mesh = MeshTools::compile(Primitives::circle3DWireframe(70));
     _color = color;
     _shader = Shaders::MeshVisualizer{Shaders::MeshVisualizer::Flag::Wireframe|Shaders::MeshVisualizer::Flag::NoGeometryShader};
+}
+
+RingDrawable& RingDrawable::setMesh(Trade::MeshData3D mesh) {
+    _mesh = MeshTools::compile(mesh);
+    return *this;
 }
 
 void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {

@@ -74,7 +74,7 @@ std::string Stats::makeIpLabel() {
     int i = 0;
     for (auto it = _emitted_src_ips.begin(); it != _emitted_src_ips.end(); it++) {
         ss << *it << "\n";
-        if (i > 3) {
+        if (i >= 2) {
             ss << "..." << "\n";
             break;
         }

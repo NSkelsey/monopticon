@@ -32,7 +32,8 @@ As of 19/6/19
     - [ ] add colors for ARP req/resp
         - figure out how to filter to deduplicate arp from raw packets
     - parse dhcp to intuit network topology
-    - Try to reconstruct arp table of devices inside of the broadcast domain.
+    - [x] group broadcast and multicast domains
+    - [ ] try to reconstruct arp table of devices inside of the broadcast domain.
 
 - [ ] Add packet filtering
     - Create a status_subscriber to monitor the broker conn: [zeek docs](https://bro-broker.readthedocs.io/en/stable/comm.html#status-and-error-messages)

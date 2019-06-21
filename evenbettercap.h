@@ -275,9 +275,11 @@ class DeviceDrawable: public SceneGraph::Drawable3D {
         float _t;
 };
 
-class RingDrawable: public SceneGraph::Drawable3D {
+class RingDrawable: public Object3D, public SceneGraph::Drawable3D {
     public:
         explicit RingDrawable(Object3D& object, const Color4& color, SceneGraph::DrawableGroup3D& group);
+
+        RingDrawable& setMesh(Trade::MeshData3D mesh);
 
     private:
         void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;

@@ -105,6 +105,7 @@ class Application: public Platform::Application {
 
         std::map<std::string, Device::Stats*> _device_map{};
         std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
+        std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
 
         std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
@@ -238,16 +239,24 @@ Application::Application(const Arguments& arguments):
 
     prepare3DFont();
 
-    Util::createLayoutRing(_scene, _drawables, 2.5f, Vector3{0.0f, -4.0f, 0.0f});
-    Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
-    Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
-    Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
-    Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
+    {
+        Util::createLayoutRing(_scene, _drawables, 2.5f, Vector3{0.0f, -4.0f, 0.0f});
+        Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
+        Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
+        Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
+        Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
 
-    _dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
-    _dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
-    _dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
-    _dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
+        _dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
+        _dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
+        _dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
+        _dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
+    }
+    {
+        Device::PrefixStats *ap_arpers = createBroadcastPool("00:04", Vector3{1.0f, 4.0f, 1.0f});
+        ap_arpers->ring->setMesh(Primitives::planeWireframe());
+
+        _prefix_group_map.insert(std::make_pair("00:04", ap_arpers));
+    }
 }
 
 void Application::prepare3DFont() {
@@ -364,27 +373,34 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
             t = L3Type::UNKNOWN;
     }
 
+    Vector3 p1;
 
-    Device::Stats *tran_d_s;
-
-    auto search = _device_map.find(*mac_src);
-    if (search == _device_map.end()) {
-        tran_d_s = createSphere(*mac_src);
-        _device_map.insert(std::make_pair(*mac_src, tran_d_s));
+    auto g = mac_src->substr(0,5);
+    if (g == "00:04") {
+        Device::PrefixStats *dp_s = _prefix_group_map.at(g);
+        p1 = dp_s->_position;
     } else {
-        tran_d_s = search->second;
-    }
-    tran_d_s->num_pkts_sent += 1;
-    tran_d_s->health = 60*30;
-    Vector3 p1 = tran_d_s->circPoint;
+        Device::Stats *tran_d_s;
 
-    if (ip_src_addr != nullptr && ip_dst_addr != nullptr) {
-        tran_d_s->updateMaps(*mac_src, ip_src, *mac_dst, ip_dst);
-        // TODO TODO TODO TODO
-        // TODO TODO TODO TODO
-    }
+        auto search = _device_map.find(*mac_src);
+        if (search == _device_map.end()) {
+            tran_d_s = createSphere(*mac_src);
+            _device_map.insert(std::make_pair(*mac_src, tran_d_s));
+        } else {
+            tran_d_s = search->second;
+        }
+        tran_d_s->num_pkts_sent += 1;
+        tran_d_s->health = 60*30;
+        p1 = tran_d_s->circPoint;
 
-    addDirectLabels(tran_d_s);
+        if (ip_src_addr != nullptr && ip_dst_addr != nullptr) {
+            tran_d_s->updateMaps(*mac_src, ip_src, *mac_dst, ip_dst);
+            // TODO TODO TODO TODO
+            // TODO TODO TODO TODO
+        }
+
+        addDirectLabels(tran_d_s);
+    }
 
     Vector3 p2;
     Color3 c = Util::typeColor(t);
@@ -399,6 +415,9 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
         }
         p2 = dp_s->_position;
         createPoolHit(dp_s, c);
+    } else if (mac_dst->substr(0,5) == "00:04") {
+        Device::PrefixStats *dp_s = _prefix_group_map.at("00:04");
+        p2 = dp_s->_position;
     } else {
         Device::Stats *recv_d_s;
 
@@ -434,7 +453,7 @@ void Application::addDirectLabels(Device::Stats *d_s) {
     auto t = d_s->circPoint;
 
     int num_ips = d_s->_emitted_src_ips.size();
-    if (num_ips > 0 && num_ips < 5) {
+    if (num_ips > 0 && num_ips < 3) {
         if (d_s->_ip_label != nullptr) {
             delete d_s->_ip_label;
         }
@@ -544,7 +563,6 @@ Device::PrefixStats* Application::createBroadcastPool(const std::string mac_pref
 void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
     // No-op if the contact pool is already drawing lots of rings
     if (dp_s->contacts.size() > 9) {
-        std::cout << "size: " << dp_s->contacts.size() << std::endl;
         return;
     }
     auto pos = dp_s->_position;
@@ -618,8 +636,8 @@ void Application::drawEvent() {
             }
             processed_event_cnt ++;
         }
-        if (event_cnt % 25 == 0) {
-            if (inv_sample_rate < 16384) {
+        if (event_cnt % 200 == 0) {
+            if (inv_sample_rate <= 4196) {
                 inv_sample_rate = inv_sample_rate * 2;
             }
         }
@@ -1062,7 +1080,7 @@ Color3 Monopticon::Util::typeColor(Monopticon::Util::L3Type t) {
             c = 0x00ffff_rgbf;
             break;
         case L3Type::IPV6:
-            c = 0x007777_rgbf;
+            c = 0xff00ff_rgbf;
             break;
         default:
             c = 0xff0000_rgbf;
