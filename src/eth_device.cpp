@@ -93,7 +93,9 @@ PrefixStats::PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawabl
 
 }
 
-WindowMgr::WindowMgr(Stats *d_s) {
+WindowMgr::WindowMgr(Stats *d_s):
+    _lineDrawable{nullptr}
+{
     _stats = d_s;
 
     chartMgrList = std::vector<ChartMgr*>();
@@ -124,7 +126,9 @@ void WindowMgr::draw() {
     ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Once);
     bool p_open = true;
 
-    if(!ImGui::Begin("Device", &p_open)) {
+    auto s = std::string("Device ").append(_stats->mac_addr);
+
+    if(!ImGui::Begin(s.c_str(), &p_open)) {
         ImGui::End();
         return;
     }
@@ -133,6 +137,11 @@ void WindowMgr::draw() {
     for (auto it = chartMgrList.begin(); it != chartMgrList.end(); it++) {
         (*it)->draw();
     }
+    ImVec2 b = ImGui::GetWindowPos();
+    auto c = Vector3(b.x, 0.0, b.y);
+    //std::cout << p.x << " " << p.y << std::endl;
+    auto a = _stats->circPoint;
+    _lineDrawable->setMesh(Primitives::line3D(a,c));
 
     txChart->draw();
     rxChart->draw();

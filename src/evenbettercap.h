@@ -192,6 +192,8 @@ class WindowMgr {
         ChartMgr* rxChart;
         std::vector<std::string> announced_ips;
 
+        Figure::RingDrawable* _lineDrawable;
+
         int last_frame_tx;
         int last_frame_rx;
 };
@@ -415,6 +417,41 @@ class MulticastDrawable: public SceneGraph::Drawable3D {
         Vector3 _origin;
         GL::Mesh &_mesh;
         float _t;
+};
+
+class WorldLinkShader: public GL::AbstractShaderProgram {
+    public:
+        typedef GL::Attribute<0, Vector3> Position;
+
+        explicit WorldLinkShader();
+
+        WorldLinkShader& setColor(const Color3& color);
+
+        WorldLinkShader& setOriginPos(const Vector3& position);
+        WorldLinkShader& setScreenPos(const Vector2& screenPos);
+
+        WorldLinkShader& setTransformationProjectionMatrix(const Matrix4& matrix);
+
+    private:
+        Int _colorUniform,
+            _originPosUniform,
+            _screenPosUniform,
+            _transformationProjectionMatrixUniform;
+};
+
+class WorldScreenLink: public SceneGraph::Drawable3D {
+    public:
+        explicit WorldScreenLink(Object3D& object, Color3 c, Vector3& origin, WorldLinkShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh);
+
+        Object3D &_object;
+
+    private:
+        void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;
+
+        WorldLink& _shader;
+        Color3 _c;
+        Vector3 _origin;
+        GL::Mesh &_mesh;
 };
 
 }

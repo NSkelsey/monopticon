@@ -55,5 +55,5 @@ Install monopticon and its dependencies from the Arch user repository.
 
 Authorize the zeek binary to capture packets without sudo (for every user 0_o)
 ```zsh
-> sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/bro/bin/zeek
+> sudo setcap cap_net_raw=eip /usr/local/bro/bin/zeek
 ```

@@ -833,6 +833,9 @@ void Application::drawEvent() {
     ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display");
 
+    ImVec2 p = ImGui::GetWindowPos();
+    std::cout << p.x << " " << p.y << std::endl;
+
     if (ImGui::Button("Watch", ImVec2(80,20))) {
         std::cout << "clicked watch" << std::endl;
 
@@ -840,6 +843,11 @@ void Application::drawEvent() {
             Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
             _selectedDevice->_windowMgr = dwm;
             _inspected_device_window_list.push_back(dwm);
+
+            auto *obj = new Object3D{&_scene};
+           dwm->_lineDrawable = new Figure::RingDrawable(*obj, 0xffffff_rgbf, _drawables);
+
+
         } else {
             std::cout << "ref to window already exists" << std::endl;
         }
