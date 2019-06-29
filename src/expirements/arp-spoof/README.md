@@ -5,7 +5,7 @@ The goal of this expirement is to demonstrate how `bettercap` can inject
 javascript into http streams when performing a Man-in-The-Middle and how its
 possibile to visually confirm the attack is working with `monopticon`.
 
-The video posted to [Youtube](https://youtube.com/TODO) describes the expirement well.
+The video posted to [Youtube](https://www.youtube.com/watch?v=nixfg6opr_M) describes the expirement well.
 The injected javascript that changes the page is available [here](https://github.com/nskelsey/monopticon/master/src/expirements/arp-spoof/script.js).
 
 Expiremental Setup
