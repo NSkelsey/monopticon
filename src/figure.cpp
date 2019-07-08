@@ -72,15 +72,20 @@ DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader&
     _shader(shader),
     _mesh(mesh),
     _primitiveTransformation{primitiveTransformation},
-    _t{0.0f} {}
+    _drop{true},
+    _t{1.0f} {}
 
 void DeviceDrawable::resetTParam() {
     _t = 1.0f;
 }
 
 void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& camera){
-    if (_t > 0.0f) {
+    if (_drop) {
         _t = _t - 0.01f;
+        if (_t < 0.0f) _drop = false;
+    } else {
+        _t = _t + 0.01f;
+        if (_t > 1.0f) _drop = true;
     }
 
     _shader.setTransformationMatrix(transformation*_primitiveTransformation)

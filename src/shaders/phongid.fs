@@ -15,18 +15,17 @@ void main() {
     highp vec3 normalizedLightDirection = normalize(lightDirection);
 
     /* Add ambient color */
-    lowp vec3 t = ambientColor * timeIntensity;
-    //lowp vec3 t = ambientColor;
+    lowp vec3 t = ambientColor * pow(timeIntensity, 6.0);
     fragmentColor.rgb = t;
 
     /* Add diffuse color */
     lowp float intensity = max(0.0, dot(normalizedTransformedNormal, normalizedLightDirection));
-    fragmentColor.rgb += color*(intensity);
+    fragmentColor.rgb += (color)*(intensity+timeIntensity/4.0);
 
     /* Add specular color, if needed */
     if(intensity > 0.001) {
         highp vec3 reflection = reflect(-normalizedLightDirection, normalizedTransformedNormal);
-        mediump float specularity = pow(max(0.0, dot(normalize(cameraDirection), reflection)), 80.0);
+        mediump float specularity = pow(max(0.0, dot(normalize(cameraDirection), reflection)), 40.0-5.0*timeIntensity);
         fragmentColor.rgb += vec3(1.0)*specularity;
     }
 

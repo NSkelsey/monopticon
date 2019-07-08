@@ -277,6 +277,7 @@ class DeviceDrawable: public SceneGraph::Drawable3D {
         PhongIdShader& _shader;
         GL::Mesh& _mesh;
         Matrix4 _primitiveTransformation;
+        bool _drop;
         float _t;
 };
 

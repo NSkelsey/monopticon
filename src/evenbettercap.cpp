@@ -38,6 +38,7 @@ class Application: public Platform::Application {
         void prepare3DFont();
 
         void drawEvent() override;
+        int processNetworkEvents();
         void drawTextElements();
         void draw3DElements();
         void drawIMGuiElements(int event_cnt);
@@ -271,7 +272,7 @@ void Application::prepare3DFont() {
 
     /* Open the font and fill glyph cache */
     Utility::Resource rs("monopticon");
-    if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 111.0f)) {
+    if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 110.0f)) {
         Error() << "Cannot open font file";
         std::exit(1);
     }
@@ -430,8 +431,6 @@ void Application::drawIMGuiElements(int event_cnt) {
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
-        std::cout << "clicked watch" << std::endl;
-
         if (_selectedDevice != nullptr && _selectedDevice->_windowMgr == nullptr) {
             Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
             _selectedDevice->_windowMgr = dwm;
@@ -442,7 +441,7 @@ void Application::drawIMGuiElements(int event_cnt) {
 
 
         } else {
-            std::cout << "ref to window already exists" << std::endl;
+            std::cout << "Error! Ref to window already exists" << std::endl;
         }
     }
 
@@ -509,6 +508,117 @@ void Application::drawIMGuiElements(int event_cnt) {
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
+}
+
+int Application::processNetworkEvents() {
+    // Process all messages from status_subscriber before doing anything
+    if (_status_subscriber.available()) {
+        auto ss_res = _status_subscriber.get();
+
+        auto err = caf::get_if<broker::error>(&ss_res);
+        if (err != nullptr) {
+            std::cerr << "Broker status error: " << err->code() << ", " << to_string(*err) << std::endl;
+        }
+
+        auto st = caf::get_if<broker::status>(&ss_res);
+        if (st != nullptr) {
+            auto ctx = st->context<broker::endpoint_info>();
+            if (ctx != nullptr) {
+                std::cerr << "Broker status update regarding "
+                          << ctx->network->address
+                          << ":" << to_string(*st) << std::endl;
+            } else {
+               std::cerr << "Broker status update:"
+                         << to_string(*st) << std::endl;
+            }
+        }
+    }
+
+    int event_cnt = 0;
+    int processed_event_cnt = 0;
+
+    // Read and parse packets
+    for (auto msg : _subscriber.poll()) {
+        event_cnt++;
+        if (event_cnt % inv_sample_rate == 0) {
+            broker::topic topic = broker::get_topic(msg);
+            broker::zeek::Event event = broker::get_data(msg);
+            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+            if (event.name().compare("raw_packet_event")) {
+                    parse_raw_packet(event);
+            } else {
+                std::cout << "Unhandled Event: " << event.name() << std::endl;
+            }
+            processed_event_cnt ++;
+        }
+        if (event_cnt % 256 == 0 && inv_sample_rate <= 256) {
+            inv_sample_rate = inv_sample_rate * 2;
+        }
+    }
+
+    if (event_cnt < 25 && inv_sample_rate > 1) {
+        inv_sample_rate = inv_sample_rate/2;
+    }
+
+    // Update Iface packet statistics
+    frame_cnt ++;
+    ifaceChartMgr.push(static_cast<float>(event_cnt));
+
+    if (frame_cnt % 15 == 0) {
+        ifaceLongChartMgr.push(static_cast<float>(run_sum));
+        run_sum = 0;
+        frame_cnt = 0;
+
+        print_peer_subs();
+    } else {
+        run_sum += event_cnt;
+    }
+
+    if (frame_cnt % 60 == 0) {
+        _iface_list = Util::get_iface_list();
+    }
+
+    // TODO TODO TODO TODO
+    // Expire devices that haven't communicated in awhile
+    // TODO TODO TODO TODO
+    // steps
+    // 0: add shader uniform to expire device
+    // 1: refactor _device id vector to map of ids
+    // 2: create _expired member and update phongid draw
+    // 3: remove expired devices
+
+    // Remove packet_lines that have expired for the queue
+    std::set<Figure::PacketLineDrawable *>::iterator it;
+    for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
+        // Note this is an O(N) operation
+        Figure::PacketLineDrawable *pl = *it;
+        if (pl->_expired) {
+            it = _packet_line_queue.erase(it);
+            delete pl;
+        } else {
+            ++it;
+        }
+    }
+
+    // Remove mcast drawables that have expired
+    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
+        Device::PrefixStats *dp_s = (*it2).second;
+        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
+        for (auto it3 = c.begin(); it3 != c.end(); ) {
+            auto pair = *it3;
+            if ((pair.first)->expired) {
+                it3 = c.erase(it3);
+                delete pair.first;
+                delete pair.second;
+            } else {
+                ++it3;
+            }
+        }
+        // TODO get answers from xenomit
+        dp_s->contacts = c;
+    }
+
+    return event_cnt;
 }
 
 
@@ -810,112 +920,7 @@ void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
 
 
 void Application::drawEvent() {
-    // Process all messages from status_subscriber before doing anything
-    if (_status_subscriber.available()) {
-        auto ss_res = _status_subscriber.get();
-
-        auto err = caf::get_if<broker::error>(&ss_res);
-        if (err != nullptr) {
-            std::cerr << "Broker status error: " << err->code() << ", " << to_string(*err) << std::endl;
-        }
-
-        auto st = caf::get_if<broker::status>(&ss_res);
-        if (st != nullptr) {
-            auto ctx = st->context<broker::endpoint_info>();
-            if (ctx != nullptr) {
-                std::cerr << "Broker status update regarding "
-                          << ctx->network->address
-                          << ":" << to_string(*st) << std::endl;
-            } else {
-               std::cerr << "Broker status update:"
-                         << to_string(*st) << std::endl;
-            }
-        }
-    }
-
-    int event_cnt = 0;
-    int processed_event_cnt = 0;
-
-    // Read and parse packets
-    for (auto msg : _subscriber.poll()) {
-        event_cnt++;
-        if (event_cnt % inv_sample_rate == 0) {
-            broker::topic topic = broker::get_topic(msg);
-            broker::zeek::Event event = broker::get_data(msg);
-            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
-            if (event.name().compare("raw_packet_event")) {
-                    parse_raw_packet(event);
-            } else {
-                std::cout << "Unhandled Event: " << event.name() << std::endl;
-            }
-            processed_event_cnt ++;
-        }
-        if (event_cnt % 256 == 0 && inv_sample_rate <= 256) {
-            inv_sample_rate = inv_sample_rate * 2;
-        }
-    }
-
-    if (event_cnt < 25 && inv_sample_rate > 1) {
-        inv_sample_rate = inv_sample_rate/2;
-    }
-
-    // Update Iface packet statistics
-    frame_cnt ++;
-    ifaceChartMgr.push(static_cast<float>(event_cnt));
-
-    if (frame_cnt % 15 == 0) {
-        ifaceLongChartMgr.push(static_cast<float>(run_sum));
-        run_sum = 0;
-        frame_cnt = 0;
-
-        print_peer_subs();
-    } else {
-        run_sum += event_cnt;
-    }
-
-    if (frame_cnt % 60 == 0) {
-        _iface_list = Util::get_iface_list();
-    }
-
-    // TODO TODO TODO TODO
-    // Expire devices that haven't communicated in awhile
-    // TODO TODO TODO TODO
-    // steps
-    // 0: add shader uniform to expire device
-    // 1: refactor _device id vector to map of ids
-    // 2: create _expired member and update phongid draw
-    // 3: remove expired devices
-
-    // Remove packet_lines that have expired for the queue
-    std::set<Figure::PacketLineDrawable *>::iterator it;
-    for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
-        // Note this is an O(N) operation
-        Figure::PacketLineDrawable *pl = *it;
-        if (pl->_expired) {
-            it = _packet_line_queue.erase(it);
-            delete pl;
-        } else {
-            ++it;
-        }
-    }
-
-    // Remove mcast drawables that have expired
-    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
-        Device::PrefixStats *dp_s = (*it2).second;
-        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
-        for (auto it3 = c.begin(); it3 != c.end(); ) {
-            auto pair = *it3;
-            if ((pair.first)->expired) {
-                it3 = c.erase(it3);
-                delete pair.first;
-                delete pair.second;
-            } else {
-                ++it3;
-            }
-        }
-        // TODO get answers from xenomit
-        dp_s->contacts = c;
-    }
+    int event_cnt = processNetworkEvents();
 
     draw3DElements();
 
