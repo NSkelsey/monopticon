@@ -78,6 +78,7 @@ class Application: public Platform::Application {
         Figure::PhongIdShader _phong_id_shader;
         Figure::ParaLineShader _line_shader;
         Figure::PoolShader _pool_shader;
+        Figure::WorldLinkShader _link_shader;
         Shaders::Flat3D _bbitem_shader;
 
         Scene3D _scene;
@@ -205,6 +206,7 @@ Application::Application(const Arguments& arguments):
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
     _pool_shader = Figure::PoolShader{};
+    _link_shader = Figure::WorldLinkShader{};
 
     _bbitem_shader = Shaders::Flat3D{};
     _bbitem_shader.setColor(0x00ff00_rgbf);
@@ -833,9 +835,6 @@ void Application::drawEvent() {
     ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display");
 
-    ImVec2 p = ImGui::GetWindowPos();
-    std::cout << p.x << " " << p.y << std::endl;
-
     if (ImGui::Button("Watch", ImVec2(80,20))) {
         std::cout << "clicked watch" << std::endl;
 
@@ -845,7 +844,7 @@ void Application::drawEvent() {
             _inspected_device_window_list.push_back(dwm);
 
             auto *obj = new Object3D{&_scene};
-           dwm->_lineDrawable = new Figure::RingDrawable(*obj, 0xffffff_rgbf, _drawables);
+            dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
 
 
         } else {

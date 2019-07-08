@@ -137,11 +137,11 @@ void WindowMgr::draw() {
     for (auto it = chartMgrList.begin(); it != chartMgrList.end(); it++) {
         (*it)->draw();
     }
-    ImVec2 b = ImGui::GetWindowPos();
-    auto c = Vector3(b.x, 0.0, b.y);
-    //std::cout << p.x << " " << p.y << std::endl;
+
     auto a = _stats->circPoint;
-    _lineDrawable->setMesh(Primitives::line3D(a,c));
+    ImVec2 b = ImGui::GetWindowPos();
+    auto c = Vector2(2.0*(1.0/1400.0)*(b.x+157.5) - 1.0, 1.0 - 2.0*(1.0/1000.0)*(b.y+107.5));
+    _lineDrawable->setCoords(a, c);
 
     txChart->draw();
     rxChart->draw();

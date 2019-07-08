@@ -101,6 +101,7 @@ namespace Monopticon {
     class RouteDrawable;
     class RingDrawable;
     class MulticastDrawable;
+    class WorldScreenLink;
 
   }
 
@@ -192,7 +193,7 @@ class WindowMgr {
         ChartMgr* rxChart;
         std::vector<std::string> announced_ips;
 
-        Figure::RingDrawable* _lineDrawable;
+        Figure::WorldScreenLink* _lineDrawable;
 
         int last_frame_tx;
         int last_frame_rx;
@@ -441,17 +442,20 @@ class WorldLinkShader: public GL::AbstractShaderProgram {
 
 class WorldScreenLink: public SceneGraph::Drawable3D {
     public:
-        explicit WorldScreenLink(Object3D& object, Color3 c, Vector3& origin, WorldLinkShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh);
+        explicit WorldScreenLink(Object3D& object, Color3 c, WorldLinkShader& shader, SceneGraph::DrawableGroup3D& group);
 
         Object3D &_object;
+
+        WorldScreenLink& setCoords(Vector3& origin, Vector2& sp);
 
     private:
         void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;
 
-        WorldLink& _shader;
+        WorldLinkShader& _shader;
         Color3 _c;
         Vector3 _origin;
-        GL::Mesh &_mesh;
+        Vector2 _screenPos;
+        GL::Mesh _mesh;
 };
 
 }

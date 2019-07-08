@@ -343,3 +343,67 @@ void MulticastDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Ca
            .setTParam(_t);
     _mesh.draw(_shader);
 }
+
+
+WorldLinkShader::WorldLinkShader() {
+    Utility::Resource rs("monopticon");
+
+    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
+        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
+    vert.addSource(rs.get("src/shaders/worldlink.vs"));
+    frag.addSource(rs.get("src/shaders/worldlink.fs"));
+    CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
+    attachShaders({vert, frag});
+    CORRADE_INTERNAL_ASSERT(link());
+
+    _originPosUniform = uniformLocation("originPos");
+    _screenPosUniform = uniformLocation("screenPos");
+    _colorUniform = uniformLocation("color");
+    _transformationProjectionMatrixUniform = uniformLocation("transformationProjectionMatrix");
+}
+
+WorldLinkShader& WorldLinkShader::setColor(const Color3& color) {
+    setUniform(_colorUniform, color);
+    return *this;
+}
+
+WorldLinkShader& WorldLinkShader::setOriginPos(const Vector3& position) {
+    setUniform(_originPosUniform, position);
+    return *this;
+}
+
+WorldLinkShader& WorldLinkShader::setScreenPos(const Vector2& screenPos) {
+    setUniform(_screenPosUniform, screenPos);
+    return *this;
+}
+
+WorldLinkShader& WorldLinkShader::setTransformationProjectionMatrix(const Matrix4& matrix) {
+    setUniform(_transformationProjectionMatrixUniform, matrix);
+    return *this;
+}
+
+WorldScreenLink::WorldScreenLink(Object3D& object, Color3 c, WorldLinkShader& shader, SceneGraph::DrawableGroup3D& group):
+    SceneGraph::Drawable3D{object, &group},
+    _object{object},
+    _shader{shader},
+    _c{c}
+{
+}
+
+WorldScreenLink& WorldScreenLink::setCoords(Vector3& origin, Vector2& sp) {
+
+    _screenPos = sp;
+    _origin = origin;
+
+    auto b = Vector3(sp.x(), sp.y(), 0.0f);
+    _mesh = MeshTools::compile(Primitives::line3D(origin, b));
+    return *this;
+}
+
+void WorldScreenLink::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
+    _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix)
+           .setOriginPos(_origin)
+           .setScreenPos(_screenPos)
+           .setColor(_c);
+    _mesh.draw(_shader);
+}

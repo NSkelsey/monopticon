@@ -1,13 +1,11 @@
 TODO
 =====
-As of 19/6/19
+As of 8/7/19
 
-- [ ] Implment Billboards
-    - [x] bounding box for selected objects
-    - [x] text label above object
-    - [ ] semi-opaque line that connects imgui window with watched device
-    - [x] Selection of objects
-        - Increase area of object with highlight or bounding box
+- [ ] Implement watched item highlights
+    - [x] semi-opaque line that connects imgui window with watched device
+        - [x] Map screen space coords to world space for the vertex shader
+    - [ ] device window shows all known info
 
 - [ ] Improve layout:
     - [x] demo circle layout that expands
@@ -15,7 +13,6 @@ As of 19/6/19
     - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
 - [ ] Improve interface:
-    - [x] Temporarily fade out devices after 60 seconds
     - [ ] Fix device select menu
         - change to buttons
         - remove packet counts
@@ -67,6 +64,14 @@ As of 19/6/19
 
 DONE
 ====
+- [x] Implement Billboards
+    - [x] bounding box for selected objects
+    - [x] text label above object
+    - [x] Selection of objects
+        - Increase area of object with highlight or bounding box
+
+- [x] Temporarily fade out devices after 60 seconds
+
 - [x] OpenGL shader:
     - [x] Fix parametric eqn to window a to b correctly
     - [x] remove fade to black (should be fade to white)
