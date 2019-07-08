@@ -335,8 +335,9 @@ void Application::draw3DElements() {
 void Application::drawIMGuiElements(int event_cnt) {
     _imgui.newFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Always);
-    ImGui::Begin("Tap Status");
+    ImGui::SetNextWindowSize(ImVec2(315, 225), ImGuiCond_Always);
+    auto flags = ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoScrollbar;
+    ImGui::Begin("Tap Status", nullptr, flags);
 
     static bool peer_connected = false;
     if (!peer_connected && _iface_list.size() > 0) {
@@ -426,7 +427,7 @@ void Application::drawIMGuiElements(int event_cnt) {
     ImGui::End();
 
     ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
-    ImGui::Begin("Heads Up Display");
+    ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
         std::cout << "clicked watch" << std::endl;
@@ -480,9 +481,16 @@ void Application::drawIMGuiElements(int event_cnt) {
     ImGui::End();
 
     // Render custom windows chosen by user
-    for (auto it = _inspected_device_window_list.begin(); it != _inspected_device_window_list.end(); ++it) {
+    for (auto it = _inspected_device_window_list.begin(); it != _inspected_device_window_list.end();) {
         Device::WindowMgr *dwm = *it;
-        dwm->draw();
+        if (dwm->_win_open) {
+            dwm->draw();
+            ++it;
+        } else {
+            delete dwm->_lineDrawable;
+            dwm->_stats->_windowMgr = nullptr;
+            it = _inspected_device_window_list.erase(it);
+        }
     }
 
     GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);

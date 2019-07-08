@@ -103,6 +103,7 @@ WindowMgr::WindowMgr(Stats *d_s):
     _lineDrawable{nullptr}
 {
     _stats = d_s;
+    _win_open = true;
 
     chartMgrList = std::vector<ChartMgr*>();
 
@@ -126,18 +127,16 @@ void WindowMgr::draw() {
 
     rxChart->push(diff);
     last_frame_rx = cur_frame_rx;
-
     // TODO TODO TODO
 
     ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Once);
-    bool p_open = true;
 
     auto s = std::string("Device ").append(_stats->mac_addr);
 
-    if(!ImGui::Begin(s.c_str(), &p_open)) {
-        ImGui::End();
-        return;
-    }
+    auto flags = ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoCollapse;
+
+    ImGui::Begin(s.c_str(), &_win_open, flags);
+
     _stats->renderText();
 
     for (auto it = chartMgrList.begin(); it != chartMgrList.end(); it++) {

@@ -193,6 +193,8 @@ class WindowMgr {
         ChartMgr* rxChart;
         std::vector<std::string> announced_ips;
 
+        bool _win_open;
+
         Figure::WorldScreenLink* _lineDrawable;
 
         int last_frame_tx;
