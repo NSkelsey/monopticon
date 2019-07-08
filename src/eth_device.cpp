@@ -58,7 +58,7 @@ bool Stats::isSelected() {
     return _selected;
 }
 
-void Stats::updateMaps(std::string mac_src, std::string ip_src, std::string mac_dst, std::string ip_dst) {
+void Stats::updateMaps(std::string ip_src, std::string mac_dst) {
 
     auto test = [&ip_src](std::string s){ return ip_src==s; };
 
@@ -67,6 +67,12 @@ void Stats::updateMaps(std::string mac_src, std::string ip_src, std::string mac_
     }
 
     //_ip_label->updateText(all_src_ips.str());
+    auto it = _dst_arp_map.find(mac_dst);
+    if (it != _dst_arp_map.end()) {
+        RouteMgr *r_mgr = new RouteMgr{};
+        auto p = std::make_pair(mac_dst, r_mgr);
+        _dst_arp_map.insert(p);
+    }
 }
 
 std::string Stats::makeIpLabel() {
@@ -140,7 +146,13 @@ void WindowMgr::draw() {
 
     auto a = _stats->circPoint;
     ImVec2 b = ImGui::GetWindowPos();
-    auto c = Vector2(2.0*(1.0/1400.0)*(b.x+157.5) - 1.0, 1.0 - 2.0*(1.0/1000.0)*(b.y+107.5));
+
+    auto x_midp = 157.5f;
+    auto y_midp = 107.5f;
+    auto screen_width = 1400.0f;
+    auto screen_height = 1000.0f;
+
+    auto c = Vector2(2.0f*(1.0f/screen_width)*(b.x+x_midp) - 1.0f, 1.0f - 2.0f*(1.0f/screen_height)*(b.y+y_midp));
     _lineDrawable->setCoords(a, c);
 
     txChart->draw();

@@ -6,7 +6,6 @@ layout(location = 0) in highp vec4 position;
 
 
 void main() {
-
     float d1 = distance(originPos, position.xyz);
 
     if (d1 == 0) {

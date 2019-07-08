@@ -148,7 +148,7 @@ class Stats {
      void setSelected(bool selected);
      bool isSelected();
 
-     void updateMaps(std::string mac_src, std::string ip_src_addr, std::string mac_dst, std::string ip_dst_addr);
+     void updateMaps(std::string ip_src_addr, std::string mac_dst);
      std::string makeIpLabel();
 
      std::string                mac_addr;
@@ -162,7 +162,7 @@ class Stats {
 
      //map<std::string, std::string>    src_arp_map;
      std::vector<std::string>              _emitted_src_ips;
-     std::map<std::string, RouteMgr>       _dst_arp_map;
+     std::map<std::string, RouteMgr*>       _dst_arp_map;
 
      Vector3 circPoint;
      int num_pkts_sent;

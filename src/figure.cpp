@@ -225,13 +225,13 @@ TextDrawable::TextDrawable(std::string msg,
         Shaders::DistanceFieldVector3D& shader,
         Object3D& parent,
         SceneGraph::DrawableGroup3D& drawables):
-    _c{c},
     Object3D{&parent},
     SceneGraph::Drawable3D{*this, &drawables},
+    _c{c},
     _shader(shader)
 {
 
-    _textRenderer.reset(new Text::Renderer3D(*font.get(), *cache, 0.030f, Text::Alignment::LineCenter));
+    _textRenderer.reset(new Text::Renderer3D(*font.get(), *cache, 0.025f, Text::Alignment::LineCenter));
     // TODO Note hardcoded limit:
     _textRenderer->reserve(1000, GL::BufferUsage::DynamicDraw, GL::BufferUsage::StaticDraw);
 
@@ -251,7 +251,7 @@ void TextDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
     _shader.setTransformationProjectionMatrix(cm*tm)
            .setOutlineColor(_c)
            .setColor(_c)
-           .setSmoothness(0.025f/transformationMatrix.uniformScaling());
+           .setSmoothness(0.025f/0.10f); // NOTE this was uniformScaling() instead it is just the value
 
     _textRenderer->mesh().draw(_shader);
 
@@ -319,8 +319,8 @@ PoolShader& PoolShader::setTransformationProjectionMatrix(const Matrix4& matrix)
 
 MulticastDrawable::MulticastDrawable(Object3D& object, Color3 c, Vector3& origin, PoolShader& shader, SceneGraph::DrawableGroup3D& group, GL::Mesh& mesh):
     SceneGraph::Drawable3D{object, &group},
-    expired{false},
     _object{object},
+    expired{false},
     _shader{shader},
     _c{c},
     _origin{origin},

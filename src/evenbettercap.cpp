@@ -37,8 +37,10 @@ class Application: public Platform::Application {
 
         void prepare3DFont();
 
-        void drawTextElements();
         void drawEvent() override;
+        void drawTextElements();
+        void draw3DElements();
+        void drawIMGuiElements(int event_cnt);
 
         void viewportEvent(ViewportEvent& event) override;
 
@@ -166,8 +168,6 @@ Application::Application(const Arguments& arguments):
     print_peer_subs();
 
     /* Global renderer configuration */
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-
     _color.setStorage(GL::RenderbufferFormat::RGBA8, GL::defaultFramebuffer.viewport().size());
     _objectId.setStorage(GL::RenderbufferFormat::R32UI, GL::defaultFramebuffer.viewport().size());
     _depth.setStorage(GL::RenderbufferFormat::DepthComponent24, GL::defaultFramebuffer.viewport().size());
@@ -271,20 +271,18 @@ void Application::prepare3DFont() {
 
     /* Open the font and fill glyph cache */
     Utility::Resource rs("monopticon");
-    if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 110.0f)) {
+    if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 111.0f)) {
         Error() << "Cannot open font file";
         std::exit(1);
     }
 
-    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-+,.! \n");
+    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/-+,.! \n");
 
      auto inner = 0x00ff00_rgbf;
      auto outline = 0x00ff00_rgbf;
     _text_shader.setColor(inner)
            .setOutlineColor(outline)
-           .setOutlineRange(0.45f, 0.40f);
-
-
+           .setOutlineRange(0.45f, 0.445f);
 }
 
 void Application::drawTextElements() {
@@ -300,6 +298,209 @@ void Application::drawTextElements() {
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One, GL::Renderer::BlendFunction::Zero);
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
+}
+
+void Application::draw3DElements() {
+    // Actually draw things to a custom framebuffer
+    _framebuffer
+        .clearColor(0, _clearColor)
+        .clearColor(1, Vector4ui{})
+        .clearDepth(1.0f)
+        .bind();
+
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+
+    _camera->draw(_drawables);
+    _camera->draw(_billboard_drawables);
+
+    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::disable(GL::Renderer::Feature::Blending);
+
+    /* Bind the main buffer back */
+    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
+        .bind();
+
+    GL::Renderer::setClearColor(_clearColor);
+
+    /* Blit color to window framebuffer */
+    _framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+    GL::AbstractFramebuffer::blit(_framebuffer, GL::defaultFramebuffer,
+        {{}, _framebuffer.viewport().size()}, GL::FramebufferBlit::Color);
+
+}
+
+void Application::drawIMGuiElements(int event_cnt) {
+    _imgui.newFrame();
+
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Always);
+    ImGui::Begin("Tap Status");
+
+    static bool peer_connected = false;
+    if (!peer_connected && _iface_list.size() > 0) {
+        if (ImGui::Button("Connect", ImVec2(80, 20))) {
+            std::string chosen_iface = _iface_list.at(0);
+            std::string s, cmd;
+
+            if (_listeningDevice == nullptr) {
+                s = "monopt_iface_proto mac_addr ";
+                cmd = s.append(chosen_iface);
+                std::string mac_addr = Util::exec_output(cmd);
+
+                _listeningDevice = createSphere(mac_addr);
+                deviceClicked(_listeningDevice);
+
+                s = "monopt_iface_proto ipv4_addr ";
+                cmd = s.append(chosen_iface);
+                std::string ipv4_addr = Util::exec_output(cmd);
+
+                if (ipv4_addr.size() > 0) {
+                    _listeningDevice->updateMaps(ipv4_addr, "");
+                }
+                addDirectLabels(_listeningDevice);
+            }
+
+            s = "monopt_iface_proto gateway_ipv4_addr ";
+            cmd = s.append(chosen_iface);
+            std::string gw_ipv4_addr = Util::exec_output(cmd);
+
+            if (_activeGateway == nullptr && gw_ipv4_addr.size() > 0) {
+                s = "monopt_iface_proto gateway_mac_addr ";
+                cmd = s.append(chosen_iface)
+                       .append(" ")
+                       .append(gw_ipv4_addr);
+                std::string gw_mac_addr = Util::exec_output(cmd);
+
+                _activeGateway = createSphere(gw_mac_addr);
+                _activeGateway->updateMaps("0.0.0.0/32", "");
+                _activeGateway->updateMaps(gw_ipv4_addr, "");
+
+                addDirectLabels(_activeGateway);
+            }
+
+            s = "monopt_iface_proto launch ";
+            cmd = s.append(chosen_iface);
+            _zeek_pid = Util::exec_output(cmd);
+            std::cout << "Launched subprocess with pid: " << _zeek_pid << std::endl;
+            peer_connected = true;
+        }
+    } else {
+        if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
+            std::string s = "monopt_iface_proto sstop ";
+            auto cmd = s.append(_zeek_pid);
+            int r = std::system(cmd.c_str());
+            if (r != 0) {
+                std::cout << "Listener shutdown failed" << std::endl;
+            }
+            std::cout << "Disconnected" << std::endl;
+            peer_connected = false;
+        }
+    }
+
+    int offset = 100;
+    for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
+        ImGui::SameLine(offset);
+        offset += 100;
+        auto green = ImVec4(0,1,0,1);
+        if (_iface_list.begin() == it) {
+            ImGui::TextColored(green, (*it).c_str(), ImVec2(80, 20));
+        } else {
+            ImGui::Text((*it).c_str(), ImVec2(80, 20));
+        }
+
+    }
+
+    ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
+            1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
+    ImGui::Text("Sample rate %.3f SPS event cnt %d",
+        1.0/inv_sample_rate, event_cnt);
+
+    ImGui::Separator();
+    ifaceChartMgr.draw();
+    ImGui::Separator();
+    ifaceLongChartMgr.draw();
+    ImGui::Separator();
+
+    ImGui::End();
+
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
+    ImGui::Begin("Heads Up Display");
+
+    if (ImGui::Button("Watch", ImVec2(80,20))) {
+        std::cout << "clicked watch" << std::endl;
+
+        if (_selectedDevice != nullptr && _selectedDevice->_windowMgr == nullptr) {
+            Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
+            _selectedDevice->_windowMgr = dwm;
+            _inspected_device_window_list.push_back(dwm);
+
+            auto *obj = new Object3D{&_scene};
+            dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
+
+
+        } else {
+            std::cout << "ref to window already exists" << std::endl;
+        }
+    }
+
+    ImGui::SameLine(100.0f);
+    if (!_orbit_toggle) {
+        if (ImGui::Button("Start Orbit", ImVec2(90,20))) {
+               // Rotate the camera on an orbit
+               _orbit_toggle = true;
+        }
+    } else {
+       if (ImGui::Button("Stop Orbit", ImVec2(80,20))) {
+           _orbit_toggle = false;
+       }
+       _cameraRig->rotateY(0.10_degf);
+    }
+
+    ImGui::Text("Observed Addresses");
+    ImGui::Separator();
+    ImGui::BeginChild("Scrolling");
+    int i = 1;
+    for (auto it = _device_map.begin(); it != _device_map.end(); it++) {
+        Device::Stats *d_s = it->second;
+
+        char b[4] = {};
+        sprintf(b, "%d", i);
+        i++;
+        if (ImGui::InvisibleButton(b, ImVec2(200, 18))) {
+            deviceClicked(d_s);
+        }
+        ImGui::SameLine(5.0f);
+        d_s->renderText();
+    }
+
+    ImGui::EndChild();
+
+    ImGui::End();
+
+    // Render custom windows chosen by user
+    for (auto it = _inspected_device_window_list.begin(); it != _inspected_device_window_list.end(); ++it) {
+        Device::WindowMgr *dwm = *it;
+        dwm->draw();
+    }
+
+    GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
+    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
+
+    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+        GL::Renderer::BlendEquation::Add);
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+
+    _imgui.drawFrame();
+
+    GL::Renderer::disable(GL::Renderer::Feature::ScissorTest);
+    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::disable(GL::Renderer::Feature::Blending);
 }
 
 
@@ -399,7 +600,7 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
         p1 = tran_d_s->circPoint;
 
         if (ip_src_addr != nullptr && ip_dst_addr != nullptr) {
-            tran_d_s->updateMaps(*mac_src, ip_src, *mac_dst, ip_dst);
+            tran_d_s->updateMaps(ip_src, *mac_dst);
             // TODO TODO TODO TODO
             // TODO TODO TODO TODO
         }
@@ -708,206 +909,11 @@ void Application::drawEvent() {
         dp_s->contacts = c;
     }
 
-    // Actually draw things
-    /* Draw to custom framebuffer */
-    _framebuffer
-        .clearColor(0, _clearColor)
-        .clearColor(1, Vector4ui{})
-        .clearDepth(1.0f)
-        .bind();
-
-    GL::Renderer::enable(GL::Renderer::Feature::Blending);
-
-    _camera->draw(_drawables);
-
-    GL::Renderer::disable(GL::Renderer::Feature::Blending);
-
-    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-
-    _camera->draw(_billboard_drawables);
-
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-
-    /* Bind the main buffer back */
-    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
-        .bind();
-
-    GL::Renderer::setClearColor(_clearColor);
-
-    /* Blit color to window framebuffer */
-    _framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
-    GL::AbstractFramebuffer::blit(_framebuffer, GL::defaultFramebuffer,
-        {{}, _framebuffer.viewport().size()}, GL::FramebufferBlit::Color);
+    draw3DElements();
 
     drawTextElements();
 
-    _imgui.newFrame();
-
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Always);
-    ImGui::Begin("Tap Status");
-
-    static bool peer_connected = false;
-    if (!peer_connected && _iface_list.size() > 0) {
-        if (ImGui::Button("Connect", ImVec2(80, 20))) {
-            std::string chosen_iface = _iface_list.at(0);
-            std::string s, cmd;
-
-            if (_listeningDevice == nullptr) {
-                s = "monopt_iface_proto mac_addr ";
-                cmd = s.append(chosen_iface);
-                std::string mac_addr = Util::exec_output(cmd);
-
-                _listeningDevice = createSphere(mac_addr);
-                deviceClicked(_listeningDevice);
-
-                s = "monopt_iface_proto ipv4_addr ";
-                cmd = s.append(chosen_iface);
-                std::string ipv4_addr = Util::exec_output(cmd);
-
-                if (ipv4_addr.size() > 0) {
-                    _listeningDevice->updateMaps(mac_addr, ipv4_addr, "", "");
-                }
-                addDirectLabels(_listeningDevice);
-            }
-
-            s = "monopt_iface_proto gateway_ipv4_addr ";
-            cmd = s.append(chosen_iface);
-            std::string gw_ipv4_addr = Util::exec_output(cmd);
-
-            if (_activeGateway == nullptr && gw_ipv4_addr.size() > 0) {
-                s = "monopt_iface_proto gateway_mac_addr ";
-                cmd = s.append(chosen_iface)
-                       .append(" ")
-                       .append(gw_ipv4_addr);
-                std::string gw_mac_addr = Util::exec_output(cmd);
-
-                _activeGateway = createSphere(gw_mac_addr);
-                _activeGateway->updateMaps(gw_mac_addr, gw_ipv4_addr, "", "");
-
-                //addDirectLabels(_activeGateway);
-            }
-
-            s = "monopt_iface_proto launch ";
-            cmd = s.append(chosen_iface);
-            _zeek_pid = Util::exec_output(cmd);
-            std::cout << "Launched subprocess with pid: " << _zeek_pid << std::endl;
-            peer_connected = true;
-        }
-    } else {
-        if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
-            std::string s = "monopt_iface_proto sstop ";
-            auto cmd = s.append(_zeek_pid);
-            int r = std::system(cmd.c_str());
-            if (r != 0) {
-                std::cout << "Listener shutdown failed" << std::endl;
-            }
-            std::cout << "Disconnected" << std::endl;
-            peer_connected = false;
-        }
-    }
-
-    int offset = 100;
-    for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
-        ImGui::SameLine(offset);
-        offset += 100;
-        auto green = ImVec4(0,1,0,1);
-        if (_iface_list.begin() == it) {
-            ImGui::TextColored(green, (*it).c_str(), ImVec2(80, 20));
-        } else {
-            ImGui::Text((*it).c_str(), ImVec2(80, 20));
-        }
-
-    }
-
-    ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
-            1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
-    ImGui::Text("Sample rate %.3f SPS event cnt %d",
-        1.0f/static_cast<float>(inv_sample_rate), event_cnt);
-
-    ImGui::Separator();
-    ifaceChartMgr.draw();
-    ImGui::Separator();
-    ifaceLongChartMgr.draw();
-    ImGui::Separator();
-
-    ImGui::End();
-
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
-    ImGui::Begin("Heads Up Display");
-
-    if (ImGui::Button("Watch", ImVec2(80,20))) {
-        std::cout << "clicked watch" << std::endl;
-
-        if (_selectedDevice != nullptr && _selectedDevice->_windowMgr == nullptr) {
-            Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
-            _selectedDevice->_windowMgr = dwm;
-            _inspected_device_window_list.push_back(dwm);
-
-            auto *obj = new Object3D{&_scene};
-            dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
-
-
-        } else {
-            std::cout << "ref to window already exists" << std::endl;
-        }
-    }
-
-    ImGui::SameLine(100.0f);
-    if (!_orbit_toggle) {
-        if (ImGui::Button("Start Orbit", ImVec2(90,20))) {
-               // Rotate the camera on an orbit
-               _orbit_toggle = true;
-        }
-    } else {
-       if (ImGui::Button("Stop Orbit", ImVec2(80,20))) {
-           _orbit_toggle = false;
-       }
-       _cameraRig->rotateY(0.10_degf);
-    }
-
-    ImGui::Text("Observed Addresses");
-    ImGui::Separator();
-    ImGui::BeginChild("Scrolling");
-    int i = 1;
-    for (auto it = _device_map.begin(); it != _device_map.end(); it++) {
-        Device::Stats *d_s = it->second;
-
-        char b[4] = {};
-        sprintf(b, "%d", i);
-        i++;
-        if (ImGui::InvisibleButton(b, ImVec2(200, 18))) {
-            deviceClicked(d_s);
-        }
-        ImGui::SameLine(5.0f);
-        d_s->renderText();
-    }
-
-    ImGui::EndChild();
-
-    ImGui::End();
-
-    // Render custom windows chosen by user
-    for (auto it = _inspected_device_window_list.begin(); it != _inspected_device_window_list.end(); ++it) {
-        Device::WindowMgr *dwm = *it;
-        dwm->draw();
-    }
-
-    GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
-    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
-    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::enable(GL::Renderer::Feature::Blending);
-
-    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-        GL::Renderer::BlendEquation::Add);
-    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-
-    _imgui.drawFrame();
-
-    GL::Renderer::disable(GL::Renderer::Feature::ScissorTest);
-    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::disable(GL::Renderer::Feature::Blending);
+    drawIMGuiElements(event_cnt);
 
     swapBuffers();
     _timeline.nextFrame();
