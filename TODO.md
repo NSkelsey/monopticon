@@ -24,14 +24,6 @@ As of 9/7/19
         - [ ] Add list of known positions for known devices
     - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
-- [ ] Improve interface:
-    - [ ] Fix device select menu
-        - change to buttons
-        - remove packet counts
-    - [x] add GUI display for devices
-        - [ ] selected device displays detailed info if we have it.
-        - [x] starts a graph of traffic using CharMngr
-
 - [ ] Add Strict Ordering:
     - [x] figure out how to generate raw packet events from pcaps
         - [ Use tcpreplay to resend packets on some net interface ]
@@ -78,6 +70,14 @@ As of 9/7/19
 
 DONE
 ====
+- [x] Improve interface:
+    - [x] Fix device select menu
+        -x change to buttons
+        -x remove packet counts
+    - [x] add GUI display for devices
+        - [x] selected device displays detailed info if we have it.
+        - [x] starts a graph of traffic using CharMngr
+
 - [x] Implement watched item highlights
     - [x] semi-opaque line that connects imgui window with watched device
         - [x] Map screen space coords to world space for the vertex shader

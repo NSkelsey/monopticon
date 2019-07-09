@@ -543,9 +543,8 @@ int Application::processNetworkEvents() {
         if (event_cnt % inv_sample_rate == 0) {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
-            //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
-            if (event.name().compare("raw_packet_event")) {
-                    parse_raw_packet(event);
+            if (event.name().compare("monopt/l2")) {
+                std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
             } else {
                 std::cerr << "Unhandled Event: " << event.name() << std::endl;
             }
