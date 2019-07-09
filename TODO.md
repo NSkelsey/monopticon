@@ -2,6 +2,23 @@ TODO
 =====
 As of 9/7/19
 
+- [ ] Structural/design for sampling at intervals:
+    - Refactor to sending epoch messages at 240Hz (TBD) where:
+        - Every message contains all of the information neccessary to visualizeall captured events that occured within that interval.
+        - The draw loop processes some number of epoch steps every frame: adding, moving and removing objects in the scene
+        - The amount of state stored within the main process is minimized in favor of management within zeek.
+
+    - Tasks:
+        - [ ] Test scheduling and intervals with zeek at sub second frequencies
+        - [ ] Test windowing and SumStats to track state across windows with zeek
+        - [ ] List all possible information collected for types sent to monopticon
+            - new device
+            - new router
+            - packet `(l2type, mac_src, mac_dst, ip_src, ip_dst, size)`
+            - (api request) inferred ARP tables
+        - [ ] Refactor `processNetEvents()` to handle messaging format
+            - [ ] empircally measure arrival frequency
+
 - [ ] Improve layout:
     - [x] demo circle layout that expands
         - [ ] Add list of known positions for known devices
@@ -16,7 +33,8 @@ As of 9/7/19
         - [x] starts a graph of traffic using CharMngr
 
 - [ ] Add Strict Ordering:
-    - [ ] figure out how to generate raw packet events from pcaps
+    - [x] figure out how to generate raw packet events from pcaps
+        - [ Use tcpreplay to resend packets on some net interface ]
     - [ ] determine how the timeline works
     - [ ] slow down time to step through packet interactions
 
@@ -55,7 +73,8 @@ As of 9/7/19
 
 - [ ] Make more bello:
     - [ ] Add a skybox that simulates __cyberspace__
-    - [ ] Add for specific events sounds
+    - [ ] Add sounds for specific events
+    - [ ] Create a flat band mesh instead of single pix width wireframes
 
 DONE
 ====
