@@ -32,7 +32,12 @@ Stats::Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev):
 
 std::string Stats::create_device_string() {
     std::ostringstream stringStream;
+    stringStream << "MAC: ";
     stringStream << this->mac_addr;
+    if (_emitted_src_ips.size() > 0) {
+        stringStream << " IP: ";
+        stringStream << _emitted_src_ips.at(0);
+    }
     std::string c = stringStream.str();
     return c;
 }
@@ -156,6 +161,13 @@ void WindowMgr::draw() {
 
     txChart->draw();
     rxChart->draw();
+
+
+    ImGui::Text("Tot tx pkts: %d Tot rx pkts: %d",
+                _stats->num_pkts_sent,
+                _stats->num_pkts_recv);
+
+    ImGui::Text("Tot observed source IPs: %lu", _stats->_emitted_src_ips.size());
 
     ImGui::End();
 }

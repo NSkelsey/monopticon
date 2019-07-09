@@ -158,8 +158,8 @@ Application::Application(const Arguments& arguments):
     std::string addr = "127.0.0.1";
     auto res = _ep.listen(addr, listen_port);
     if (res == 0) {
-        std::cout << "Could not listen on: ";
-        std::cout << addr << ":" << listen_port << std::endl;
+        std::cerr << "Could not listen on: ";
+        std::cerr << addr << ":" << listen_port << std::endl;
         exit(1);
     } else {
         std::cout << "Endpoint listening on: ";
@@ -394,7 +394,7 @@ void Application::drawIMGuiElements(int event_cnt) {
             auto cmd = s.append(_zeek_pid);
             int r = std::system(cmd.c_str());
             if (r != 0) {
-                std::cout << "Listener shutdown failed" << std::endl;
+                std::cerr << "Listener shutdown failed" << std::endl;
             }
             std::cout << "Disconnected" << std::endl;
             peer_connected = false;
@@ -427,7 +427,7 @@ void Application::drawIMGuiElements(int event_cnt) {
 
     ImGui::End();
 
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(330, 215), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
@@ -441,7 +441,7 @@ void Application::drawIMGuiElements(int event_cnt) {
 
 
         } else {
-            std::cout << "Error! Ref to window already exists" << std::endl;
+            std::cerr << "Error! Ref to window already exists" << std::endl;
         }
     }
 
@@ -468,7 +468,7 @@ void Application::drawIMGuiElements(int event_cnt) {
         char b[4] = {};
         sprintf(b, "%d", i);
         i++;
-        if (ImGui::InvisibleButton(b, ImVec2(200, 18))) {
+        if (ImGui::InvisibleButton(b, ImVec2(300, 18))) {
             deviceClicked(d_s);
         }
         ImGui::SameLine(5.0f);
@@ -547,7 +547,7 @@ int Application::processNetworkEvents() {
             if (event.name().compare("raw_packet_event")) {
                     parse_raw_packet(event);
             } else {
-                std::cout << "Unhandled Event: " << event.name() << std::endl;
+                std::cerr << "Unhandled Event: " << event.name() << std::endl;
             }
             processed_event_cnt ++;
         }
@@ -627,29 +627,29 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
 
     broker::vector *raw_pkt_hdr = broker::get_if<broker::vector>(parent_content.at(0));
     if (raw_pkt_hdr == nullptr) {
-        std::cout << "rph" << std::endl;
+        std::cerr << "rph" << std::endl;
         return;
     }
     broker::vector *l2_pkt_hdr = broker::get_if<broker::vector>(raw_pkt_hdr->at(0));
     if (l2_pkt_hdr == nullptr || l2_pkt_hdr->size() != 9) {
-        std::cout << "lph" << std::endl;
+        std::cerr << "lph" << std::endl;
         return;
     }
 
     std::string *mac_src = broker::get_if<std::string>(l2_pkt_hdr->at(3));
     if (mac_src == nullptr) {
-        std::cout << "mac_src null" << std::endl;
+        std::cerr << "mac_src null" << std::endl;
         return;
     }
     std::string *mac_dst = broker::get_if<std::string>(l2_pkt_hdr->at(4));
     if (mac_dst == nullptr) {
-        std::cout << "mac_dst null" << std::endl;
+        std::cerr << "mac_dst null" << std::endl;
         return;
     }
 
     auto *l3_t = broker::get_if<broker::enum_value>(l2_pkt_hdr->at(8));
     if (l3_t == nullptr) {
-        std::cout << "l3_i null" << std::endl;
+        std::cerr << "l3_i null" << std::endl;
         return;
     }
 
@@ -669,12 +669,12 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
             {
                 broker::vector *ip_pkt_hdr = broker::get_if<broker::vector>(raw_pkt_hdr->at(1));
                 if (ip_pkt_hdr == nullptr || ip_pkt_hdr->size() != 8) {
-                    std::cout << "ip_pkt_hdr" << std::endl;
+                    std::cerr << "ip_pkt_hdr" << std::endl;
                     break;
                 }
                 ip_src_addr = broker::get_if<broker::address>(ip_pkt_hdr->at(6));
                 if (ip_src_addr == nullptr) {
-                    std::cout << "ip_src null" << std::endl;
+                    std::cerr << "ip_src null" << std::endl;
                     break;
                 } else {
                     ip_src = broker::to_string(*ip_src_addr);
@@ -682,7 +682,7 @@ void Application::parse_raw_packet(broker::zeek::Event event) {
 
                 ip_dst_addr = broker::get_if<broker::address>(ip_pkt_hdr->at(6));
                 if (ip_dst_addr == nullptr) {
-                    std::cout << "ip_src null" << std::endl;
+                    std::cerr << "ip_src null" << std::endl;
                     break;
                 } else {
                     ip_dst = broker::to_string(*ip_dst_addr);

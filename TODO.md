@@ -1,11 +1,6 @@
 TODO
 =====
-As of 8/7/19
-
-- [ ] Implement watched item highlights
-    - [x] semi-opaque line that connects imgui window with watched device
-        - [x] Map screen space coords to world space for the vertex shader
-    - [ ] device window shows all known info
+As of 9/7/19
 
 - [ ] Improve layout:
     - [x] demo circle layout that expands
@@ -64,6 +59,11 @@ As of 8/7/19
 
 DONE
 ====
+- [x] Implement watched item highlights
+    - [x] semi-opaque line that connects imgui window with watched device
+        - [x] Map screen space coords to world space for the vertex shader
+    - [x] device window shows all known info
+
 - [x] Implement Billboards
     - [x] bounding box for selected objects
     - [x] text label above object
