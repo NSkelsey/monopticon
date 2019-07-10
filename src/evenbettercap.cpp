@@ -54,13 +54,14 @@ class Application: public Platform::Application {
         void mouseScrollEvent(MouseScrollEvent& event) override;
         void textInputEvent(TextInputEvent& event) override;
 
-        void parse_raw_packet(broker::zeek::Event event);
+        void parse_epoch_step(broker::zeek::Event event);
         Device::Stats* createSphere(const std::string);
 
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
 
 
+        void createLines(Vector3, Vector3, Util::L3Type, int num);
         void createLine(Vector3, Vector3, Util::L3Type);
 
         void addDirectLabels(Device::Stats *d_s);
@@ -544,7 +545,9 @@ int Application::processNetworkEvents() {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
             if (event.name().compare("monopt/l2")) {
-                std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+                //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
+                // TODO dump output
+                parse_epoch_step(event);
             } else {
                 std::cerr << "Unhandled Event: " << event.name() << std::endl;
             }
@@ -621,141 +624,134 @@ int Application::processNetworkEvents() {
 }
 
 
-void Application::parse_raw_packet(broker::zeek::Event event) {
+void Application::parse_epoch_step(broker::zeek::Event event) {
     broker::vector parent_content = event.args();
 
-    broker::vector *raw_pkt_hdr = broker::get_if<broker::vector>(parent_content.at(0));
-    if (raw_pkt_hdr == nullptr) {
-        std::cerr << "rph" << std::endl;
-        return;
-    }
-    broker::vector *l2_pkt_hdr = broker::get_if<broker::vector>(raw_pkt_hdr->at(0));
-    if (l2_pkt_hdr == nullptr || l2_pkt_hdr->size() != 9) {
-        std::cerr << "lph" << std::endl;
+    broker::vector *wrapper = broker::get_if<broker::vector>(parent_content.at(0));
+    if (wrapper == nullptr) {
+        std::cerr << "wrapper" << std::endl;
         return;
     }
 
-    std::string *mac_src = broker::get_if<std::string>(l2_pkt_hdr->at(3));
-    if (mac_src == nullptr) {
-        std::cerr << "mac_src null" << std::endl;
-        return;
-    }
-    std::string *mac_dst = broker::get_if<std::string>(l2_pkt_hdr->at(4));
-    if (mac_dst == nullptr) {
-        std::cerr << "mac_dst null" << std::endl;
+    broker::set *enter_l2_devices = broker::get_if<broker::set>(wrapper->at(0));
+    if (enter_l2_devices == nullptr) {
+        std::cerr << "enter_l2_devices" << std::endl;
         return;
     }
 
-    auto *l3_t = broker::get_if<broker::enum_value>(l2_pkt_hdr->at(8));
-    if (l3_t == nullptr) {
-        std::cerr << "l3_i null" << std::endl;
+    for (auto it = enter_l2_devices->begin(); it != enter_l2_devices->end(); it++) {
+        auto *mac_src = broker::get_if<std::string>(*it);
+        if (mac_src == nullptr) {
+            std::cerr << "mac_src e_l2_dev" << std::endl;
+            return;
+        }
+        std::cout << *mac_src << std::endl;
+
+        Device::Stats *d_s = createSphere(*mac_src);
+        _device_map.insert(std::make_pair(*mac_src, d_s));
+        addDirectLabels(d_s);
+    }
+
+    std::map<broker::data, broker::data> *l2_dev_comm = broker::get_if<broker::table>(wrapper->at(1));
+    if (l2_dev_comm == nullptr) {
+        std::cerr << "l2_dev_comm" << std::endl;
+
         return;
     }
 
-    using namespace Util;
+    for (auto it2 = l2_dev_comm->begin(); it2 != l2_dev_comm->end(); it2++) {
+        auto pair = *it2;
+        //std::cout << pair.first << std::endl;
+        //std::cout << pair.second << std::endl;
 
-    L3Type t;
-    std::string ip_src, ip_dst;
-    broker::address *ip_src_addr = nullptr;
-    broker::address *ip_dst_addr = nullptr;
+        auto *mac_src = broker::get_if<std::string>(pair.first);
+        if (mac_src == nullptr) {
+            std::cerr << "mac_src e_l2_dev" << std::endl;
+            return;
+        }
 
-    switch (l3_t->name.back()) {
-        case L3Type::ARP:
-            t = L3Type::ARP;
-            break;
-        case L3Type::IPV4:
-            t = L3Type::IPV4;
-            {
-                broker::vector *ip_pkt_hdr = broker::get_if<broker::vector>(raw_pkt_hdr->at(1));
-                if (ip_pkt_hdr == nullptr || ip_pkt_hdr->size() != 8) {
-                    std::cerr << "ip_pkt_hdr" << std::endl;
-                    break;
-                }
-                ip_src_addr = broker::get_if<broker::address>(ip_pkt_hdr->at(6));
-                if (ip_src_addr == nullptr) {
-                    std::cerr << "ip_src null" << std::endl;
-                    break;
-                } else {
-                    ip_src = broker::to_string(*ip_src_addr);
-                }
+        Device::Stats *tran_d_s;
+        auto search = _device_map.find(*mac_src);
+        if (search != _device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "tran_d_s not found! " << *mac_src << std::endl;
+            return;
+        }
 
-                ip_dst_addr = broker::get_if<broker::address>(ip_pkt_hdr->at(6));
-                if (ip_dst_addr == nullptr) {
-                    std::cerr << "ip_src null" << std::endl;
-                    break;
-                } else {
-                    ip_dst = broker::to_string(*ip_dst_addr);
-                }
+        // TODO unwrap map
+        auto *dComm = broker::get_if<broker::vector>(pair.second);
+        if (dComm == nullptr) {
+            std::cerr << "dComm" <<  std::endl;
+            continue;
+        }
+
+        // TODO unwrap map
+        std::map<broker::data, broker::data> *tx_summary = broker::get_if<broker::table>(dComm->at(1));
+        if (tx_summary == nullptr) {
+            std::cerr << "tx_summary" <<  std::endl;
+            continue;
+        }
+        //std::cout << "tx_summary:" << tx_summary << std::endl;
+
+        for (auto it3 = tx_summary->begin(); it3 != tx_summary->end(); it3++) {
+            auto comm_pair = *it3;
+            auto *mac_dst = broker::get_if<std::string>(comm_pair.first);
+            if (mac_dst == nullptr) {
+                std::cerr << "mac_dst tx_summary:" << mac_src << std::endl;
+                continue;
             }
 
-            break;
-        case L3Type::IPV6:
-            t = L3Type::IPV6;
-            break;
-        default:
-            t = L3Type::UNKNOWN;
+            Device::Stats *recv_d_s;
+            auto search = _device_map.find(*mac_dst);
+            if (search != _device_map.end()) {
+                recv_d_s = search->second;
+            } else {
+                std::cerr << "recv_d_s not found! " << *mac_dst << std::endl;
+                return;
+            }
+
+            auto *l2summary = broker::get_if<broker::vector>(comm_pair.second);
+            if (l2summary == nullptr) {
+                std::cerr << "l2summary" << mac_src << std::endl;
+                continue;
+            }
+
+            auto *ipv4_cnt = broker::get_if<broker::count>(l2summary->at(0));
+            if (ipv4_cnt == nullptr) {
+                std::cerr << "ipv4_cnt" << mac_src << std::endl;
+                continue;
+            }
+
+            auto *ipv6_cnt = broker::get_if<broker::count>(l2summary->at(1));
+            if (ipv6_cnt == nullptr) {
+                std::cerr << "ipv6_cnt" << mac_src << std::endl;
+                continue;
+            }
+
+            auto *arp_cnt = broker::get_if<broker::count>(l2summary->at(2));
+            if (arp_cnt == nullptr) {
+                std::cerr << "arp_cnt" << mac_src << std::endl;
+                continue;
+            }
+
+            auto *unknown_cnt = broker::get_if<broker::count>(l2summary->at(3));
+            if (unknown_cnt == nullptr) {
+                std::cerr << "unknown_cnt" << mac_src << std::endl;
+                continue;
+            }
+
+            Vector3 p1 = tran_d_s->circPoint;
+            Vector3 p2 = recv_d_s->circPoint;
+
+            createLines(p1, p2, Util::L3Type::IPV4, *ipv4_cnt);
+            createLines(p1, p2, Util::L3Type::IPV6, *ipv6_cnt);
+            createLines(p1, p2, Util::L3Type::ARP, *arp_cnt);
+            createLines(p1, p2, Util::L3Type::UNKNOWN, *unknown_cnt);
+        }
     }
 
-    Vector3 p1;
-
-    auto g = mac_src->substr(0,5);
-    if (g == "00:04") {
-        Device::PrefixStats *dp_s = _prefix_group_map.at(g);
-        p1 = dp_s->_position;
-    } else {
-        Device::Stats *tran_d_s;
-
-        auto search = _device_map.find(*mac_src);
-        if (search == _device_map.end()) {
-            tran_d_s = createSphere(*mac_src);
-            _device_map.insert(std::make_pair(*mac_src, tran_d_s));
-        } else {
-            tran_d_s = search->second;
-        }
-        tran_d_s->num_pkts_sent += 1;
-        tran_d_s->health = 60*30;
-        p1 = tran_d_s->circPoint;
-
-        if (ip_src_addr != nullptr && ip_dst_addr != nullptr) {
-            tran_d_s->updateMaps(ip_src, *mac_dst);
-            // TODO TODO TODO TODO
-            // TODO TODO TODO TODO
-        }
-
-        addDirectLabels(tran_d_s);
-    }
-
-    Vector3 p2;
-    Color3 c = Util::typeColor(t);
-
-    // Check for multicast addresses
-    auto s = (mac_dst->substr(0,2)).c_str();
-    int l = strtol(s, nullptr, 16);
-    if (l%2 == 1) {
-        Device::PrefixStats *dp_s = _dst_prefix_group_map.at(std::string(s));
-        if (dp_s == nullptr) {
-            dp_s = _dst_prefix_group_map.at("odd");
-        }
-        p2 = dp_s->_position;
-        createPoolHit(dp_s, c);
-    } else if (mac_dst->substr(0,5) == "00:04") {
-        Device::PrefixStats *dp_s = _prefix_group_map.at("00:04");
-        p2 = dp_s->_position;
-    } else {
-        Device::Stats *recv_d_s;
-
-        auto search_dst = _device_map.find(*mac_dst);
-        if (search_dst == _device_map.end()) {
-            recv_d_s = createSphere(*mac_dst);
-        } else {
-            recv_d_s = search_dst->second;
-        }
-        recv_d_s->num_pkts_recv += 1;
-        recv_d_s->health = 60*30;
-        p2 = recv_d_s->circPoint;
-    }
-
-    createLine(p1, p2, t);
+    // TODO add seen IP addresses
 }
 
 void Application::deselectDevice() {
@@ -906,6 +902,13 @@ void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
     auto pair = std::make_pair(top, bot);
 
     dp_s->contacts.push_back(pair);
+}
+
+void Application::createLines(Vector3 a, Vector3 b, Util::L3Type t, int count) {
+    int ceiling = std::min(count, 1);
+    for (int i = 0; i < ceiling; i++) {
+        createLine(a, b, t);
+    }
 }
 
 void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {

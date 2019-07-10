@@ -1,23 +1,16 @@
 TODO
 =====
-As of 9/7/19
+As of 10/7/19
 
-- [ ] Structural/design for sampling at intervals:
-    - Refactor to sending epoch messages at 240Hz (TBD) where:
-        - Every message contains all of the information neccessary to visualizeall captured events that occured within that interval.
-        - The draw loop processes some number of epoch steps every frame: adding, moving and removing objects in the scene
-        - The amount of state stored within the main process is minimized in favor of management within zeek.
+- [ ] Add functionality to signalling logic
+    - [ ] support prefix pools
+    - [ ] support broadcast pools
+    - [ ] add ip information to nodes
+    - [ ] maybe expire devices after timeout with `exit`
 
-    - Tasks:
-        - [ ] Test scheduling and intervals with zeek at sub second frequencies
-        - [ ] Test windowing and SumStats to track state across windows with zeek
-        - [ ] List all possible information collected for types sent to monopticon
-            - new device
-            - new router
-            - packet `(l2type, mac_src, mac_dst, ip_src, ip_dst, size)`
-            - (api request) inferred ARP tables
-        - [ ] Refactor `processNetEvents()` to handle messaging format
-            - [ ] empircally measure arrival frequency
+- [ ] Improve Navigation
+    - [ ] Zooming
+    - [ ] Move camera to orbit other points
 
 - [ ] Improve layout:
     - [x] demo circle layout that expands
@@ -70,6 +63,27 @@ As of 9/7/19
 
 DONE
 ====
+- [x] Structural/design for sampling at intervals:
+    - Refactor to sending epoch messages at 240Hz (TBD) where:
+        - Every message contains all of the information neccessary to visualizeall captured events that occured within that interval.
+        - The draw loop processes some number of epoch steps every frame: adding, moving and removing objects in the scene
+        - The amount of state stored within the main process is minimized in favor of management within zeek.
+
+    - Tasks:
+        - [x] Test scheduling and intervals with zeek at sub second frequencies
+        - [x] Test windowing and SumStats to track state across windows with zeek
+        - [x] List all possible information collected for types sent to monopticon
+            - new device
+            - new router
+            - packet `(l2type, mac_src, mac_dst, ip_src, ip_dst, size)`
+            - (api request) inferred ARP tables
+        - [x] Refactor `processNetEvents()` to handle messaging format
+            - [x] empircally measure arrival frequency
+    Note: For large simple traffic flows between two hosts this optimization handles the load well.
+          Instead for large amounts of traffic flow coming to and from large numbers of devices, the
+          app still experiences large fps drops. Further investigation is needed as well as a good
+          measurement framework
+
 - [x] Improve interface:
     - [x] Fix device select menu
         -x change to buttons

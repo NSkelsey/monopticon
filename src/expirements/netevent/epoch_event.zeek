@@ -82,8 +82,8 @@ event epoch_step() {
 
   msg$l2_dev_comm = epoch_l2_dev_comm;
 
-  print "===============";
-  print fmt("new devs: %s, num comms: %s", |msg$enter_l2devices|, |msg$l2_dev_comm|);
+  #print "===============";
+  #print fmt("new devs: %s, num comms: %s", |msg$enter_l2devices|, |msg$l2_dev_comm|);
 
   # TODO(mem mgmt) delete everything iteratively from sets
   epoch_new_l2devices = set();
@@ -161,6 +161,11 @@ event raw_packet(p: raw_pkt_hdr)
       dev = create_L2Device(mac_src);
     } else {
       dev = L2DeviceTable[mac_src];
+    }
+
+    # TODO(idem) prevent mac_dst spray
+    if (mac_dst !in L2DeviceTable) {
+      create_L2Device(mac_dst);
     }
 
     local comm: DeviceComm;
