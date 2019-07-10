@@ -1,7 +1,7 @@
 # This program generates router identification events on a schedule
 
-@load policy/protocols/conn/mac-logging
-@load policy/protocols/conn/vlan-logging
+#@load policy/protocols/conn/mac-logging
+#@load policy/protocols/conn/vlan-logging
 
 export {
   type L2Summary: record {
@@ -60,7 +60,7 @@ export {
   global RouterTable: table[string] of Router;
 
   #global tick_resolution = 250usec;
-  global tick_resolution = 4.95msec;
+  global tick_resolution = 15msec;
 
   # Internal state refreshed every Epoch:
   # mac_src key
@@ -68,11 +68,10 @@ export {
 
   # mac_src key
   global epoch_l2_dev_comm: table[string] of DeviceComm;
-}
-
-event epoch_fire(m: EpochStep) {
 
 }
+
+event epoch_fire(m: EpochStep) {}
 
 event epoch_step() {
 
@@ -176,11 +175,11 @@ event raw_packet(p: raw_pkt_hdr)
     }
     update_comm_table(comm, p);
 
-    if (p?$ip) {
+    if (p?$ip && p$ip$src !in dev$emitted_ipv4) {
         add dev$emitted_ipv4[p$ip$src];
     }
 
-    if (p?$ip6) {
+    if (p?$ip6 && p$ip6$src !in dev$emitted_ipv6) {
         add dev$emitted_ipv6[p$ip6$src];
     }
   } else {
@@ -201,5 +200,6 @@ event Broker::peer_added(endpoint: Broker::EndpointInfo, msg: string)
 {
     print "peer added", endpoint;
     Broker::auto_publish("monopt/l2", epoch_fire);
+    #last_tick = network_time();
     schedule tick_resolution { epoch_step() };
 }

@@ -83,6 +83,8 @@ DONE
           Instead for large amounts of traffic flow coming to and from large numbers of devices, the
           app still experiences large fps drops. Further investigation is needed as well as a good
           measurement framework
+    Soln: Disabling --debug inside of the zeek-broker and switching to sampling when event processing
+           speeds drop keeps performance around 18ms at 4500 packets per second (nmap -T5 /24 + noise)
 
 - [x] Improve interface:
     - [x] Fix device select menu

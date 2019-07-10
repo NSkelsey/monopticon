@@ -545,20 +545,20 @@ int Application::processNetworkEvents() {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
             if (event.name().compare("monopt/l2")) {
-                //std::cout << "received on topic: " << topic << " event: " << event.args() << std::endl;
-                // TODO dump output
                 parse_epoch_step(event);
             } else {
                 std::cerr << "Unhandled Event: " << event.name() << std::endl;
             }
             processed_event_cnt ++;
         }
-        if (event_cnt % 256 == 0 && inv_sample_rate <= 256) {
+        if (event_cnt % 4 == 0 && inv_sample_rate <= 4) {
             inv_sample_rate = inv_sample_rate * 2;
         }
     }
 
-    if (event_cnt < 25 && inv_sample_rate > 1) {
+    // TODO NOTE WARNING dropping events on this side can introduce non existant mac_src
+    // devices into the graphic
+    if (event_cnt < 4 && inv_sample_rate > 1) {
         inv_sample_rate = inv_sample_rate/2;
     }
 
