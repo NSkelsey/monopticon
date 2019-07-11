@@ -62,7 +62,7 @@ gateway_mac_addr() {
     iface=$1
     gateway_ip=$2
 
-    gateway_mac=`ip neighbour show dev usb0 | grep $gateway_ip | grep REACHABLE | grep -oP "([a-f0-9]{2}:){5}([a-f0-9]{2})"`
+    gateway_mac=`ip neighbour show dev $iface | grep $gateway_ip | grep REACHABLE | grep -oP "([a-f0-9]{2}:){5}([a-f0-9]{2})"`
 
     echo -en "$gateway_mac"
 }
@@ -101,6 +101,19 @@ function contains() {
     return 1
 }
 
+function usage() {
+    echo "USAGE: monopt_iface_proto FUNC"
+    echo "FUNC:="
+    echo "     {launch <iface>}"
+    echo "     {sstop <pid>}"
+    echo "     {list_ifaces}"
+    echo "     {mac_addr <iface>}"
+    echo "     {ipv4_addr <iface>}"
+    echo "     {gateway_ipv4_addr <iface>}"
+    echo "     {gateway_mac_addr <iface>}"
+}
+
+
 # Check if the function exists (bash specific)
 if declare -f "$1" > /dev/null
 then
@@ -109,5 +122,6 @@ then
 else
   # Show a helpful error
   echo "'$1' is not a known function name" >&2
+  usage
   exit 1
 fi
