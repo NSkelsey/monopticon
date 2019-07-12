@@ -36,6 +36,9 @@ class Application: public Platform::Application {
         explicit Application(const Arguments& arguments);
 
         void prepare3DFont();
+        void prepareGLBuffers(const Range2Di& viewport);
+
+        void destroyGLBuffers();
 
         void drawEvent() override;
         int processNetworkEvents();
@@ -94,7 +97,7 @@ class Application: public Platform::Application {
 
         Object3D *_cameraRig, *_cameraObject;
 
-        GL::Framebuffer _framebuffer;
+        GL::Framebuffer _framebuffer{NoCreate};
         Vector2i _previousMousePosition, _mousePressPosition;
         GL::Renderbuffer _color, _objectId, _depth;
 
@@ -150,7 +153,6 @@ Application::Application(const Arguments& arguments):
             .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
             .setSize(Vector2i{1400,1000}),
             GLConfiguration{}.setSampleCount(16)},
-        _framebuffer{GL::defaultFramebuffer.viewport()},
         _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
     std::cout << "Waiting for broker connection" << std::endl;
@@ -169,16 +171,9 @@ Application::Application(const Arguments& arguments):
 
     print_peer_subs();
 
-    /* Global renderer configuration */
-    _color.setStorage(GL::RenderbufferFormat::RGBA8, GL::defaultFramebuffer.viewport().size());
-    _objectId.setStorage(GL::RenderbufferFormat::R32UI, GL::defaultFramebuffer.viewport().size());
-    _depth.setStorage(GL::RenderbufferFormat::DepthComponent24, GL::defaultFramebuffer.viewport().size());
-    _framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _color)
-                .attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
-                .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, _depth)
-                .mapForDraw({{Figure::PhongIdShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
-                            {Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}});
-    CORRADE_INTERNAL_ASSERT(_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
+    auto viewport = GL::defaultFramebuffer.viewport();
+    _framebuffer = GL::Framebuffer{viewport};
+    prepareGLBuffers(viewport);
 
     /* Camera setup */
     (*(_cameraRig = new Object3D{&_scene}))
@@ -190,7 +185,7 @@ Application::Application(const Arguments& arguments):
     (_camera = new SceneGraph::Camera3D(*_cameraObject))
         ->setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::Extend)
         .setProjectionMatrix(Matrix4::perspectiveProjection(50.0_degf, 1.0f, 0.001f, 100.0f))
-        .setViewport(GL::defaultFramebuffer.viewport().size()); /* Drawing setup */
+        .setViewport(viewport.size());
 
 
     {
@@ -215,24 +210,9 @@ Application::Application(const Arguments& arguments):
 
     srand(time(nullptr));
 
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
-    GL::Renderer::enable(GL::Renderer::Feature::PolygonOffsetFill);
-    GL::Renderer::setPolygonOffset(2.0f, 0.5f);
-
     _imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),
         windowSize(), framebufferSize());
 
-    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-        GL::Renderer::BlendEquation::Add);
-    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
-
-
-    //ifaceChartMgr = DeviceChartMgr(240);
     run_sum = 0;
     frame_cnt = 0;
 
@@ -266,6 +246,29 @@ Application::Application(const Arguments& arguments):
     }
 }
 
+void Application::prepareGLBuffers(const Range2Di& viewport) {
+    auto size = viewport.size();
+
+    GL::defaultFramebuffer.setViewport(viewport);
+
+    _color.setStorage(GL::RenderbufferFormat::RGBA8, size);
+    _objectId.setStorage(GL::RenderbufferFormat::R32UI, size);
+    _depth.setStorage(GL::RenderbufferFormat::DepthComponent24, size);
+    _framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _color)
+                .attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
+                .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, _depth)
+                .mapForDraw({{Figure::PhongIdShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
+                            {Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}});
+
+    CORRADE_INTERNAL_ASSERT(_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
+}
+
+void Application::destroyGLBuffers() {
+   _framebuffer.detach(GL::Framebuffer::ColorAttachment{0})
+               .detach(GL::Framebuffer::ColorAttachment{1})
+               .detach(GL::Framebuffer::BufferAttachment::Depth);
+}
+
 void Application::prepare3DFont() {
     /* Load FreeTypeFont plugin */
     _font = _manager.loadAndInstantiate("FreeTypeFont");
@@ -288,7 +291,6 @@ void Application::prepare3DFont() {
 }
 
 void Application::drawTextElements() {
-
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
@@ -329,8 +331,9 @@ void Application::draw3DElements() {
 
     /* Blit color to window framebuffer */
     _framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+
     GL::AbstractFramebuffer::blit(_framebuffer, GL::defaultFramebuffer,
-        {{}, _framebuffer.viewport().size()}, GL::FramebufferBlit::Color);
+        GL::defaultFramebuffer.viewport(), GL::FramebufferBlit::Color);
 
 }
 
@@ -556,7 +559,7 @@ int Application::processNetworkEvents() {
         }
     }
 
-    // TODO NOTE WARNING dropping events on this side can introduce non existant mac_src
+    // TODO NOTE WARNING dropping events on this side can introduce non existent mac_src
     // devices into the graphic
     if (event_cnt < 4 && inv_sample_rate > 1) {
         inv_sample_rate = inv_sample_rate/2;
@@ -579,15 +582,6 @@ int Application::processNetworkEvents() {
     if (frame_cnt % 60 == 0) {
         _iface_list = Util::get_iface_list();
     }
-
-    // TODO TODO TODO TODO
-    // Expire devices that haven't communicated in awhile
-    // TODO TODO TODO TODO
-    // steps
-    // 0: add shader uniform to expire device
-    // 1: refactor _device id vector to map of ids
-    // 2: create _expired member and update phongid draw
-    // 3: remove expired devices
 
     // Remove packet_lines that have expired for the queue
     std::set<Figure::PacketLineDrawable *>::iterator it;
@@ -937,10 +931,19 @@ void Application::drawEvent() {
 
 
 void Application::viewportEvent(ViewportEvent& event) {
-    GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
+    std::cout << "e " << std::endl;
+    auto size = event.framebufferSize();
+    const Range2Di newViewport = {{}, size};
+
+    _framebuffer.setViewport(newViewport);
+
+    destroyGLBuffers();
+    prepareGLBuffers(newViewport);
+
+    _camera->setViewport(size);
 
     _imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
-        event.windowSize(), event.framebufferSize());
+        event.windowSize(), size);
 }
 
 

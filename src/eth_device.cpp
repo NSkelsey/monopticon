@@ -151,17 +151,17 @@ void WindowMgr::draw() {
     auto a = _stats->circPoint;
     ImVec2 b = ImGui::GetWindowPos();
 
+    auto vp = GL::defaultFramebuffer.viewport();
+    auto screen_width = vp.x().size();
+    auto screen_height = vp.y().size();
     auto x_midp = 157.5f;
     auto y_midp = 107.5f;
-    auto screen_width = 1400.0f;
-    auto screen_height = 1000.0f;
 
     auto c = Vector2(2.0f*(1.0f/screen_width)*(b.x+x_midp) - 1.0f, 1.0f - 2.0f*(1.0f/screen_height)*(b.y+y_midp));
     _lineDrawable->setCoords(a, c);
 
     txChart->draw();
     rxChart->draw();
-
 
     ImGui::Text("Tot tx pkts: %d Tot rx pkts: %d",
                 _stats->num_pkts_sent,
