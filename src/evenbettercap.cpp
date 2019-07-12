@@ -30,6 +30,8 @@ void print_peer_subs();
 using namespace Magnum;
 using namespace Math::Literals;
 
+int MSAA_CNT = 4;
+
 
 class Application: public Platform::Application {
     public:
@@ -152,7 +154,7 @@ Application::Application(const Arguments& arguments):
             .setTitle("Monopticon")
             .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
             .setSize(Vector2i{1400,1000}),
-            GLConfiguration{}.setSampleCount(16)},
+            GLConfiguration{}.setSampleCount(MSAA_CNT)},
         _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
     std::cout << "Waiting for broker connection" << std::endl;
@@ -251,9 +253,16 @@ void Application::prepareGLBuffers(const Range2Di& viewport) {
 
     GL::defaultFramebuffer.setViewport(viewport);
 
-    _color.setStorage(GL::RenderbufferFormat::RGBA8, size);
-    _objectId.setStorage(GL::RenderbufferFormat::R32UI, size);
-    _depth.setStorage(GL::RenderbufferFormat::DepthComponent24, size);
+    _color.setStorageMultisample(MSAA_CNT, GL::RenderbufferFormat::RGBA8, size);
+    _objectId.setStorageMultisample(4, GL::RenderbufferFormat::R32UI, size);
+    _depth.setStorageMultisample(4, GL::RenderbufferFormat::DepthComponent24, size);
+
+  //  _color.setStorage(GL::RenderbufferFormat::RGBA8, size);
+  //  _objectId.setStorage(GL::RenderbufferFormat::R32UI, size);
+  //  _depth.setStorage(GL::RenderbufferFormat::DepthComponent24, size);
+
+    _framebuffer = GL::Framebuffer{viewport};
+
     _framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _color)
                 .attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
                 .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, _depth)
