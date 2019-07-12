@@ -1,6 +1,6 @@
 TODO
 =====
-As of 10/7/19
+As of 12/7/19
 
 - [ ] Add functionality to signalling logic
     - [ ] support prefix pools
@@ -63,6 +63,8 @@ As of 10/7/19
 
 DONE
 ====
+- [x] Reduce framebuffer copying and handle MSAA properly.
+
 - [x] Structural/design for sampling at intervals:
     - Refactor to sending epoch messages at 240Hz (TBD) where:
         - Every message contains all of the information neccessary to visualizeall captured events that occured within that interval.

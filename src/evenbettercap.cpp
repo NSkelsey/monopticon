@@ -93,13 +93,14 @@ class Application: public Platform::Application {
         Scene3D _scene;
         SceneGraph::Camera3D* _camera;
         SceneGraph::DrawableGroup3D _drawables;
+        SceneGraph::DrawableGroup3D _selectable_drawables;
         SceneGraph::DrawableGroup3D _billboard_drawables;
         SceneGraph::DrawableGroup3D _text_drawables;
         Timeline _timeline;
 
         Object3D *_cameraRig, *_cameraObject;
 
-        GL::Framebuffer _framebuffer{NoCreate};
+        GL::Framebuffer _objselect_framebuffer{NoCreate};
         Vector2i _previousMousePosition, _mousePressPosition;
         GL::Renderbuffer _color, _objectId, _depth;
 
@@ -174,7 +175,6 @@ Application::Application(const Arguments& arguments):
     print_peer_subs();
 
     auto viewport = GL::defaultFramebuffer.viewport();
-    _framebuffer = GL::Framebuffer{viewport};
     prepareGLBuffers(viewport);
 
     /* Camera setup */
@@ -249,33 +249,21 @@ Application::Application(const Arguments& arguments):
 }
 
 void Application::prepareGLBuffers(const Range2Di& viewport) {
-    auto size = viewport.size();
-
     GL::defaultFramebuffer.setViewport(viewport);
 
-    _color.setStorageMultisample(MSAA_CNT, GL::RenderbufferFormat::RGBA8, size);
-    _objectId.setStorageMultisample(4, GL::RenderbufferFormat::R32UI, size);
-    _depth.setStorageMultisample(4, GL::RenderbufferFormat::DepthComponent24, size);
+    // Prepare the object select buffer;
+    _objectId.setStorage(GL::RenderbufferFormat::R32UI, viewport.size());
 
-  //  _color.setStorage(GL::RenderbufferFormat::RGBA8, size);
-  //  _objectId.setStorage(GL::RenderbufferFormat::R32UI, size);
-  //  _depth.setStorage(GL::RenderbufferFormat::DepthComponent24, size);
+    _objselect_framebuffer = GL::Framebuffer{viewport};
 
-    _framebuffer = GL::Framebuffer{viewport};
+    _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _objectId)
+                .mapForDraw({{Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{0}}});
 
-    _framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _color)
-                .attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
-                .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, _depth)
-                .mapForDraw({{Figure::PhongIdShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
-                            {Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}});
-
-    CORRADE_INTERNAL_ASSERT(_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
+    CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 }
 
 void Application::destroyGLBuffers() {
-   _framebuffer.detach(GL::Framebuffer::ColorAttachment{0})
-               .detach(GL::Framebuffer::ColorAttachment{1})
-               .detach(GL::Framebuffer::BufferAttachment::Depth);
+   _objselect_framebuffer.detach(GL::Framebuffer::ColorAttachment{0});
 }
 
 void Application::prepare3DFont() {
@@ -315,22 +303,11 @@ void Application::drawTextElements() {
 
 void Application::draw3DElements() {
     // Actually draw things to a custom framebuffer
-    _framebuffer
-        .clearColor(0, _clearColor)
-        .clearColor(1, Vector4ui{})
-        .clearDepth(1.0f)
+    _objselect_framebuffer
+        .clearColor(0, Vector4ui{})
         .bind();
 
-    GL::Renderer::enable(GL::Renderer::Feature::Blending);
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
-
-    _camera->draw(_drawables);
-    _camera->draw(_billboard_drawables);
-
-    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
-    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::disable(GL::Renderer::Feature::Blending);
+    _camera->draw(_selectable_drawables);
 
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
@@ -338,12 +315,17 @@ void Application::draw3DElements() {
 
     GL::Renderer::setClearColor(_clearColor);
 
-    /* Blit color to window framebuffer */
-    _framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
-    GL::AbstractFramebuffer::blit(_framebuffer, GL::defaultFramebuffer,
-        GL::defaultFramebuffer.viewport(), GL::FramebufferBlit::Color);
+    _camera->draw(_selectable_drawables);
+    _camera->draw(_drawables);
+    _camera->draw(_billboard_drawables);
 
+    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::disable(GL::Renderer::Feature::Blending);
 }
 
 void Application::drawIMGuiElements(int event_cnt) {
@@ -648,7 +630,7 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
             std::cerr << "mac_src e_l2_dev" << std::endl;
             return;
         }
-        std::cout << *mac_src << std::endl;
+        //std::cout << *mac_src << std::endl;
 
         Device::Stats *d_s = createSphere(*mac_src);
         _device_map.insert(std::make_pair(*mac_src, d_s));
@@ -853,7 +835,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
     o->translate({v.x(), 0.0f, v.y()});
 
-    UnsignedByte id = static_cast<UnsignedByte>(_device_objects.size()+1);
+    UnsignedByte id = static_cast<UnsignedByte>(_device_objects.size());
 
     Color3 c = 0xa5c9ea_rgbf;
     Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{
@@ -863,7 +845,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
         c,
         _sphere,
         Matrix4::scaling(Vector3{0.25f}),
-        _drawables};
+        _selectable_drawables};
 
 
     Device::Stats* d_s = new Device::Stats{mac, w, dev};
@@ -940,11 +922,8 @@ void Application::drawEvent() {
 
 
 void Application::viewportEvent(ViewportEvent& event) {
-    std::cout << "e " << std::endl;
     auto size = event.framebufferSize();
     const Range2Di newViewport = {{}, size};
-
-    _framebuffer.setViewport(newViewport);
 
     destroyGLBuffers();
     prepareGLBuffers(newViewport);
@@ -994,16 +973,15 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     if(event.button() != MouseEvent::Button::Left || _mousePressPosition != event.position()) return;
 
     /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
-    _framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{1});
-    Image2D data = _framebuffer.read(
-        Range2Di::fromSize({event.position().x(), _framebuffer.viewport().sizeY() - event.position().y() - 1}, {1, 1}),
+    _objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+    Image2D data = _objselect_framebuffer.read(
+        Range2Di::fromSize({event.position().x(), _objselect_framebuffer.viewport().sizeY() - event.position().y() - 1}, {1, 1}),
         {PixelFormat::R32UI});
-
 
     deselectDevice();
     UnsignedByte id = data.data<UnsignedByte>()[0];
     if(id > 0 && id < _device_objects.size()+1) {
-        Device::Stats *d_s = _device_objects.at(id-1)->_deviceStats;
+        Device::Stats *d_s = _device_objects.at(id)->_deviceStats;
         deviceClicked(d_s);
     }
 
