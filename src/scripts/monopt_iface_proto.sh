@@ -74,9 +74,10 @@ launch() {
         return 0
     fi
     iface=$1
-    script_path=/usr/local/share/monopticon/scripts/l2_eth_monitor.bro
-    bro_path=/usr/local/bro/bin/zeek
-    $bro_path -i $iface -b $script_path >/dev/null &
+    zeek_path="/usr/local/bro/bin/zeek"
+    zeek_lib_path="/usr/local/bro/share/bro/"
+    script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_lib_path/policy/misc/stats.bro"
+    $zeek_path -i $iface -b $script_path >/dev/null &
     echo $!
 }
 

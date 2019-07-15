@@ -1,1 +1,0 @@
-/home/synnick/projects/monopticon/src/expirements/netevent/epoch_event.zeek

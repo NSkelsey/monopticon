@@ -159,5 +159,3 @@ Clone this repository and install the packages:
 > sudo pacman -U zeek-broker-1.1.2.49-1-x86_64.pkg.tar
 > sudo pacman -U monopticon-0.1.0-1-x86_64.pkg.tar
 ```
-
-

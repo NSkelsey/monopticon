@@ -2,6 +2,7 @@
 
 #@load policy/protocols/conn/mac-logging
 #@load policy/protocols/conn/vlan-logging
+@load policy/misc/stats.bro
 
 export {
   type L2Summary: record {
@@ -69,7 +70,10 @@ export {
   # mac_src key
   global epoch_l2_dev_comm: table[string] of DeviceComm;
 
+  redef Stats::report_interval = 5sec;
 }
+
+
 
 event epoch_fire(m: EpochStep) {}
 
@@ -191,6 +195,7 @@ event raw_packet(p: raw_pkt_hdr)
 
 event zeek_init()
 {
+
   print "Trying to add peer";
   Broker::peer("127.0.0.1", 9999/tcp, 0sec);
   print "Starting epoch_steps";

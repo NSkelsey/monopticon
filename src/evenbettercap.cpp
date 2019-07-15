@@ -179,7 +179,6 @@ Application::Application(const Arguments& arguments):
 
     /* Camera setup */
     (*(_cameraRig = new Object3D{&_scene}))
-        //.translate(Vector3::yAxis(3.0f))
         .rotateY(40.0_degf);
     (*(_cameraObject = new Object3D{_cameraRig}))
         .translate(Vector3::zAxis(20.0f))
@@ -630,7 +629,6 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
             std::cerr << "mac_src e_l2_dev" << std::endl;
             return;
         }
-        //std::cout << *mac_src << std::endl;
 
         Device::Stats *d_s = createSphere(*mac_src);
         _device_map.insert(std::make_pair(*mac_src, d_s));
@@ -646,8 +644,6 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
 
     for (auto it2 = l2_dev_comm->begin(); it2 != l2_dev_comm->end(); it2++) {
         auto pair = *it2;
-        //std::cout << pair.first << std::endl;
-        //std::cout << pair.second << std::endl;
 
         auto *mac_src = broker::get_if<std::string>(pair.first);
         if (mac_src == nullptr) {
@@ -664,20 +660,17 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
             return;
         }
 
-        // TODO unwrap map
         auto *dComm = broker::get_if<broker::vector>(pair.second);
         if (dComm == nullptr) {
             std::cerr << "dComm" <<  std::endl;
             continue;
         }
 
-        // TODO unwrap map
         std::map<broker::data, broker::data> *tx_summary = broker::get_if<broker::table>(dComm->at(1));
         if (tx_summary == nullptr) {
             std::cerr << "tx_summary" <<  std::endl;
             continue;
         }
-        //std::cout << "tx_summary:" << tx_summary << std::endl;
 
         for (auto it3 = tx_summary->begin(); it3 != tx_summary->end(); it3++) {
             auto comm_pair = *it3;
