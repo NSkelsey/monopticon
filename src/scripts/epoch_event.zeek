@@ -18,6 +18,11 @@ export {
 
     # key mac_dst
     tx_summary: table[string] of L2Summary;
+
+    bcast_33: L2Summary &optional;
+    bcast_ff: L2Summary &optional;
+    bcast_01: L2Summary &optional;
+    bcast_XX: L2Summary &optional;
   };
 
   # Internal
@@ -130,14 +135,52 @@ function create_L2Summary(): L2Summary
   return summary;
 }
 
-function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr) {
-  local summary: L2Summary;
-  if (p$l2$dst !in comm$tx_summary) {
-    summary = create_L2Summary();
-  } else {
-    summary = comm$tx_summary[p$l2$dst];
+function is_broadcast(significant_byte: string): bool {
+  return significant_byte == /1|3|5|7|9|b|d|f/;
+}
+
+function get_bcast_summary(sig_byte: string, comm: DeviceComm): L2Summary {
+  if (sig_byte == /f/) {
+    if (!comm?$bcast_ff) {
+      comm$bcast_ff = create_L2Summary();
+    }
+    return comm$bcast_ff;
   }
-  comm$tx_summary[p$l2$dst] = summary;
+  if (sig_byte == /3/) {
+    if (!comm?$bcast_33) {
+       comm$bcast_33 = create_L2Summary();
+    }
+    return comm$bcast_33;
+  }
+  if (sig_byte == /1/) {
+    if (!comm?$bcast_01) {
+       comm$bcast_01 = create_L2Summary();
+    }
+    return comm$bcast_01;
+  } else {
+    if (!comm?$bcast_XX) {
+      comm$bcast_XX = create_L2Summary();
+    }
+    return comm$bcast_XX;
+  }
+}
+
+function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr): bool {
+  local summary: L2Summary;
+  local unicast = T;
+
+  local sig_byte = p$l2$dst[1:2];
+  if (is_broadcast(sig_byte)) {
+    unicast = F;
+    summary = get_bcast_summary(sig_byte, comm);
+  } else {
+    if (p$l2$dst !in comm$tx_summary) {
+      summary = create_L2Summary();
+    } else {
+      summary = comm$tx_summary[p$l2$dst];
+    }
+    comm$tx_summary[p$l2$dst] = summary;
+  }
 
   switch p$l2$proto
   {
@@ -150,7 +193,10 @@ function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr) {
     case L3_UNKNOWN:
       summary$unknown += 1; break;
   }
+
+  return unicast;
 }
+
 
 event raw_packet(p: raw_pkt_hdr)
 {
@@ -166,18 +212,18 @@ event raw_packet(p: raw_pkt_hdr)
       dev = L2DeviceTable[mac_src];
     }
 
-    # TODO(idem) prevent mac_dst spray
-    if (mac_dst !in L2DeviceTable) {
-      create_L2Device(mac_dst);
-    }
-
     local comm: DeviceComm;
     if (mac_src !in epoch_l2_dev_comm) {
         comm = create_DeviceComm(mac_src);
     } else {
         comm = epoch_l2_dev_comm[mac_src];
     }
-    update_comm_table(comm, p);
+
+    local unicast = update_comm_table(comm, p);
+    # TODO(idem) prevent mac_dst spray
+    if (unicast && mac_dst !in L2DeviceTable) {
+      create_L2Device(mac_dst);
+    }
 
     if (p?$ip && p$ip$src !in dev$emitted_ipv4) {
         add dev$emitted_ipv4[p$ip$src];

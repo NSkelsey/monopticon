@@ -2,6 +2,43 @@
 
 using namespace Monopticon;
 
+Util::L2Summary Util::parseL2Summary(broker::vector* l2summary) {
+    Util::L2Summary sum{0, 0, 0, 0};
+
+    auto *ipv4_cnt = broker::get_if<broker::count>(l2summary->at(0));
+    if (ipv4_cnt == nullptr) {
+        std::cerr << "ipv4_cnt" << std::endl;
+        return sum;
+    }
+    sum.ipv4_cnt = *ipv4_cnt;
+
+    auto *ipv6_cnt = broker::get_if<broker::count>(l2summary->at(1));
+    if (ipv6_cnt == nullptr) {
+        std::cerr << "ipv6_cnt" << std::endl;
+        return sum;
+    }
+    sum.ipv6_cnt = *ipv6_cnt;
+
+    auto *arp_cnt = broker::get_if<broker::count>(l2summary->at(2));
+    if (arp_cnt == nullptr) {
+        std::cerr << "arp_cnt" << std::endl;
+        return sum;
+    }
+    sum.arp_cnt = *arp_cnt;
+
+    auto *unknown_cnt = broker::get_if<broker::count>(l2summary->at(3));
+    if (unknown_cnt == nullptr) {
+        std::cerr << "unknown_cnt" << std::endl;
+        return sum;
+    }
+    sum.unknown_cnt = *unknown_cnt;
+    return sum;
+}
+
+int Util::SumTotal(Util::L2Summary struct_l2) {
+    return struct_l2.ipv4_cnt + struct_l2.ipv6_cnt + struct_l2.arp_cnt + struct_l2.unknown_cnt;
+}
+
 Vector2 Util::randCirclePoint() {
     float r = rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
 

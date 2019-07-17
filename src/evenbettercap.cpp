@@ -59,9 +59,13 @@ class Application: public Platform::Application {
 
         int parse_epoch_step(broker::zeek::Event event);
         void parse_stats_update(broker::zeek::Event event);
+        void parse_bcast_summaries(broker::vector *dComm, Device::Stats* tran_d_s);
+        void parse_single_mcast(int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
+
         Device::Stats* createSphere(const std::string);
 
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
+        void createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
 
 
@@ -251,6 +255,7 @@ Application::Application(const Arguments& arguments):
     }
 }
 
+
 void Application::prepareGLBuffers(const Range2Di& viewport) {
     GL::defaultFramebuffer.setViewport(viewport);
 
@@ -265,9 +270,11 @@ void Application::prepareGLBuffers(const Range2Di& viewport) {
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 }
 
+
 void Application::destroyGLBuffers() {
    _objselect_framebuffer.detach(GL::Framebuffer::ColorAttachment{0});
 }
+
 
 void Application::prepare3DFont() {
     /* Load FreeTypeFont plugin */
@@ -290,6 +297,7 @@ void Application::prepare3DFont() {
            .setOutlineRange(0.45f, 0.445f);
 }
 
+
 void Application::drawTextElements() {
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
@@ -303,6 +311,7 @@ void Application::drawTextElements() {
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One, GL::Renderer::BlendFunction::Zero);
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
 }
+
 
 void Application::draw3DElements() {
     // Actually draw things to a custom framebuffer
@@ -330,6 +339,7 @@ void Application::draw3DElements() {
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 }
+
 
 void Application::drawIMGuiElements(int event_cnt) {
     _imgui.newFrame();
@@ -521,6 +531,7 @@ void Application::drawIMGuiElements(int event_cnt) {
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 }
 
+
 int Application::processNetworkEvents() {
     // Process all messages from status_subscriber before doing anything
     if (_status_subscriber.available()) {
@@ -654,10 +665,7 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
         return 0;
     }
 
-    int ipv4_tot = 0;
-    int ipv6_tot = 0;
-    int arp_tot = 0;
-    int ukn_tot = 0;
+    int pkt_tot = 0;
 
     for (auto it2 = l2_dev_comm->begin(); it2 != l2_dev_comm->end(); it2++) {
         auto pair = *it2;
@@ -682,6 +690,9 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
             std::cerr << "dComm" <<  std::endl;
             continue;
         }
+
+        std::cout << *dComm << std::endl;
+        parse_bcast_summaries(dComm, tran_d_s);
 
         std::map<broker::data, broker::data> *tx_summary = broker::get_if<broker::table>(dComm->at(1));
         if (tx_summary == nullptr) {
@@ -711,48 +722,49 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
                 std::cerr << "l2summary" << mac_src << std::endl;
                 continue;
             }
-
-            auto *ipv4_cnt = broker::get_if<broker::count>(l2summary->at(0));
-            if (ipv4_cnt == nullptr) {
-                std::cerr << "ipv4_cnt" << mac_src << std::endl;
-                continue;
-            }
-            ipv4_tot += *ipv4_cnt;
-
-            auto *ipv6_cnt = broker::get_if<broker::count>(l2summary->at(1));
-            if (ipv6_cnt == nullptr) {
-                std::cerr << "ipv6_cnt" << mac_src << std::endl;
-                continue;
-            }
-            ipv6_tot += *ipv6_cnt;
-
-            auto *arp_cnt = broker::get_if<broker::count>(l2summary->at(2));
-            if (arp_cnt == nullptr) {
-                std::cerr << "arp_cnt" << mac_src << std::endl;
-                continue;
-            }
-            arp_tot += *arp_cnt;
-
-            auto *unknown_cnt = broker::get_if<broker::count>(l2summary->at(3));
-            if (unknown_cnt == nullptr) {
-                std::cerr << "unknown_cnt" << mac_src << std::endl;
-                continue;
-            }
-            ukn_tot += *unknown_cnt;
+            Util::L2Summary struct_l2 = Util::parseL2Summary(l2summary);
 
             Vector3 p1 = tran_d_s->circPoint;
             Vector3 p2 = recv_d_s->circPoint;
 
-            createLines(p1, p2, Util::L3Type::IPV4, *ipv4_cnt);
-            createLines(p1, p2, Util::L3Type::IPV6, *ipv6_cnt);
-            createLines(p1, p2, Util::L3Type::ARP, *arp_cnt);
-            createLines(p1, p2, Util::L3Type::UNKNOWN, *unknown_cnt);
+            createLines(p1, p2, Util::L3Type::IPV4, struct_l2.ipv4_cnt);
+            createLines(p1, p2, Util::L3Type::IPV6, struct_l2.ipv6_cnt);
+            createLines(p1, p2, Util::L3Type::ARP, struct_l2.arp_cnt);
+            createLines(p1, p2, Util::L3Type::UNKNOWN, struct_l2.unknown_cnt);
+
+            int dev_tot = Util::SumTotal(struct_l2);
+            tran_d_s->num_pkts_sent += dev_tot;
+            recv_d_s->num_pkts_recv += dev_tot;
+
+            pkt_tot += dev_tot;
         }
     }
 
-    return ipv4_tot + ipv6_tot + arp_tot + ukn_tot;
+    return pkt_tot;
     // TODO add seen IP addresses
 }
+
+
+void Application::parse_single_mcast(int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s) {
+    Util::L2Summary sum;
+    Device::PrefixStats *dp_s = nullptr;
+
+    auto *bcast_val = broker::get_if<broker::vector>(dComm->at(pos));
+    if (bcast_val != nullptr) {
+        sum = Util::parseL2Summary(bcast_val);
+        dp_s = _dst_prefix_group_map.at(v);
+        createPoolHits(tran_d_s, dp_s, sum);
+    }
+}
+
+
+void Application::parse_bcast_summaries(broker::vector *dComm, Device::Stats* tran_d_s) {
+    parse_single_mcast(2, "ff", dComm, tran_d_s);
+    parse_single_mcast(3, "33", dComm, tran_d_s);
+    parse_single_mcast(4, "01", dComm, tran_d_s);
+    parse_single_mcast(5, "odd", dComm, tran_d_s);
+}
+
 
 void Application::parse_stats_update(broker::zeek::Event event) {
     broker::vector parent_content = event.args();
@@ -794,6 +806,7 @@ void Application::parse_stats_update(broker::zeek::Event event) {
     curr_pkt_lag = *pkt_lag;
 }
 
+
 void Application::deselectDevice() {
     if (_selectedDevice != nullptr) {
         _selectedDevice->setSelected(false);
@@ -806,6 +819,7 @@ void Application::deselectDevice() {
         _selectedDevice = nullptr;
     }
 }
+
 
 void Application::addDirectLabels(Device::Stats *d_s) {
     auto scaling = Matrix4::scaling(Vector3{0.10f});
@@ -837,6 +851,7 @@ void Application::addDirectLabels(Device::Stats *d_s) {
     }
 }
 
+
 void Application::highlightDevice(Device::Stats *d_s) {
     Object3D *o = new Object3D{&_scene};
 
@@ -853,6 +868,7 @@ void Application::highlightDevice(Device::Stats *d_s) {
                                                                0x00ff00_rgbf};
 }
 
+
 void Application::deviceClicked(Device::Stats *d_s) {
     deselectDevice();
 
@@ -861,6 +877,7 @@ void Application::deviceClicked(Device::Stats *d_s) {
 
     highlightDevice(d_s);
 }
+
 
 Device::Stats* Application::createSphere(const std::string mac) {
     Object3D* o = new Object3D{&_scene};
@@ -912,11 +929,33 @@ Device::Stats* Application::createSphere(const std::string mac) {
     return d_s;
 }
 
+
 Device::PrefixStats* Application::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
     auto ring = Util::createLayoutRing(_scene, _drawables, 1.0f, pos);
     Device::PrefixStats* dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
 
     return dp_s;
+}
+
+void Application::createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum) {
+    using namespace Monopticon::Util;
+
+    if (sum.ipv4_cnt > 0) {
+        createPoolHit(dp_s, typeColor(L3Type::IPV4));
+        createLine(tran_d_s->circPoint, dp_s->_position, L3Type::IPV4);
+    }
+    if (sum.ipv6_cnt > 0) {
+        createPoolHit(dp_s, typeColor(L3Type::IPV6));
+        createLine(tran_d_s->circPoint, dp_s->_position, L3Type::IPV6);
+    }
+    if (sum.arp_cnt > 0) {
+        createPoolHit(dp_s, typeColor(L3Type::ARP));
+        createLine(tran_d_s->circPoint, dp_s->_position, L3Type::ARP);
+    }
+    if (sum.unknown_cnt > 0) {
+        createPoolHit(dp_s, typeColor(L3Type::UNKNOWN));
+        createLine(tran_d_s->circPoint, dp_s->_position, L3Type::UNKNOWN);
+    }
 }
 
 void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
@@ -944,12 +983,14 @@ void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
     dp_s->contacts.push_back(pair);
 }
 
+
 void Application::createLines(Vector3 a, Vector3 b, Util::L3Type t, int count) {
     int ceiling = std::min(count, 1);
     for (int i = 0; i < ceiling; i++) {
         createLine(a, b, t);
     }
 }
+
 
 void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     Object3D* line = new Object3D{&_scene};

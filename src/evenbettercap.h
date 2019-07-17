@@ -114,8 +114,19 @@ namespace Monopticon {
 
   }
 
-  // Definitions
+// Definitions
 namespace Util {
+
+    struct L2Summary {
+        int ipv4_cnt;
+        int ipv6_cnt;
+        int arp_cnt;
+        int unknown_cnt;
+    };
+
+    L2Summary parseL2Summary(broker::vector *l2summary);
+
+    int SumTotal(L2Summary struct_l2);
 
     Vector2 randCirclePoint();
     Vector2 paramCirclePoint(int num_elem, int pos);
