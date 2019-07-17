@@ -70,7 +70,7 @@ export {
   # mac_src key
   global epoch_l2_dev_comm: table[string] of DeviceComm;
 
-  redef Stats::report_interval = 5sec;
+  redef Stats::report_interval = 250msec;
 }
 
 
@@ -205,6 +205,7 @@ event Broker::peer_added(endpoint: Broker::EndpointInfo, msg: string)
 {
     print "peer added", endpoint;
     Broker::auto_publish("monopt/l2", epoch_fire);
+    Broker::auto_publish("monopt/stats", Stats::log_stats);
     #last_tick = network_time();
     schedule tick_resolution { epoch_step() };
 }

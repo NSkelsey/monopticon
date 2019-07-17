@@ -20,17 +20,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Monopticon {
 
+int MSAA_CNT = 4; // Number of subpixel samples for MultiSampling Anti-Aliasing
+
 // Zeek broker components
 broker::endpoint _ep;
-broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2"});
+broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2", "monopt/stats"});
 broker::status_subscriber _status_subscriber = _ep.make_status_subscriber(true);
-
-void print_peer_subs();
 
 using namespace Magnum;
 using namespace Math::Literals;
-
-int MSAA_CNT = 4;
 
 
 class Application: public Platform::Application {
@@ -59,7 +57,8 @@ class Application: public Platform::Application {
         void mouseScrollEvent(MouseScrollEvent& event) override;
         void textInputEvent(TextInputEvent& event) override;
 
-        void parse_epoch_step(broker::zeek::Event event);
+        int parse_epoch_step(broker::zeek::Event event);
+        void parse_stats_update(broker::zeek::Event event);
         Device::Stats* createSphere(const std::string);
 
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
@@ -128,7 +127,7 @@ class Application: public Platform::Application {
         Device::Stats* _activeGateway{nullptr};
 
         // Custom ImGui interface components
-        Device::ChartMgr ifaceChartMgr{240, 1.5f};
+        Device::ChartMgr ifaceChartMgr{240, 3.0f};
         Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
 
         int num_rings = 8;
@@ -140,6 +139,10 @@ class Application: public Platform::Application {
 
         int run_sum;
         int frame_cnt;
+        std::chrono::duration<int64_t, std::nano> curr_pkt_lag;
+
+        int tot_pkt_drop;
+        int tot_epoch_drop;
 
         bool _orbit_toggle{false};
 
@@ -171,8 +174,6 @@ Application::Application(const Arguments& arguments):
         std::cout << "Endpoint listening on: ";
         std::cout << addr << ":" << listen_port << std::endl;
     }
-
-    print_peer_subs();
 
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
@@ -216,6 +217,9 @@ Application::Application(const Arguments& arguments):
 
     run_sum = 0;
     frame_cnt = 0;
+    tot_pkt_drop = 0;
+    tot_epoch_drop = 0;
+    curr_pkt_lag = broker::timespan(0);
 
     setSwapInterval(1);
     setMinimalLoopPeriod(16);
@@ -330,7 +334,7 @@ void Application::draw3DElements() {
 void Application::drawIMGuiElements(int event_cnt) {
     _imgui.newFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(315, 225), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(315, 245), ImGuiCond_Always);
     auto flags = ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoScrollbar;
     ImGui::Begin("Tap Status", nullptr, flags);
 
@@ -410,8 +414,21 @@ void Application::drawIMGuiElements(int event_cnt) {
 
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
             1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
-    ImGui::Text("Sample rate %.3f SPS event cnt %d",
-        1.0/inv_sample_rate, event_cnt);
+
+    auto s = "Sample rate %.3f SPS event cnt %d";
+    if (inv_sample_rate > 1.0) {
+        ImGui::TextColored(ImVec4(1,0,0,1), s, 1.0/inv_sample_rate, event_cnt);
+    } else {
+        ImGui::Text(s, 1.0/inv_sample_rate, event_cnt);
+    }
+
+    auto r = "Pkt Lag %.1f ms; Pkt drop: %d; Epoch drop: %d";
+    double t = curr_pkt_lag.count()/1000000.0;
+    if (curr_pkt_lag > std::chrono::milliseconds(5)) {
+        ImGui::TextColored(ImVec4(1,0,0,1), r, t, tot_pkt_drop, tot_epoch_drop);
+    } else {
+        ImGui::Text(r, t, tot_pkt_drop, tot_epoch_drop);
+    }
 
     ImGui::Separator();
     ifaceChartMgr.draw();
@@ -531,49 +548,45 @@ int Application::processNetworkEvents() {
     int event_cnt = 0;
     int processed_event_cnt = 0;
 
+    int epoch_packets_sum = 0;
+
     // Read and parse packets
     for (auto msg : _subscriber.poll()) {
         event_cnt++;
         if (event_cnt % inv_sample_rate == 0) {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
-            if (event.name().compare("monopt/l2")) {
-                parse_epoch_step(event);
+            std::string name = to_string(topic);
+            //std::cout << "topic name: " << name << std::endl;
+            if (name.compare("monopt/l2") == 0) {
+                epoch_packets_sum += parse_epoch_step(event);
+            } else if (name.compare("monopt/stats") == 0) {
+                parse_stats_update(event);
             } else {
                 std::cerr << "Unhandled Event: " << event.name() << std::endl;
             }
             processed_event_cnt ++;
+        } else {
+            tot_epoch_drop += 1;
         }
-        if (event_cnt % 4 == 0 && inv_sample_rate <= 4) {
+        if (event_cnt % 16 == 0 && inv_sample_rate <= 16) {
             inv_sample_rate = inv_sample_rate * 2;
         }
     }
 
     // TODO NOTE WARNING dropping events on this side can introduce non existent mac_src
     // devices into the graphic
-    if (event_cnt < 4 && inv_sample_rate > 1) {
+    if (event_cnt < 8 && inv_sample_rate > 1) {
         inv_sample_rate = inv_sample_rate/2;
-    }
-
-    // Update Iface packet statistics
-    frame_cnt ++;
-    ifaceChartMgr.push(static_cast<float>(event_cnt));
-
-    if (frame_cnt % 15 == 0) {
-        ifaceLongChartMgr.push(static_cast<float>(run_sum));
-        run_sum = 0;
-        frame_cnt = 0;
-
-        print_peer_subs();
-    } else {
-        run_sum += event_cnt;
     }
 
     if (frame_cnt % 60 == 0) {
         _iface_list = Util::get_iface_list();
     }
 
-    // Remove packet_lines that have expired for the queue
+    ifaceChartMgr.push(static_cast<float>(epoch_packets_sum));
+
+    // Remove packet_lines that have expired from the queue
     std::set<Figure::PacketLineDrawable *>::iterator it;
     for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
         // Note this is an O(N) operation
@@ -608,26 +621,26 @@ int Application::processNetworkEvents() {
 }
 
 
-void Application::parse_epoch_step(broker::zeek::Event event) {
+int Application::parse_epoch_step(broker::zeek::Event event) {
     broker::vector parent_content = event.args();
 
     broker::vector *wrapper = broker::get_if<broker::vector>(parent_content.at(0));
     if (wrapper == nullptr) {
         std::cerr << "wrapper" << std::endl;
-        return;
+        return 0;
     }
 
     broker::set *enter_l2_devices = broker::get_if<broker::set>(wrapper->at(0));
     if (enter_l2_devices == nullptr) {
         std::cerr << "enter_l2_devices" << std::endl;
-        return;
+        return 0;
     }
 
     for (auto it = enter_l2_devices->begin(); it != enter_l2_devices->end(); it++) {
         auto *mac_src = broker::get_if<std::string>(*it);
         if (mac_src == nullptr) {
             std::cerr << "mac_src e_l2_dev" << std::endl;
-            return;
+            return 0;
         }
 
         Device::Stats *d_s = createSphere(*mac_src);
@@ -638,9 +651,13 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
     std::map<broker::data, broker::data> *l2_dev_comm = broker::get_if<broker::table>(wrapper->at(1));
     if (l2_dev_comm == nullptr) {
         std::cerr << "l2_dev_comm" << std::endl;
-
-        return;
+        return 0;
     }
+
+    int ipv4_tot = 0;
+    int ipv6_tot = 0;
+    int arp_tot = 0;
+    int ukn_tot = 0;
 
     for (auto it2 = l2_dev_comm->begin(); it2 != l2_dev_comm->end(); it2++) {
         auto pair = *it2;
@@ -648,7 +665,7 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
         auto *mac_src = broker::get_if<std::string>(pair.first);
         if (mac_src == nullptr) {
             std::cerr << "mac_src e_l2_dev" << std::endl;
-            return;
+            continue;
         }
 
         Device::Stats *tran_d_s;
@@ -657,7 +674,7 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
             tran_d_s = search->second;
         } else {
             std::cerr << "tran_d_s not found! " << *mac_src << std::endl;
-            return;
+            continue;
         }
 
         auto *dComm = broker::get_if<broker::vector>(pair.second);
@@ -686,7 +703,7 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
                 recv_d_s = search->second;
             } else {
                 std::cerr << "recv_d_s not found! " << *mac_dst << std::endl;
-                return;
+                continue;
             }
 
             auto *l2summary = broker::get_if<broker::vector>(comm_pair.second);
@@ -700,24 +717,28 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
                 std::cerr << "ipv4_cnt" << mac_src << std::endl;
                 continue;
             }
+            ipv4_tot += *ipv4_cnt;
 
             auto *ipv6_cnt = broker::get_if<broker::count>(l2summary->at(1));
             if (ipv6_cnt == nullptr) {
                 std::cerr << "ipv6_cnt" << mac_src << std::endl;
                 continue;
             }
+            ipv6_tot += *ipv6_cnt;
 
             auto *arp_cnt = broker::get_if<broker::count>(l2summary->at(2));
             if (arp_cnt == nullptr) {
                 std::cerr << "arp_cnt" << mac_src << std::endl;
                 continue;
             }
+            arp_tot += *arp_cnt;
 
             auto *unknown_cnt = broker::get_if<broker::count>(l2summary->at(3));
             if (unknown_cnt == nullptr) {
                 std::cerr << "unknown_cnt" << mac_src << std::endl;
                 continue;
             }
+            ukn_tot += *unknown_cnt;
 
             Vector3 p1 = tran_d_s->circPoint;
             Vector3 p2 = recv_d_s->circPoint;
@@ -729,7 +750,48 @@ void Application::parse_epoch_step(broker::zeek::Event event) {
         }
     }
 
+    return ipv4_tot + ipv6_tot + arp_tot + ukn_tot;
     // TODO add seen IP addresses
+}
+
+void Application::parse_stats_update(broker::zeek::Event event) {
+    broker::vector parent_content = event.args();
+
+    broker::vector *wrapper = broker::get_if<broker::vector>(parent_content.at(0));
+    if (wrapper == nullptr) {
+        std::cerr << "stat wrapper" << std::endl;
+        return;
+    }
+
+    broker::count *mem_usage = broker::get_if<broker::count>(wrapper->at(2));
+    if (mem_usage == nullptr) {
+        std::cerr << "stat mem" << std::endl;
+        return;
+    }
+
+    broker::count *pkts_proc = broker::get_if<broker::count>(wrapper->at(3));
+    if (pkts_proc == nullptr) {
+        std::cerr << "stat pkts_proc" << std::endl;
+        return;
+    }
+
+    // Update iface packet statistics
+    ifaceLongChartMgr.push(static_cast<float>(*pkts_proc));
+
+    broker::count *pkts_drop = broker::get_if<broker::count>(wrapper->at(5));
+    if (pkts_drop == nullptr) {
+        std::cerr << "stat pkts_drop" << std::endl;
+        return;
+    }
+    tot_pkt_drop += (*pkts_drop);
+
+    broker::timespan *pkt_lag = broker::get_if<broker::timespan>(wrapper->at(7));
+    if (pkt_lag == nullptr) {
+        std::cerr << "stat pkt_lag" << std::endl;
+        return;
+    }
+
+    curr_pkt_lag = *pkt_lag;
 }
 
 void Application::deselectDevice() {
@@ -908,6 +970,7 @@ void Application::drawEvent() {
 
     drawIMGuiElements(event_cnt);
 
+    frame_cnt ++;
     swapBuffers();
     _timeline.nextFrame();
     redraw();
@@ -1009,14 +1072,6 @@ void Application::mouseScrollEvent(MouseScrollEvent& event) {
 
 void Application::textInputEvent(TextInputEvent& event) {
     if(_imgui.handleTextInputEvent(event)) return;
-}
-
-void print_peer_subs() {
-    auto ts = Monopticon::_ep.peer_subscriptions();
-    for (auto it = ts.begin(); it != ts.end(); it++) {
-        auto t = *it;
-        std::cout << t << std::endl;
-    }
 }
 
 }

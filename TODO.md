@@ -61,6 +61,7 @@ As of 12/7/19
     - [ ] Add sounds for specific events
     - [ ] Create a flat band mesh instead of single pix width wireframes
     - [ ] Add Oscope like persistence to transmissions
+    - [ ] Use a drop down menu to select the statistic to graph in the ifaceMgrCharts
 
 DONE
 ====
