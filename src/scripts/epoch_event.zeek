@@ -38,6 +38,9 @@ export {
     # Table that maps inferred routes
     # mac_dst -> subnet
     arp_table: table[string] of subnet;
+
+    group: bool;
+    label: string;
   };
 
   # Internal
@@ -52,6 +55,7 @@ export {
   type EpochStep: record {
     enter_l2devices: set[string];
     #enter_routers: set[Router];
+    # TODO enter_prefix_group: set[string];
 
     l2_dev_comm: table[string] of DeviceComm;
     #moment: time;
@@ -65,6 +69,9 @@ export {
   # mac_src -> Router
   global RouterTable: table[string] of Router;
 
+  # vector of [{}, {'ff'-> L1Dev, '33' -> L2Dev}, {}}
+  global PrefixVec: vector of table[string] of L2Device;
+
   #global tick_resolution = 250usec;
   global tick_resolution = 15msec;
 
@@ -75,14 +82,19 @@ export {
   # mac_src key
   global epoch_l2_dev_comm: table[string] of DeviceComm;
 
+  type Result: record {
+    ok: bool;
+    v: any &optional;
+  };
+
   redef Stats::report_interval = 250msec;
 }
 
 
-
 event epoch_fire(m: EpochStep) {}
 
-event epoch_step() {
+event epoch_step()
+{
 
   local msg: EpochStep;
 
@@ -103,13 +115,15 @@ event epoch_step() {
 }
 
 
-function create_L2Device(mac_src: string): L2Device
+function create_L2Device(mac_src: string, is_group: bool): L2Device
 {
   local dev: L2Device;
+  dev$group = is_group;
   dev$mac = mac_src;
   dev$emitted_ipv4 = set();
   dev$emitted_ipv6 = set();
   dev$arp_table = table();
+  print mac_src;
   add epoch_new_l2devices[mac_src];
   L2DeviceTable[mac_src] = dev;
   return dev;
@@ -135,24 +149,44 @@ function create_L2Summary(): L2Summary
   return summary;
 }
 
-function is_broadcast(significant_byte: string): bool {
-  return significant_byte == /1|3|5|7|9|b|d|f/;
+function is_broadcast(significant_bytes: string): bool
+{
+  return significant_bytes[1] == /1|3|5|7|9|b|d|f/;
 }
 
-function get_bcast_summary(sig_byte: string, comm: DeviceComm): L2Summary {
-  if (sig_byte == /f/) {
+function try_to_match_prefix(mac_src: string): Result
+{
+  for (i in PrefixVec) {
+    local prefix_table = PrefixVec[i];
+    local sig_bytes = mac_src[0:i+1];
+    if (|prefix_table| == 0) {
+      next;
+    }
+    for (prefix in prefix_table) {
+      local l2dev = prefix_table[prefix];
+      if (prefix == sig_bytes) {
+        return [$ok=T, $v=l2dev];
+      }
+    }
+  }
+  return [$ok=F];
+}
+
+function get_bcast_summary(sig_bytes: string, comm: DeviceComm): L2Summary
+{
+  if (sig_bytes == /ff/) {
     if (!comm?$bcast_ff) {
       comm$bcast_ff = create_L2Summary();
     }
     return comm$bcast_ff;
   }
-  if (sig_byte == /3/) {
+  if (sig_bytes == /33/) {
     if (!comm?$bcast_33) {
        comm$bcast_33 = create_L2Summary();
     }
     return comm$bcast_33;
   }
-  if (sig_byte == /1/) {
+  if (sig_bytes == /01/) {
     if (!comm?$bcast_01) {
        comm$bcast_01 = create_L2Summary();
     }
@@ -165,21 +199,29 @@ function get_bcast_summary(sig_byte: string, comm: DeviceComm): L2Summary {
   }
 }
 
-function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr): bool {
+function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr): bool
+{
   local summary: L2Summary;
   local unicast = T;
 
-  local sig_byte = p$l2$dst[1:2];
-  if (is_broadcast(sig_byte)) {
+  local sig_bytes = p$l2$dst[0:2];
+  if (is_broadcast(sig_bytes)) {
     unicast = F;
-    summary = get_bcast_summary(sig_byte, comm);
+    summary = get_bcast_summary(sig_bytes, comm);
   } else {
-    if (p$l2$dst !in comm$tx_summary) {
+    local mac_dst = p$l2$dst;
+    local res = try_to_match_prefix(mac_dst);
+    if (res$ok) {
+        local dev: L2Device = res$v;
+        mac_dst = dev$mac;
+    }
+
+    if (mac_dst !in comm$tx_summary) {
       summary = create_L2Summary();
     } else {
-      summary = comm$tx_summary[p$l2$dst];
+      summary = comm$tx_summary[mac_dst];
     }
-    comm$tx_summary[p$l2$dst] = summary;
+    comm$tx_summary[mac_dst] = summary;
   }
 
   switch p$l2$proto
@@ -197,7 +239,6 @@ function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr): bool {
   return unicast;
 }
 
-
 event raw_packet(p: raw_pkt_hdr)
 {
   if (p?$l2 && p$l2?$src) {
@@ -205,24 +246,35 @@ event raw_packet(p: raw_pkt_hdr)
     local mac_dst = p$l2$dst;
 
     local dev: L2Device;
-    # TODO(sec/scalability) add mac spoofing protection here
-    if (mac_src !in L2DeviceTable) {
-      dev = create_L2Device(mac_src);
+
+    # TODO Match the prefix of the mac against existing groups
+    local res = try_to_match_prefix(mac_src);
+    if (res$ok) {
+      dev = res$v;
+      mac_src = dev$mac;
     } else {
-      dev = L2DeviceTable[mac_src];
+      # TODO(sec/scalability) add mac spoofing protection here
+      if (mac_src !in L2DeviceTable) {
+        dev = create_L2Device(mac_src, F);
+      } else {
+        dev = L2DeviceTable[mac_src];
+      }
     }
 
     local comm: DeviceComm;
     if (mac_src !in epoch_l2_dev_comm) {
-        comm = create_DeviceComm(mac_src);
+      comm = create_DeviceComm(mac_src);
     } else {
-        comm = epoch_l2_dev_comm[mac_src];
+      comm = epoch_l2_dev_comm[mac_src];
     }
 
     local unicast = update_comm_table(comm, p);
     # TODO(idem) prevent mac_dst spray
     if (unicast && mac_dst !in L2DeviceTable) {
-      create_L2Device(mac_dst);
+      res = try_to_match_prefix(mac_dst);
+      if (!res$ok) {
+        create_L2Device(mac_dst, F);
+      }
     }
 
     if (p?$ip && p$ip$src !in dev$emitted_ipv4) {
@@ -241,6 +293,12 @@ event raw_packet(p: raw_pkt_hdr)
 
 event zeek_init()
 {
+  local cop = create_L2Device("00:04:13", T);
+  cop$label="Copernico APs";
+
+  local copt: table[string] of L2Device = table(["00:04:13"] = cop);
+  local t = table();
+  PrefixVec = [t, t, t, t, t, t, t, copt];
 
   print "Trying to add peer";
   Broker::peer("127.0.0.1", 9999/tcp, 0sec);

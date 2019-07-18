@@ -2,14 +2,9 @@ TODO
 =====
 As of 12/7/19
 
-- [ ] Add functionality to signalling logic
-    - [ ] support prefix pools
-    - [ ] support broadcast pools
-    - [ ] add ip information to nodes
-    - [ ] maybe expire devices after timeout with `exit`
-
 - [ ] Improve Navigation
-    - [ ] Zooming
+    - [ ] Zooming (stashed...)
+        - understand why cameraRig transformation produce crazy results
     - [ ] Move camera to orbit other points
 
 - [ ] Improve layout:
@@ -35,6 +30,13 @@ As of 12/7/19
     - analyze BPF syntax and zeek configuration - exclude filters via zeek module
     - add ui elements (text bar, minimal lookback)
     - apply filters
+
+- [ ] Add functionality to signalling logic
+    - [x] support prefix pools
+        -x bogons & selected prefixes transmit just like devices
+    - [x] support broadcast pools
+    - [ ] add ip information to nodes
+    - [ ] maybe expire devices after timeout with `exit`
 
 - [ ] Improve Scaling
     - [x] Dies at 65355 "too large scene" Corrade assert // handled with hardcoded limit for now

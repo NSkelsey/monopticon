@@ -568,7 +568,6 @@ int Application::processNetworkEvents() {
             broker::topic topic = broker::get_topic(msg);
             broker::zeek::Event event = broker::get_data(msg);
             std::string name = to_string(topic);
-            //std::cout << "topic name: " << name << std::endl;
             if (name.compare("monopt/l2") == 0) {
                 epoch_packets_sum += parse_epoch_step(event);
             } else if (name.compare("monopt/stats") == 0) {
@@ -654,6 +653,7 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
             return 0;
         }
 
+        std::cout << "monpt " << *mac_src << std::endl;
         Device::Stats *d_s = createSphere(*mac_src);
         _device_map.insert(std::make_pair(*mac_src, d_s));
         addDirectLabels(d_s);
@@ -691,7 +691,6 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
             continue;
         }
 
-        std::cout << *dComm << std::endl;
         parse_bcast_summaries(dComm, tran_d_s);
 
         std::map<broker::data, broker::data> *tx_summary = broker::get_if<broker::table>(dComm->at(1));
@@ -956,6 +955,8 @@ void Application::createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *d
         createPoolHit(dp_s, typeColor(L3Type::UNKNOWN));
         createLine(tran_d_s->circPoint, dp_s->_position, L3Type::UNKNOWN);
     }
+
+    tran_d_s->num_pkts_sent += Util::SumTotal(sum);
 }
 
 void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
