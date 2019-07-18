@@ -22,7 +22,6 @@
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Resource.h>
-#include <Corrade/Utility/FormatStl.h>
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Mesh.h>
@@ -132,6 +131,7 @@ namespace Util {
     Vector2 paramCirclePoint(int num_elem, int pos);
     Vector2 randOffset(float z);
     Figure::RingDrawable* createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans);
+
 
     void print_peer_subs();
     std::string exec_output(std::string cmd);
@@ -313,14 +313,10 @@ class ParaLineShader: public GL::AbstractShaderProgram {
 
         explicit ParaLineShader();
 
-        ParaLineShader& setColor(const Color3& color);
-
+        ParaLineShader& setColor(const Color4& color);
         ParaLineShader& setAPos(const Vector3& position);
-
         ParaLineShader& setBPos(const Vector3& position);
-
         ParaLineShader& setTParam(const float t);
-
         ParaLineShader& setTransformationProjectionMatrix(const Matrix4& matrix);
 
     private:
@@ -333,7 +329,7 @@ class ParaLineShader: public GL::AbstractShaderProgram {
 
 class PacketLineDrawable: public SceneGraph::Drawable3D {
     public:
-        explicit PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group, Color3 c);
+        explicit PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group, Color4 c);
 
         Object3D &_object;
         bool _expired;
@@ -346,6 +342,7 @@ class PacketLineDrawable: public SceneGraph::Drawable3D {
         Vector3 _a;
         Vector3 _b;
         float _t;
+        Color4 _c;
 };
 
 class UnitBoardDrawable: public SceneGraph::Drawable3D {
@@ -403,11 +400,8 @@ class PoolShader: public GL::AbstractShaderProgram {
         explicit PoolShader();
 
         PoolShader& setColor(const Color3& color);
-
         PoolShader& setOriginPos(const Vector3& position);
-
         PoolShader& setTParam(const float t);
-
         PoolShader& setTransformationProjectionMatrix(const Matrix4& matrix);
 
     private:
@@ -441,10 +435,8 @@ class WorldLinkShader: public GL::AbstractShaderProgram {
         explicit WorldLinkShader();
 
         WorldLinkShader& setColor(const Color3& color);
-
         WorldLinkShader& setOriginPos(const Vector3& position);
         WorldLinkShader& setScreenPos(const Vector2& screenPos);
-
         WorldLinkShader& setTransformationProjectionMatrix(const Matrix4& matrix);
 
     private:

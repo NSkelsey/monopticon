@@ -1,7 +1,7 @@
-uniform lowp vec3 color;
+uniform lowp vec4 color;
 
 out highp vec4 fragmentColor;
 
 void main() {
-    fragmentColor = vec4(color, 1.0);
+    fragmentColor = vec4(color);
 }

@@ -96,7 +96,7 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
            .setTimeIntensity(_t)
            /* relative to the camera */
            .setLightPosition({0.0f, 4.0f, 3.0f})
-           .setObjectId(_id);
+           .setObjectId(_id+1);
     _mesh.draw(_shader);
 }
 
@@ -144,7 +144,7 @@ ParaLineShader::ParaLineShader() {
 }
 
 
-ParaLineShader& ParaLineShader::setColor(const Color3& color) {
+ParaLineShader& ParaLineShader::setColor(const Color4& color) {
     setUniform(_colorUniform, color);
     return *this;
 }
@@ -170,18 +170,18 @@ ParaLineShader& ParaLineShader::setTransformationProjectionMatrix(const Matrix4&
 }
 
 
-PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group, Color3 c):
+PacketLineDrawable::PacketLineDrawable(Object3D& object, ParaLineShader& shader, Vector3& a, Vector3& b, SceneGraph::DrawableGroup3D& group, Color4 c):
     SceneGraph::Drawable3D{object, &group},
     _object{object},
     _shader{shader},
     _a{a},
-    _b{b}
+    _b{b},
+    _c{c}
 {
     _t = 0.0f;
     // TODO more efficient to initialize in caller
     _mesh = MeshTools::compile(Primitives::line3D(a,b));
     _expired = false;
-    _shader.setColor(c);
 }
 
 void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
@@ -198,7 +198,8 @@ void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::C
     _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix)
            .setBPos(_b)
            .setAPos(_a)
-           .setTParam(_t);
+           .setTParam(_t)
+           .setColor(_c);
     _mesh.draw(_shader);
 }
 

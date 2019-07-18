@@ -78,6 +78,8 @@ class Application: public Platform::Application {
         void deviceClicked(Device::Stats *d_s);
         void highlightDevice(Device::Stats *d_s);
 
+        void DeleteEverything();
+
     private:
         // UI fields
         ImGuiIntegration::Context _imgui{NoCreate};
@@ -193,7 +195,6 @@ Application::Application(const Arguments& arguments):
         .setProjectionMatrix(Matrix4::perspectiveProjection(50.0_degf, 1.0f, 0.001f, 100.0f))
         .setViewport(viewport.size());
 
-
     {
         Trade::MeshData3D data = Primitives::uvSphereSolid(8.0f, 30.0f);
         _sphereVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
@@ -232,11 +233,10 @@ Application::Application(const Arguments& arguments):
     _iface_list = Util::get_iface_list();
     _zeek_pid = "#nop";
 
-
     prepare3DFont();
 
     {
-        Util::createLayoutRing(_scene, _drawables, 2.5f, Vector3{0.0f, -4.0f, 0.0f});
+        Util::createLayoutRing(_scene, _drawables, 2.5f, Vector3{0.0f, -2.0f, 0.0f});
         Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
         Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
         Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
@@ -248,10 +248,10 @@ Application::Application(const Arguments& arguments):
         _dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
     }
     {
-        Device::PrefixStats *ap_arpers = createBroadcastPool("00:04", Vector3{1.0f, 4.0f, 1.0f});
-        ap_arpers->ring->setMesh(Primitives::planeWireframe());
+        //Device::PrefixStats *ap_arpers = createBroadcastPool("00:04", Vector3{1.0f, 4.0f, 1.0f});
+        //ap_arpers->ring->setMesh(Primitives::planeWireframe());
 
-        _prefix_group_map.insert(std::make_pair("00:04", ap_arpers));
+        //_prefix_group_map.insert(std::make_pair("00:04", ap_arpers));
     }
 }
 
@@ -314,12 +314,14 @@ void Application::drawTextElements() {
 
 
 void Application::draw3DElements() {
-    // Actually draw things to a custom framebuffer
+    // Ensure the custom framebuffer is clear for the draw
     _objselect_framebuffer
-        .clearColor(0, Vector4ui{})
+        .clear(GL::FramebufferClear::Color)
         .bind();
 
+    // Draw selectable objects to custom framebuffer
     _camera->draw(_selectable_drawables);
+
 
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
@@ -406,6 +408,8 @@ void Application::drawIMGuiElements(int event_cnt) {
             }
             std::cout << "Disconnected" << std::endl;
             peer_connected = false;
+
+            DeleteEverything();
         }
     }
 
@@ -459,8 +463,6 @@ void Application::drawIMGuiElements(int event_cnt) {
 
             auto *obj = new Object3D{&_scene};
             dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
-
-
         } else {
             std::cerr << "Error! Ref to window already exists" << std::endl;
         }
@@ -653,7 +655,6 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
             return 0;
         }
 
-        std::cout << "monpt " << *mac_src << std::endl;
         Device::Stats *d_s = createSphere(*mac_src);
         _device_map.insert(std::make_pair(*mac_src, d_s));
         addDirectLabels(d_s);
@@ -986,7 +987,7 @@ void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
 
 
 void Application::createLines(Vector3 a, Vector3 b, Util::L3Type t, int count) {
-    int ceiling = std::min(count, 1);
+    int ceiling = std::min(count, 4);
     for (int i = 0; i < ceiling; i++) {
         createLine(a, b, t);
     }
@@ -997,9 +998,42 @@ void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     Object3D* line = new Object3D{&_scene};
 
     Color3 c = Util::typeColor(t);
+    Color4 c4;
+    if (_selectedDevice != nullptr) {
+        c4 = Color4(c, 0.5);
 
-    auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a, b, _drawables, c};
+        auto v = _selectedDevice->circPoint;
+        if (a == v || b == v) {
+            c4 = Color4(c, 1.00);
+        }
+    } else {
+        c4 = Color4(c, 1.0);
+    }
+
+    auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a, b, _drawables, c4};
     _packet_line_queue.insert(pl);
+}
+
+void Application::DeleteEverything() {
+    // Delete this stuff. . . .
+    _drawables;
+    _selectable_drawables;
+    _billboard_drawables;
+    _text_drawables;
+    _device_objects;
+    _packet_line_queue;
+    _inspected_device_window_list;
+
+    // Reset scene state
+    // re-initialize state;
+    _selectedDevice = nullptr;
+    _listeningDevice = nullptr;
+    _activeGateway = nullptr;
+
+    ring_level = 0;
+    pos_in_ring = 0;
+
+    _orbit_toggle = false;
 }
 
 
@@ -1078,9 +1112,13 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
 
     deselectDevice();
     UnsignedByte id = data.data<UnsignedByte>()[0];
-    if(id > 0 && id < _device_objects.size()+1) {
-        Device::Stats *d_s = _device_objects.at(id)->_deviceStats;
+    unsigned short i = static_cast<unsigned short>(id);
+    if(i > 0 && i < _device_objects.size()+1) {
+        Device::Stats *d_s = _device_objects.at(i-1)->_deviceStats;
         deviceClicked(d_s);
+
+        _cameraRig->resetTransformation();
+        _cameraRig->translate(d_s->circPoint);
     }
 
     event.setAccepted();
@@ -1109,6 +1147,16 @@ void Application::mouseMoveEvent(MouseMoveEvent& event) {
 
 void Application::mouseScrollEvent(MouseScrollEvent& event) {
     if(_imgui.handleMouseScrollEvent(event)) return;
+
+    const Vector3 rotationPoint{0.0, 0.0, -20.0};
+
+    const Float direction = event.offset().y();
+    if (!direction) return;
+
+    // TODO clamp min and max zoom
+    _cameraObject->translateLocal(rotationPoint*direction*0.1f);
+
+    redraw();
 }
 
 

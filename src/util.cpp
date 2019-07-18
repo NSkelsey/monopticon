@@ -2,6 +2,7 @@
 
 using namespace Monopticon;
 
+
 Util::L2Summary Util::parseL2Summary(broker::vector* l2summary) {
     Util::L2Summary sum{0, 0, 0, 0};
 
@@ -35,9 +36,11 @@ Util::L2Summary Util::parseL2Summary(broker::vector* l2summary) {
     return sum;
 }
 
+
 int Util::SumTotal(Util::L2Summary struct_l2) {
     return struct_l2.ipv4_cnt + struct_l2.ipv6_cnt + struct_l2.arp_cnt + struct_l2.unknown_cnt;
 }
+
 
 Vector2 Util::randCirclePoint() {
     float r = rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
@@ -67,12 +70,14 @@ Vector2 Util::paramCirclePoint(int num_elem, int pos) {
     return Vector2{cos(res), sin(res)};
 }
 
+
 Vector2 Util::randOffset(float z) {
     int x = rand() % 2;
     int y = rand() % 2;
     Vector2 v = Vector2{x ? z : -z, y ? z : -z};
     return v;
 }
+
 
 std::string Util::exec_output(std::string cmd) {
     std::array<char, 128> buffer;
@@ -87,6 +92,7 @@ std::string Util::exec_output(std::string cmd) {
     return result;
 }
 
+
 std::vector<std::string> Util::get_iface_list() {
     auto v = std::vector<std::string>{};
     std::string g = "monopt_iface_proto list_ifaces";
@@ -98,6 +104,7 @@ std::vector<std::string> Util::get_iface_list() {
     }
     return v;
 }
+
 
 Color3 Util::typeColor(Util::L3Type t) {
     using namespace Util;
@@ -127,3 +134,4 @@ Figure::RingDrawable* Util::createLayoutRing(Scene3D &scene, SceneGraph::Drawabl
     obj->translate(trans);
     return new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
 }
+

@@ -1,16 +1,29 @@
 TODO
 =====
-As of 12/7/19
+As of 18/7/19
+- [ ] Bugfix text renderer assertion failure
+    - issue might be garbage the values passed from monopt_proto_iface (just print the output . . . .)
+    - use gef to hook the failure, hard to reach and trigger, could be a non initialized value within object
 
-- [ ] Improve Navigation
-    - [ ] Zooming (stashed...)
-        - understand why cameraRig transformation produce crazy results
-    - [ ] Move camera to orbit other points
+- [ ] Delete everthing on disconnect to reduce confusion.
+    - but seriously its distracting
+
+- [ ] Add functionality to signalling logic
+    - [x] support prefix pools
+        -[x] bogons & selected prefixes transmit just like devices
+    - [x] support broadcast pools
+    - [ ] exit L2Devices that have not communicated in 5 mins
+        - check once every second in epoch second
+
+- [ ] Add IP routes and labels to L2Devices:
+    - Use an enter `Thing Record` associated to the L2Device
+    - Issue updates for inferred arp table routes to the `Thing Record`
 
 - [ ] Improve layout:
     - [x] demo circle layout that expands
         - [ ] Add list of known positions for known devices
     - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
+    - Demo 3D cube layouts
 
 - [ ] Add Strict Ordering:
     - [x] figure out how to generate raw packet events from pcaps
@@ -19,9 +32,10 @@ As of 12/7/19
     - [ ] slow down time to step through packet interactions
 
 - [ ] Improve analysis
+    - [ ] Use find routers script to add subnets
     - [ ] add colors for ARP req/resp
         - figure out how to filter to deduplicate arp from raw packets
-    - parse dhcp to intuit network topology
+    - [ ] parse dhcp to intuit network topology
     - [x] group broadcast and multicast domains
     - [ ] try to reconstruct arp table of devices inside of the broadcast domain.
 
@@ -30,13 +44,6 @@ As of 12/7/19
     - analyze BPF syntax and zeek configuration - exclude filters via zeek module
     - add ui elements (text bar, minimal lookback)
     - apply filters
-
-- [ ] Add functionality to signalling logic
-    - [x] support prefix pools
-        -x bogons & selected prefixes transmit just like devices
-    - [x] support broadcast pools
-    - [ ] add ip information to nodes
-    - [ ] maybe expire devices after timeout with `exit`
 
 - [ ] Improve Scaling
     - [x] Dies at 65355 "too large scene" Corrade assert // handled with hardcoded limit for now
@@ -60,13 +67,31 @@ As of 12/7/19
 
 - [ ] Make more bello:
     - [ ] Add a skybox that simulates __cyberspace__
-    - [ ] Add sounds for specific events
+    - [ ] Add sounds for specific events for __cyberspace__
     - [ ] Create a flat band mesh instead of single pix width wireframes
-    - [ ] Add Oscope like persistence to transmissions
+    - [ ] Add Oscope like persistence to transmissions for __tron__ **Special FX**
     - [ ] Use a drop down menu to select the statistic to graph in the ifaceMgrCharts
+
+- [ ] Create extensible object manipulation API
+    - [ ] Add an API (type for records to be included in epoch event)
+      possibily use a generic format like:
+```
+Create thing:
+  [$type, $mac]
+Destroy thing:
+Update thing:
+Do Thing:
+  [$effect: enum, $window_content: string, $color: uint, $things: string, $dst: string]
+Replace thing
+```
 
 DONE
 ====
+- [x] Improve Navigation
+    - [x] Zooming (stashed...)
+        - understand why cameraRig transformation produce crazy results: it was a local transform issue
+    - [x] Move camera to orbit other points: abrupt, but it works well enough for now.
+
 - [x] Reduce framebuffer copying and handle MSAA properly.
 
 - [x] Structural/design for sampling at intervals:
