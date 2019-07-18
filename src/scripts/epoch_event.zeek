@@ -54,14 +54,14 @@ export {
 
   type EpochStep: record {
     enter_l2devices: set[string];
-    #enter_routers: set[Router];
+    # enter_routers: set[Router];
     # TODO enter_prefix_group: set[string];
 
     l2_dev_comm: table[string] of DeviceComm;
-    #moment: time;
+    # moment: time;
 
-    #exit_routers: set[string];
-    #exit_devices: set[string];
+    # exit_routers: set[string];
+    # exit_devices: set[string];
   };
 
   # mac_src -> L2Dev
@@ -69,7 +69,8 @@ export {
   # mac_src -> Router
   global RouterTable: table[string] of Router;
 
-  # vector of [{}, {'ff'-> L1Dev, '33' -> L2Dev}, {}}
+  # Note goal of this is to produce single dynamic table for controlling labelling and polymorphic objs under
+  # vector of [{}, {'ff': L2BcastPool, '33' : L2Dev}, {}, {'00:04': L2PrefixGroup}]
   global PrefixVec: vector of table[string] of L2Device;
 
   #global tick_resolution = 250usec;
@@ -102,9 +103,6 @@ event epoch_step()
 
   msg$l2_dev_comm = epoch_l2_dev_comm;
 
-  #print "===============";
-  #print fmt("new devs: %s, num comms: %s", |msg$enter_l2devices|, |msg$l2_dev_comm|);
-
   # TODO(mem mgmt) delete everything iteratively from sets
   epoch_new_l2devices = set();
   epoch_l2_dev_comm = table();
@@ -123,9 +121,10 @@ function create_L2Device(mac_src: string, is_group: bool): L2Device
   dev$emitted_ipv4 = set();
   dev$emitted_ipv6 = set();
   dev$arp_table = table();
-  print mac_src;
   add epoch_new_l2devices[mac_src];
-  L2DeviceTable[mac_src] = dev;
+  if (!is_group) {
+    L2DeviceTable[mac_src] = dev;
+  }
   return dev;
 }
 
@@ -202,18 +201,19 @@ function get_bcast_summary(sig_bytes: string, comm: DeviceComm): L2Summary
 function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr): bool
 {
   local summary: L2Summary;
-  local unicast = T;
+  local use_l2_dev_table = T;
+  local mac_dst = p$l2$dst;
+  local sig_bytes = mac_dst[0:2];
 
-  local sig_bytes = p$l2$dst[0:2];
   if (is_broadcast(sig_bytes)) {
-    unicast = F;
+    use_l2_dev_table = F;
     summary = get_bcast_summary(sig_bytes, comm);
   } else {
-    local mac_dst = p$l2$dst;
     local res = try_to_match_prefix(mac_dst);
     if (res$ok) {
         local dev: L2Device = res$v;
         mac_dst = dev$mac;
+        use_l2_dev_table = F;
     }
 
     if (mac_dst !in comm$tx_summary) {
@@ -236,7 +236,7 @@ function update_comm_table(comm: DeviceComm, p: raw_pkt_hdr): bool
       summary$unknown += 1; break;
   }
 
-  return unicast;
+  return use_l2_dev_table;
 }
 
 event raw_packet(p: raw_pkt_hdr)
@@ -268,13 +268,10 @@ event raw_packet(p: raw_pkt_hdr)
       comm = epoch_l2_dev_comm[mac_src];
     }
 
-    local unicast = update_comm_table(comm, p);
+    local use_l2_dev_table = update_comm_table(comm, p);
     # TODO(idem) prevent mac_dst spray
-    if (unicast && mac_dst !in L2DeviceTable) {
-      res = try_to_match_prefix(mac_dst);
-      if (!res$ok) {
-        create_L2Device(mac_dst, F);
-      }
+    if (use_l2_dev_table && mac_dst !in L2DeviceTable) {
+      create_L2Device(mac_dst, F);
     }
 
     if (p?$ip && p$ip$src !in dev$emitted_ipv4) {
@@ -284,17 +281,14 @@ event raw_packet(p: raw_pkt_hdr)
     if (p?$ip6 && p$ip6$src !in dev$emitted_ipv6) {
         add dev$emitted_ipv6[p$ip6$src];
     }
-  } else {
-    # TODO log non captured pkts
-    # wierd +=1;
-    ;
   }
+  # TODO log non captured pkts
 }
 
 event zeek_init()
 {
   local cop = create_L2Device("00:04:13", T);
-  cop$label="Copernico APs";
+  cop$label = "Copernico APs";
 
   local copt: table[string] of L2Device = table(["00:04:13"] = cop);
   local t = table();
@@ -310,6 +304,5 @@ event Broker::peer_added(endpoint: Broker::EndpointInfo, msg: string)
     print "peer added", endpoint;
     Broker::auto_publish("monopt/l2", epoch_fire);
     Broker::auto_publish("monopt/stats", Stats::log_stats);
-    #last_tick = network_time();
     schedule tick_resolution { epoch_step() };
 }
