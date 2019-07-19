@@ -1148,13 +1148,24 @@ void Application::mouseMoveEvent(MouseMoveEvent& event) {
 void Application::mouseScrollEvent(MouseScrollEvent& event) {
     if(_imgui.handleMouseScrollEvent(event)) return;
 
-    const Vector3 rotationPoint{0.0, 0.0, -20.0};
+    const Vector3 relRotationPoint{0.0, 0.0, -20.0};
 
     const Float direction = event.offset().y();
     if (!direction) return;
 
-    // TODO clamp min and max zoom
-    _cameraObject->translateLocal(rotationPoint*direction*0.1f);
+    auto c = _cameraObject->transformationMatrix().translation();
+    auto d = relRotationPoint*direction*0.1f;
+    auto f = c+d;
+
+    // Calculate distance of new _cameraObject position to local Vec(0.0)
+    float distance = sqrt((f*f).sum());
+
+    // Clamp zoom to reasonable levels.
+    // Note max distance at 39.0 to prevent culling of selectedDevice bounding box.
+    if (distance < 2.5f || distance > 39.0f) {
+        return;
+    }
+    _cameraObject->translateLocal(d);
 
     redraw();
 }

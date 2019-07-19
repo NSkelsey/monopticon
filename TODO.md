@@ -6,7 +6,7 @@ As of 18/7/19
     - use gef to hook the failure, hard to reach and trigger, could be a non initialized value within object
 
 - [ ] Delete everthing on disconnect to reduce confusion.
-    - but seriously its distracting
+    - its distracting
 
 - [ ] Add functionality to signalling logic
     - [x] support prefix pools
@@ -91,6 +91,7 @@ DONE
     - [x] Zooming (stashed...)
         - understand why cameraRig transformation produce crazy results: it was a local transform issue
     - [x] Move camera to orbit other points: abrupt, but it works well enough for now.
+    - [x] Clamp zoom based on distance from the local rotation point
 
 - [x] Reduce framebuffer copying and handle MSAA properly.
 
