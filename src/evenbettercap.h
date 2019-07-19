@@ -15,7 +15,9 @@
 #include <unordered_map>
 #include <unistd.h>
 
-#include <imgui.h>
+#include "broker/broker.hh"
+#include "broker/message.hh"
+#include "broker/zeek.hh"
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pointer.h>
@@ -23,25 +25,11 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Resource.h>
 
-#include <Magnum/GL/AbstractShaderProgram.h>
-#include <Magnum/GL/Mesh.h>
-#include <Magnum/GL/Shader.h>
-#include <Magnum/Math/Vector2.h>
-#include <Magnum/SceneGraph/Camera.h>
-#include <Magnum/SceneGraph/Drawable.h>
-#include <Magnum/SceneGraph/MatrixTransformation3D.h>
-#include <Magnum/SceneGraph/Scene.h>
-#include <Magnum/Shaders/Phong.h>
-#include <Magnum/Shaders/MeshVisualizer.h>
-
-#include <Magnum/ImGuiIntegration/Context.hpp>
-#include <Magnum/GL/Context.h>
-#include <Magnum/Timeline.h>
-#include <Magnum/Math/Color.h>
 #include <Magnum/Image.h>
-#include <Magnum/PixelFormat.h>
+#include <Magnum/ImGuiIntegration/Context.hpp>
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Buffer.h>
+#include <Magnum/GL/Context.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Framebuffer.h>
@@ -51,6 +39,7 @@
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/Version.h>
+#include <Magnum/Math/Color.h>
 #include <Magnum/Math/Constants.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
@@ -58,6 +47,7 @@
 #include <Magnum/MeshTools/Transform.h>
 #include <Magnum/MeshTools/CompressIndices.h>
 #include <Magnum/MeshTools/Interleave.h>
+#include <Magnum/PixelFormat.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Circle.h>
@@ -72,15 +62,13 @@
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Shaders/MeshVisualizer.h>
 #include <Magnum/Shaders/Phong.h>
+#include <Magnum/Timeline.h>
 #include <Magnum/Text/AbstractFont.h>
 #include <Magnum/Text/DistanceFieldGlyphCache.h>
 #include <Magnum/Text/Renderer.h>
 #include <Magnum/Trade/MeshData3D.h>
 
-#include "broker/broker.hh"
-#include "broker/message.hh"
-#include "broker/zeek.hh"
-
+#include <imgui.h>
 
 using namespace Magnum;
 using namespace Math::Literals;
