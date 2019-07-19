@@ -55,6 +55,7 @@ Vector2 Util::randCirclePoint() {
     return Vector2{cos(res), sin(res)};
 }
 
+
 Vector2 Util::paramCirclePoint(int num_elem, int pos) {
     float steps = static_cast<float>(num_elem);
     float posf = static_cast<float>(pos);
@@ -134,4 +135,3 @@ Figure::RingDrawable* Util::createLayoutRing(Scene3D &scene, SceneGraph::Drawabl
     obj->translate(trans);
     return new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
 }
-

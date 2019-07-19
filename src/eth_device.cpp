@@ -1,17 +1,7 @@
-#include <stdio.h>
-#include <iostream>
-#include <math.h>
-#include <ctime>
-#include <vector>
-#include <unistd.h>
-#include <sstream>
-
-#include <imgui.h>
-
 #include "evenbettercap.h"
 
-
 using namespace Monopticon::Device;
+
 
 Stats::Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
@@ -42,6 +32,7 @@ std::string Stats::create_device_string() {
     return c;
 }
 
+
 void Stats::renderText() {
     std::string s = create_device_string();
     if (isSelected()) {
@@ -51,6 +42,7 @@ void Stats::renderText() {
     }
 }
 
+
 void Stats::setSelected(bool selected) {
     _selected = selected;
 
@@ -59,9 +51,11 @@ void Stats::setSelected(bool selected) {
     }
 }
 
+
 bool Stats::isSelected() {
     return _selected;
 }
+
 
 void Stats::updateMaps(std::string ip_src, std::string mac_dst) {
 
@@ -80,6 +74,7 @@ void Stats::updateMaps(std::string ip_src, std::string mac_dst) {
     }
 }
 
+
 std::string Stats::makeIpLabel() {
     std::stringstream ss;
     int i = 0;
@@ -95,14 +90,28 @@ std::string Stats::makeIpLabel() {
 }
 
 
+Stats::~Stats() {
+    delete _mac_label;
+    delete _drawable;
+    delete _ip_label;
+    delete _mac_label;
+
+    _dst_arp_map.clear();
+    _emitted_src_ips.clear();
+
+    if (_highlightedDrawable != nullptr) {
+        delete _highlightedDrawable;
+    }
+}
+
+
 PrefixStats::PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawable* ring):
     contacts{},
     _prefix{macPrefix},
     _position{pos},
     ring{ring}
-{
+{}
 
-}
 
 WindowMgr::WindowMgr(Stats *d_s):
     _lineDrawable{nullptr}
@@ -118,6 +127,7 @@ WindowMgr::WindowMgr(Stats *d_s):
     last_frame_tx = _stats->num_pkts_sent;
     last_frame_rx = _stats->num_pkts_recv;
 }
+
 
 void WindowMgr::draw() {
     // TODO place in chartUpdate
@@ -180,6 +190,7 @@ ChartMgr::ChartMgr(int len, float f) {
     scaling_factor = f;
 }
 
+
 void ChartMgr::draw() {
     char txt[40];
     sprintf(txt, "avg ppb %0.2f", static_cast<double>(moving_avg));
@@ -194,14 +205,12 @@ void ChartMgr::draw() {
     ImGui::PlotHistogram("", arr_ptr, len, 0, txt, 0.0f, y_max, ImVec2(300,60));
 }
 
-void ChartMgr::clear() {
-
-}
 
 void ChartMgr::resize(int len) {
     vec.resize(len);
     arr_len = len;
 }
+
 
 void ChartMgr::push(float new_val) {
     if (vec.size() > arr_len) {

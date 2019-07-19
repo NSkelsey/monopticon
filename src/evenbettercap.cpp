@@ -240,7 +240,6 @@ Application::Application(const Arguments& arguments):
     prepare3DFont();
 
     prepareDrawables();
-
 }
 
 
@@ -257,6 +256,7 @@ void Application::prepareGLBuffers(const Range2Di& viewport) {
 
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 }
+
 
 void Application::prepareDrawables() {
     Util::createLayoutRing(_scene, _permanent_drawables, 2.5f, Vector3{0.0f, -2.0f, 0.0f});
@@ -939,6 +939,7 @@ Device::PrefixStats* Application::createBroadcastPool(const std::string mac_pref
     return dp_s;
 }
 
+
 void Application::createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum) {
     using namespace Monopticon::Util;
 
@@ -961,6 +962,7 @@ void Application::createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *d
 
     tran_d_s->num_pkts_sent += Util::SumTotal(sum);
 }
+
 
 void Application::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
     // No-op if the contact pool is already drawing lots of rings
@@ -1016,6 +1018,7 @@ void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     _packet_line_queue.insert(pl);
 }
 
+
 void Application::DeleteEverything() {
     // Delete this stuff. . . .
     /*
@@ -1037,8 +1040,7 @@ void Application::DeleteEverything() {
     //_dst_prefix_group_map.clear();
     _prefix_group_map.clear();
 
-    // Reset scene state
-    // re-initialize state;
+    // re-initialize application state;
     _selectedDevice = nullptr;
     _listeningDevice = nullptr;
     _activeGateway = nullptr;
@@ -1049,6 +1051,7 @@ void Application::DeleteEverything() {
     _orbit_toggle = false;
 
     // TODO the objects under these values are not destroyed.
+    // Reset scene state
     _drawables = SceneGraph::DrawableGroup3D{};
     _selectable_drawables = SceneGraph::DrawableGroup3D{};
     _billboard_drawables = SceneGraph::DrawableGroup3D{};

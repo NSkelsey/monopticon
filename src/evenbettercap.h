@@ -7,6 +7,7 @@
 #include <iostream>
 #include <math.h>
 #include <memory>
+#include <vector>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -140,6 +141,7 @@ namespace Device {
 class Stats {
   public:
      Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev);
+     ~Stats();
 
      std::string create_device_string();
      void renderText();
@@ -204,7 +206,6 @@ class ChartMgr {
     public:
         ChartMgr(int len, float f);
         void draw();
-        void clear();
         void resize(int len);
         void push(float new_val);
 
@@ -355,6 +356,8 @@ class TextDrawable: public Object3D, SceneGraph::Drawable3D {
                 Shaders::DistanceFieldVector3D& shader,
                 Object3D& parent,
                 SceneGraph::DrawableGroup3D& drawables);
+
+        ~TextDrawable();
 
         void updateText(std::string s);
 

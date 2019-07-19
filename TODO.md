@@ -9,10 +9,6 @@ As of 19/7/19
     - issue might be garbage the values passed from monopt_proto_iface (just print the output . . . .)
     - use gef to hook the failure, hard to reach and trigger, could be a non initialized value within object
 
-- [ ] Delete everthing on disconnect to reduce confusion.
-    - its distracting
-    - escalated to gitter
-
 - [ ] Add functionality to signalling logic
     - [x] support prefix pools
         -[x] bogons & selected prefixes transmit just like devices
@@ -94,6 +90,21 @@ Replace thing
 
 DONE
 ====
+- [x] Delete everthing on disconnect to reduce confusion.
+    - its distracting
+    - escalated to gitter
+    - escalated to valgrind which finds __no memory leaks__ (only definite ones...)
+        - libSDL.so leaks and usr/lib//dri/i965 as well
+    - To do again:
+```zsh
+# Generate suppression output
+> valgrind --suppressions=minimal.supp --track-origins=no --leak-check=yes --show-leak-kinds=definite --gen-suppressions=all --log-file=minimalraw.log ./bin/monopticon 2> out-with-suppressions.txt
+# parse it
+> cat minimalraw.log | ./parse_valgrind.sh > minimal.supp
+# Use it too analyze changes or interesting poitns
+> valgrind --suppressions=minimal.supp --track-origins=no --leak-check=yes --show-leak-kinds=definite ./bin/monopticon
+```
+
 - [x] Improve Navigation
     - [x] Zooming (stashed...)
         - understand why cameraRig transformation produce crazy results: it was a local transform issue
