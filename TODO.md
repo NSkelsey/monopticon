@@ -1,12 +1,17 @@
 TODO
 =====
-As of 18/7/19
+As of 19/7/19
+
+### Release Candidate v0.3.0 -- August 15;
+> ========================================
+
 - [ ] Bugfix text renderer assertion failure
     - issue might be garbage the values passed from monopt_proto_iface (just print the output . . . .)
     - use gef to hook the failure, hard to reach and trigger, could be a non initialized value within object
 
 - [ ] Delete everthing on disconnect to reduce confusion.
     - its distracting
+    - escalated to gitter
 
 - [ ] Add functionality to signalling logic
     - [x] support prefix pools
@@ -24,10 +29,12 @@ As of 18/7/19
         - [ ] Add list of known positions for known devices
     - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
     - Demo 3D cube layouts
+> ========================================
+### Backlog
 
 - [ ] Add Strict Ordering:
     - [x] figure out how to generate raw packet events from pcaps
-        - [ Use tcpreplay to resend packets on some net interface ]
+        - Use tcpreplay to resend packets on some net interface
     - [ ] determine how the timeline works
     - [ ] slow down time to step through packet interactions
 

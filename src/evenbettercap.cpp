@@ -20,7 +20,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Monopticon {
 
-int MSAA_CNT = 4; // Number of subpixel samples for MultiSampling Anti-Aliasing
+const int MSAA_CNT = 4; // Number of subpixel samples for MultiSampling Anti-Aliasing
+
+// Layout constants
+const int num_rings = 8;
+const int elems_per_ring[8]{1, 4, 8, 16, 32, 64, 256, 10000};
+const float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
 
 // Zeek broker components
 broker::endpoint _ep;
@@ -36,6 +41,7 @@ class Application: public Platform::Application {
         explicit Application(const Arguments& arguments);
 
         void prepare3DFont();
+        void prepareDrawables();
         void prepareGLBuffers(const Range2Di& viewport);
 
         void destroyGLBuffers();
@@ -98,6 +104,7 @@ class Application: public Platform::Application {
         Scene3D _scene;
         SceneGraph::Camera3D* _camera;
         SceneGraph::DrawableGroup3D _drawables;
+        SceneGraph::DrawableGroup3D _permanent_drawables;
         SceneGraph::DrawableGroup3D _selectable_drawables;
         SceneGraph::DrawableGroup3D _billboard_drawables;
         SceneGraph::DrawableGroup3D _text_drawables;
@@ -132,13 +139,13 @@ class Application: public Platform::Application {
         Device::Stats* _listeningDevice{nullptr};
         Device::Stats* _activeGateway{nullptr};
 
+        // Network interface state tracking
+        std::vector<std::string> _iface_list;
+        std::string _zeek_pid;
+
         // Custom ImGui interface components
         Device::ChartMgr ifaceChartMgr{240, 3.0f};
         Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
-
-        int num_rings = 8;
-        int elems_per_ring[8]{1, 4, 8, 16, 32, 64, 256, 10000};
-        float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
 
         int ring_level{0};
         int pos_in_ring{0};
@@ -153,9 +160,6 @@ class Application: public Platform::Application {
         bool _orbit_toggle{false};
 
         int inv_sample_rate{1};
-
-        std::vector<std::string> _iface_list;
-        std::string _zeek_pid;
 };
 
 
@@ -235,24 +239,8 @@ Application::Application(const Arguments& arguments):
 
     prepare3DFont();
 
-    {
-        Util::createLayoutRing(_scene, _drawables, 2.5f, Vector3{0.0f, -2.0f, 0.0f});
-        Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
-        Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
-        Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
-        Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
+    prepareDrawables();
 
-        _dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
-        _dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
-        _dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
-        _dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
-    }
-    {
-        //Device::PrefixStats *ap_arpers = createBroadcastPool("00:04", Vector3{1.0f, 4.0f, 1.0f});
-        //ap_arpers->ring->setMesh(Primitives::planeWireframe());
-
-        //_prefix_group_map.insert(std::make_pair("00:04", ap_arpers));
-    }
 }
 
 
@@ -268,6 +256,19 @@ void Application::prepareGLBuffers(const Range2Di& viewport) {
                 .mapForDraw({{Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{0}}});
 
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
+}
+
+void Application::prepareDrawables() {
+    Util::createLayoutRing(_scene, _permanent_drawables, 2.5f, Vector3{0.0f, -2.0f, 0.0f});
+    Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
+    Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
+
+    _dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 }
 
 
@@ -333,6 +334,7 @@ void Application::draw3DElements() {
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
+    _camera->draw(_permanent_drawables);
     _camera->draw(_selectable_drawables);
     _camera->draw(_drawables);
     _camera->draw(_billboard_drawables);
@@ -931,7 +933,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
 
 Device::PrefixStats* Application::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
-    auto ring = Util::createLayoutRing(_scene, _drawables, 1.0f, pos);
+    auto ring = Util::createLayoutRing(_scene, _permanent_drawables, 1.0f, pos);
     Device::PrefixStats* dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
 
     return dp_s;
@@ -1016,13 +1018,24 @@ void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
 
 void Application::DeleteEverything() {
     // Delete this stuff. . . .
-    _drawables;
-    _selectable_drawables;
-    _billboard_drawables;
-    _text_drawables;
-    _device_objects;
-    _packet_line_queue;
-    _inspected_device_window_list;
+    /*
+    for (int i = 0; i < _drawables.size(); ) {
+        auto *o = _drawables[i];
+        _drawables.remove(i);
+        delete o;
+
+    }*/
+    //delete _selectable_drawables;
+    //delete _billboard_drawables;
+    //delete _text_drawables;
+
+    _device_objects.clear();
+    _packet_line_queue.clear();
+    _inspected_device_window_list.clear();
+
+    _device_map.clear();
+    //_dst_prefix_group_map.clear();
+    _prefix_group_map.clear();
 
     // Reset scene state
     // re-initialize state;
@@ -1034,6 +1047,14 @@ void Application::DeleteEverything() {
     pos_in_ring = 0;
 
     _orbit_toggle = false;
+
+    // TODO the objects under these values are not destroyed.
+    _drawables = SceneGraph::DrawableGroup3D{};
+    _selectable_drawables = SceneGraph::DrawableGroup3D{};
+    _billboard_drawables = SceneGraph::DrawableGroup3D{};
+    _text_drawables = SceneGraph::DrawableGroup3D{};
+
+    redraw();
 }
 
 
