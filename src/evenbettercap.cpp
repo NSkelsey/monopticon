@@ -363,17 +363,21 @@ void Application::drawIMGuiElements(int event_cnt) {
                 cmd = s.append(chosen_iface);
                 std::string mac_addr = Util::exec_output(cmd);
 
-                _listeningDevice = createSphere(mac_addr);
-                deviceClicked(_listeningDevice);
+                if (mac_addr.size() > 0) {
+                    _listeningDevice = createSphere(mac_addr);
+                    deviceClicked(_listeningDevice);
 
-                s = "monopt_iface_proto ipv4_addr ";
-                cmd = s.append(chosen_iface);
-                std::string ipv4_addr = Util::exec_output(cmd);
+                    s = "monopt_iface_proto ipv4_addr ";
+                    cmd = s.append(chosen_iface);
+                    std::string ipv4_addr = Util::exec_output(cmd);
 
-                if (ipv4_addr.size() > 0) {
-                    _listeningDevice->updateMaps(ipv4_addr, "");
+                    if (ipv4_addr.size() > 0) {
+                        _listeningDevice->updateMaps(ipv4_addr, "");
+                    }
+                    addDirectLabels(_listeningDevice);
+                } else {
+                    std::cerr << "Empty mac addr for net interface: " << chosen_iface << std::endl;
                 }
-                addDirectLabels(_listeningDevice);
             }
 
             s = "monopt_iface_proto gateway_ipv4_addr ";
@@ -385,13 +389,17 @@ void Application::drawIMGuiElements(int event_cnt) {
                 cmd = s.append(chosen_iface)
                        .append(" ")
                        .append(gw_ipv4_addr);
+
                 std::string gw_mac_addr = Util::exec_output(cmd);
+                if (gw_mac_addr.size() > 0) {
+                    _activeGateway = createSphere(gw_mac_addr);
+                    _activeGateway->updateMaps("0.0.0.0/32", "");
+                    _activeGateway->updateMaps(gw_ipv4_addr, "");
 
-                _activeGateway = createSphere(gw_mac_addr);
-                _activeGateway->updateMaps("0.0.0.0/32", "");
-                _activeGateway->updateMaps(gw_ipv4_addr, "");
-
-                addDirectLabels(_activeGateway);
+                    addDirectLabels(_activeGateway);
+                } else {
+                    std::cerr << "Empty mac addr for gateway: " << gw_ipv4_addr << std::endl;
+                }
             }
 
             s = "monopt_iface_proto launch ";

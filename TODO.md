@@ -5,10 +5,6 @@ As of 19/7/19
 ### Release Candidate v0.3.0 -- August 15;
 > ========================================
 
-- [ ] Bugfix text renderer assertion failure
-    - issue might be garbage the values passed from monopt_proto_iface (just print the output . . . .)
-    - use gef to hook the failure, hard to reach and trigger, could be a non initialized value within object
-
 - [ ] Add functionality to signalling logic
     - [x] support prefix pools
         -[x] bogons & selected prefixes transmit just like devices
@@ -90,6 +86,10 @@ Replace thing
 
 DONE
 ====
+- [x] Bugfix text renderer assertion failure
+    - [x] issue might be garbage the values passed from monopt_proto_iface (just print the output ~ this worked)
+    - [no luck] use gef to hook the failure, hard to reach and trigger, could be a non initialized value within object
+
 - [x] Delete everthing on disconnect to reduce confusion.
     - its distracting
     - escalated to gitter
