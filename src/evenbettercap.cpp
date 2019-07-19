@@ -1182,8 +1182,9 @@ void Application::mouseScrollEvent(MouseScrollEvent& event) {
     float distance = sqrt((f*f).sum());
 
     // Clamp zoom to reasonable levels.
-    // Note max distance at 39.0 to prevent culling of selectedDevice bounding box.
-    if (distance < 2.5f || distance > 39.0f) {
+    // Note max distance limit to prevent culling of selectedDevice bounding box.
+    // TODO force a final uniform zoom for the closest and farthest position for the camera
+    if ((distance < 5.0f && direction > 0.0) || (distance > 35.0f && direction < 0.0)) {
         return;
     }
     _cameraObject->translateLocal(d);
