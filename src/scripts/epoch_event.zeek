@@ -5,6 +5,14 @@
 @load policy/misc/stats.bro
 
 export {
+  global local_nets = {
+    192.168.0.0/16,
+    127.0.0.0/8,
+    172.16.0.0/12,
+    10.0.0.0/8,
+    100.64.0.0/10
+  };
+
   type L2Summary: record {
     # maps enum: L3_IPV4, L3_IPV6, L3_ARP, L3_UNKOWN to num_pkts
     ipv4: count;
@@ -29,8 +37,11 @@ export {
   type L2Device: record {
     mac: string;
 
-    # All seen IPs used from the dev
-    emitted_ipv4: set[addr];
+    # All src IPs used from the dev
+    src_emitted_ipv4: set[addr];
+
+    # All dst IPs sent from the dev
+    dst_emitted_ipv4: table[string] of set[addr];
 
     # idem
     emitted_ipv6: set[addr];
@@ -41,6 +52,8 @@ export {
 
     group: bool;
     label: string;
+    new_src_ip_ctr: count;
+    new_dst_ip_ctr: count;
   };
 
   # Internal
@@ -60,6 +73,8 @@ export {
     l2_dev_comm: table[string] of DeviceComm;
     # moment: time;
 
+    enter_l2_ipv4_addr_src: table[string] of addr;
+    enter_l2_ipv4_addr_dst: table[string] of addr;
     # exit_routers: set[string];
     # exit_devices: set[string];
   };
@@ -92,7 +107,8 @@ export {
 }
 
 
-event epoch_fire(m: EpochStep) {}
+event epoch_fire(m: EpochStep) {
+}
 
 event epoch_step()
 {
@@ -107,6 +123,22 @@ event epoch_step()
   epoch_new_l2devices = set();
   epoch_l2_dev_comm = table();
 
+  for (mac_src in L2DeviceTable) {
+    local dev = L2DeviceTable[mac_src];
+
+    if (dev$new_src_ip_ctr > 0) {
+      dev$new_src_ip_ctr = 0;
+      for (ip_src_addr in dev$src_emitted_ipv4) {
+        msg$enter_l2_ipv4_addr_src[mac_src] = ip_src_addr;
+      }
+    }
+
+    if (dev $new_dst_ip_ctr > 0) {
+      dev$new_dst_ip_ctr = 0;
+    }
+
+  }
+
   event epoch_fire(msg);
 
   schedule tick_resolution { epoch_step() };
@@ -118,9 +150,13 @@ function create_L2Device(mac_src: string, is_group: bool): L2Device
   local dev: L2Device;
   dev$group = is_group;
   dev$mac = mac_src;
-  dev$emitted_ipv4 = set();
+  dev$src_emitted_ipv4 = set();
   dev$emitted_ipv6 = set();
   dev$arp_table = table();
+
+  dev$new_src_ip_ctr = 0;
+  dev$new_dst_ip_ctr = 0;
+
   add epoch_new_l2devices[mac_src];
   if (!is_group) {
     L2DeviceTable[mac_src] = dev;
@@ -274,8 +310,19 @@ event raw_packet(p: raw_pkt_hdr)
       create_L2Device(mac_dst, F);
     }
 
-    if (p?$ip && p$ip$src !in dev$emitted_ipv4) {
-        add dev$emitted_ipv4[p$ip$src];
+    if (p?$ip && p$ip$src !in dev$src_emitted_ipv4 && p$ip$src in local_nets) {
+        add dev$src_emitted_ipv4[p$ip$src];
+        dev$new_src_ip_ctr += 1;
+    }
+
+    if (p?$ip && mac_dst in dev$dst_emitted_ipv4 && p$ip$dst !in dev$dst_emitted_ipv4[mac_dst]) {
+      local ip_dst = p$ip$dst;
+      if (ip_dst in local_nets) {
+        local s = dev$dst_emitted_ipv4[mac_dst];
+        add s[ip_dst];
+
+        dev$new_dst_ip_ctr += 1;
+      }
     }
 
     if (p?$ip6 && p$ip6$src !in dev$emitted_ipv6) {

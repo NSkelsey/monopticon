@@ -20,12 +20,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Monopticon {
 
-const int MSAA_CNT = 4; // Number of subpixel samples for MultiSampling Anti-Aliasing
+const int MSAA_CNT = 16; // Number of subpixel samples for MultiSampling Anti-Aliasing
 
 // Layout constants
 const int num_rings = 8;
 const int elems_per_ring[8]{1, 4, 8, 16, 32, 64, 256, 10000};
 const float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
+
+const Vector3 offset{1.0, 0.0, -2.0};
 
 // Zeek broker components
 broker::endpoint _ep;
@@ -64,6 +66,8 @@ class Application: public Platform::Application {
         void textInputEvent(TextInputEvent& event) override;
 
         int parse_epoch_step(broker::zeek::Event event);
+        void parse_enter_l3_addr(std::map<broker::data, broker::data> *addr_map);
+
         void parse_stats_update(broker::zeek::Event event);
         void parse_bcast_summaries(broker::vector *dComm, Device::Stats* tran_d_s);
         void parse_single_mcast(int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
@@ -73,12 +77,14 @@ class Application: public Platform::Application {
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
         void createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
+        Level3::Address* createIPv4Address(const std::string ipv4_addr, Vector3 pos);
 
 
         void createLines(Vector3, Vector3, Util::L3Type, int num);
         void createLine(Vector3, Vector3, Util::L3Type);
 
         void addDirectLabels(Device::Stats *d_s);
+        void addL2ConnectL3(Vector3 a, Vector3 b);
 
         void deselectDevice();
         void deviceClicked(Device::Stats *d_s);
@@ -91,7 +97,7 @@ class Application: public Platform::Application {
         ImGuiIntegration::Context _imgui{NoCreate};
 
         // Graphic fields
-        GL::Mesh _sphere{}, _poolCircle{NoCreate};
+        GL::Mesh _sphere{}, _poolCircle{NoCreate}, _planeMesh{};
         Color4 _clearColor = 0x002b36_rgbf;
         Color3 _pickColor = 0xffffff_rgbf;
 
@@ -210,6 +216,8 @@ Application::Application(const Arguments& arguments):
     }
 
     _poolCircle = MeshTools::compile(Primitives::circle3DWireframe(20));
+    //_planeMesh = MeshTools::compile(Primitives::planeSolid());
+    _planeMesh = MeshTools::compile(Primitives::cubeSolid());
 
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
@@ -259,7 +267,9 @@ void Application::prepareGLBuffers(const Range2Di& viewport) {
 
 
 void Application::prepareDrawables() {
-    Util::createLayoutRing(_scene, _permanent_drawables, 2.5f, Vector3{0.0f, -2.0f, 0.0f});
+    //auto *ring = Util::createLayoutRing(_scene, _permanent_drawables, 10.0f, Vector3{1.0f, 0.0f, 1.0f});
+    //ring->setMesh(Primitives::grid3DWireframe(Vector2i(10, 10)));
+
     Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
     Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
     Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
@@ -372,9 +382,10 @@ void Application::drawIMGuiElements(int event_cnt) {
                     std::string ipv4_addr = Util::exec_output(cmd);
 
                     if (ipv4_addr.size() > 0) {
-                        _listeningDevice->updateMaps(ipv4_addr, "");
+                        //_listeningDevice->updateMaps(ipv4_addr, "");
                     }
                     addDirectLabels(_listeningDevice);
+                    Level3::Address *test_addr = createIPv4Address(ipv4_addr, _listeningDevice->circPoint);
                 } else {
                     std::cerr << "Empty mac addr for net interface: " << chosen_iface << std::endl;
                 }
@@ -393,10 +404,11 @@ void Application::drawIMGuiElements(int event_cnt) {
                 std::string gw_mac_addr = Util::exec_output(cmd);
                 if (gw_mac_addr.size() > 0) {
                     _activeGateway = createSphere(gw_mac_addr);
-                    _activeGateway->updateMaps("0.0.0.0/32", "");
-                    _activeGateway->updateMaps(gw_ipv4_addr, "");
+                    //_activeGateway->updateMaps("0.0.0.0/32", "");
+                    //_activeGateway->updateMaps(gw_ipv4_addr, "");
 
                     addDirectLabels(_activeGateway);
+                    Level3::Address *test_addr = createIPv4Address(gw_ipv4_addr, _activeGateway->circPoint);
                 } else {
                     std::cerr << "Empty mac addr for gateway: " << gw_ipv4_addr << std::endl;
                 }
@@ -750,8 +762,45 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
         }
     }
 
+    std::map<broker::data, broker::data> *enter_l2_ipv4_addr_src = broker::get_if<broker::table>(wrapper->at(2));
+    if (enter_l2_ipv4_addr_src == nullptr) {
+        std::cerr << "l2_ipv4_addr_src" << std::endl;
+        return 0;
+    }
+    parse_enter_l3_addr(enter_l2_ipv4_addr_src);
+
     return pkt_tot;
-    // TODO add seen IP addresses
+}
+
+void Application::parse_enter_l3_addr(std::map<broker::data, broker::data> *addr_map) {
+     for (auto it = addr_map->begin(); it != addr_map->end(); it++) {
+        auto pair = *it;
+        auto *mac_src = broker::get_if<std::string>(pair.first);
+        if (mac_src == nullptr) {
+            std::cerr << "mac_src l2_ipv4_addr:" << std::endl;
+            continue;
+        }
+
+        Device::Stats *tran_d_s;
+        auto search = _device_map.find(*mac_src);
+        if (search != _device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "tran_d_s l2_ipv4_addr not found! " << *mac_src << std::endl;
+            continue;
+        }
+
+        auto *ip_addr_src = broker::get_if<broker::address>(pair.second);
+        if (ip_addr_src == nullptr) {
+            std::cerr << "ip_addr_src l2_ipv4_addr:" << *mac_src << std::endl;
+            continue;
+        }
+
+        std::string s = to_string(*ip_addr_src);
+
+        createIPv4Address(s, tran_d_s->circPoint);
+    }
+
 }
 
 
@@ -904,7 +953,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
         if (j < elems_per_ring[i]) {
             pos = j;
             if (pos == 0) {
-                Util::createLayoutRing(_scene, _drawables, ring_radii[i], Vector3{0.0f, 0.0f, 0.0f});
+                //Util::createLayoutRing(_scene, _drawables, ring_radii[i], Vector3{0.0f, 0.0f, 0.0f});
             }
             break;
         }
@@ -915,7 +964,8 @@ Device::Stats* Application::createSphere(const std::string mac) {
     Vector2 v = ring_radius*Util::paramCirclePoint(elems_per_ring[ring], pos);
     Vector3 w = Vector3{v.x(), 0.0f, v.y()};
 
-    o->translate({v.x(), 0.0f, v.y()});
+    o->transform(Matrix4::scaling(Vector3{0.25f}));
+    o->translate(w);
 
     UnsignedByte id = static_cast<UnsignedByte>(_device_objects.size());
 
@@ -926,7 +976,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
         _phong_id_shader,
         c,
         _sphere,
-        Matrix4::scaling(Vector3{0.25f}),
+        Matrix4{},
         _selectable_drawables};
 
 
@@ -941,12 +991,53 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
 
 Device::PrefixStats* Application::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
-    auto ring = Util::createLayoutRing(_scene, _permanent_drawables, 1.0f, pos);
+    auto *ring = Util::createLayoutRing(_scene, _permanent_drawables, 1.0f, pos);
     Device::PrefixStats* dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
 
     return dp_s;
 }
 
+Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vector3 pos) {
+    auto t = pos;
+
+    Object3D* o = new Object3D{&_scene};
+
+    o->translate(t+Vector3{0.0f, 2.0f, 0.0f});
+
+    Color3 c = 0x0000ff_rgbf;
+
+    UnsignedByte id = 0xff;
+
+
+    Level3::Address *address_obj = new Level3::Address {
+        id,
+        *o,
+        _bbitem_shader,
+        c,
+        _planeMesh,
+        Matrix4::scaling(Vector3{0.125f}),
+        _drawables
+    };
+
+    Object3D *obj = new Object3D{&_scene};
+    auto scaling = Matrix4::scaling(Vector3{0.10f});
+    obj->transform(scaling);
+
+    auto p = t+Vector3(0.0f, 2.5f, 0.0f);
+    obj->translate(p);
+
+    c = 0xeeeeee_rgbf;
+    new Figure::TextDrawable(ipv4_addr, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+
+    addL2ConnectL3(t, t+Vector3(0.0, 2.0, 0.0f));
+    return address_obj;
+}
+
+void Application::addL2ConnectL3(Vector3 a, Vector3 b) {
+    Object3D *j = new Object3D{&_scene};
+    auto *line = new Figure::RingDrawable(*j, 0x999999_rgbf, _drawables);
+    line->setMesh(Primitives::line3D(a,b));
+}
 
 void Application::createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum) {
     using namespace Monopticon::Util;

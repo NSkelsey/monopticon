@@ -30,6 +30,7 @@ set(monopticon_FILES
         src/evenbettercap.h
         src/eth_device.cpp
         src/figure.cpp
+        src/levelthree.cpp
         src/util.cpp
         src/evenbettercap.cpp
     )

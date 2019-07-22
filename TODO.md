@@ -15,12 +15,16 @@ As of 19/7/19
 - [ ] Add IP routes and labels to L2Devices:
     - Use an enter `Thing Record` associated to the L2Device
     - Issue updates for inferred arp table routes to the `Thing Record`
+    - [x] Labels are going to be there own entity inside of the visualization.
+      - [x] Level3 - Address Class
+      - [x] Placed Above first discovered MAC address with IP.
 
 - [ ] Improve layout:
     - [x] demo circle layout that expands
         - [ ] Add list of known positions for known devices
     - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
     - Demo 3D cube layouts
+
 > ========================================
 ### Backlog
 

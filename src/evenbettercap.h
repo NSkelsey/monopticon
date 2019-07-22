@@ -53,6 +53,7 @@
 #include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Circle.h>
 #include <Magnum/Primitives/Line.h>
+#include <Magnum/Primitives/Grid.h>
 #include <Magnum/Primitives/Plane.h>
 #include <Magnum/Primitives/UVSphere.h>
 #include <Magnum/SceneGraph/Camera.h>
@@ -99,6 +100,12 @@ namespace Monopticon {
     class WindowMgr;
     class ChartMgr;
     class RouteMgr;
+
+  }
+
+  namespace Level3 {
+
+    class Address;
 
   }
 
@@ -224,6 +231,26 @@ class RouteMgr {
 
         Figure::TextDrawable  *label;
         Figure::RouteDrawable *path;
+};
+
+}
+
+namespace Level3 {
+
+class Address: public Object3D,  public SceneGraph::Drawable3D  {
+  public:
+    explicit Address(UnsignedByte id, Object3D& object, Shaders::Flat3D& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
+
+    std::string value;
+
+  private:
+    void draw(const Matrix4& transformation, SceneGraph::Camera3D& camera) override;
+
+    UnsignedByte _id;
+    Color3 _color;
+    Shaders::Flat3D& _shader;
+    GL::Mesh& _mesh;
+    Matrix4 _primitiveTransformation;
 };
 
 }
