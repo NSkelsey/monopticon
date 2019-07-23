@@ -239,7 +239,7 @@ namespace Level3 {
 
 class Address: public Object3D,  public SceneGraph::Drawable3D  {
   public:
-    explicit Address(UnsignedByte id, Object3D& object, Shaders::Flat3D& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
+    explicit Address(UnsignedByte id, Object3D& object, Shaders::Phong& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
 
     std::string value;
 
@@ -248,7 +248,7 @@ class Address: public Object3D,  public SceneGraph::Drawable3D  {
 
     UnsignedByte _id;
     Color3 _color;
-    Shaders::Flat3D& _shader;
+    Shaders::Phong& _shader;
     GL::Mesh& _mesh;
     Matrix4 _primitiveTransformation;
 };

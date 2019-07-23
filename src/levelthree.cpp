@@ -3,7 +3,7 @@
 using namespace Monopticon::Level3;
 
 
-Address::Address(UnsignedByte id, Object3D& object, Shaders::Flat3D& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& group):
+Address::Address(UnsignedByte id, Object3D& object, Shaders::Phong& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& group):
     SceneGraph::Drawable3D{object, &group},
     _id{id},
     _color{color},
@@ -17,12 +17,16 @@ Address::Address(UnsignedByte id, Object3D& object, Shaders::Flat3D& shader, Col
 
 void Address::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     auto tm = transformationMatrix*_primitiveTransformation;
-    auto cm = camera.projectionMatrix();
-    auto sphericalBBoardMatrix = Matrix4::from(cm.rotation(), tm.scaling()*tm.translation());
-    auto b = camera.projectionMatrix()*sphericalBBoardMatrix;
 
-    _shader.setColor(_color)
-           .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix*_primitiveTransformation);
-    //         .setTransformationProjectionMatrix(b);
+    _shader.setTransformationMatrix(tm)
+           .setNormalMatrix(tm.rotationScaling())
+           .setProjectionMatrix(camera.projectionMatrix())
+           .setAmbientColor(_color*0.2)
+           //.setTimeIntensity(1.0)
+           .setLightColor(_color)
+           /* relative to the camera */
+           .setLightPosition({0.0f, 4.0f, 3.0f});
+           //.setObjectId(255);
+
     _mesh.draw(_shader);
 }

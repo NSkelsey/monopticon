@@ -40,20 +40,16 @@ export {
     # All src IPs used from the dev
     src_emitted_ipv4: set[addr];
 
+    # Table that maps inferred routes
     # All dst IPs sent from the dev
-    dst_emitted_ipv4: table[string] of set[addr];
+    dst_emitted_ipv4: table[string] of addr;
 
     # idem
     emitted_ipv6: set[addr];
 
-    # Table that maps inferred routes
-    # mac_dst -> subnet
-    arp_table: table[string] of subnet;
-
     group: bool;
     label: string;
     new_src_ip_ctr: count;
-    new_dst_ip_ctr: count;
   };
 
   # Internal
@@ -65,6 +61,11 @@ export {
     tot_tx_pkts: count;
   };
 
+  type MacTableEntry: record {
+    mac: string;
+    dst_addr: addr;
+  };
+
   type EpochStep: record {
     enter_l2devices: set[string];
     # enter_routers: set[Router];
@@ -73,8 +74,11 @@ export {
     l2_dev_comm: table[string] of DeviceComm;
     # moment: time;
 
+    # mac_src -> ip addr
     enter_l2_ipv4_addr_src: table[string] of addr;
-    enter_l2_ipv4_addr_dst: table[string] of addr;
+
+    # mac_src -> [mac_dst -> ip_addr_dst]
+    enter_arp_table: table[string] of table[string] of addr;
     # exit_routers: set[string];
     # exit_devices: set[string];
   };
@@ -98,6 +102,9 @@ export {
   # mac_src key
   global epoch_l2_dev_comm: table[string] of DeviceComm;
 
+  # mac_src key -> [mac_dst -> dst_ip_addr]
+  global epoch_arp_table: table[string] of table[string] of addr;
+
   type Result: record {
     ok: bool;
     v: any &optional;
@@ -119,6 +126,8 @@ event epoch_step()
 
   msg$l2_dev_comm = epoch_l2_dev_comm;
 
+  msg$enter_arp_table = epoch_arp_table;
+
   # TODO(mem mgmt) delete everything iteratively from sets
   epoch_new_l2devices = set();
   epoch_l2_dev_comm = table();
@@ -132,12 +141,22 @@ event epoch_step()
         msg$enter_l2_ipv4_addr_src[mac_src] = ip_src_addr;
       }
     }
-
-    if (dev $new_dst_ip_ctr > 0) {
-      dev$new_dst_ip_ctr = 0;
-    }
-
   }
+
+  for (mac_src in epoch_arp_table) {
+    if (mac_src in L2DeviceTable) {
+      local t = epoch_arp_table[mac_src];
+      local d = L2DeviceTable[mac_src];
+      for (mac_dst in t) {
+        d$dst_emitted_ipv4[mac_dst] = t[mac_dst];
+      }
+    }
+  }
+  if (|epoch_arp_table| > 0) {
+    print epoch_arp_table;
+  }
+
+  epoch_arp_table = table();
 
   event epoch_fire(msg);
 
@@ -151,11 +170,10 @@ function create_L2Device(mac_src: string, is_group: bool): L2Device
   dev$group = is_group;
   dev$mac = mac_src;
   dev$src_emitted_ipv4 = set();
+  dev$dst_emitted_ipv4 = table();
   dev$emitted_ipv6 = set();
-  dev$arp_table = table();
 
   dev$new_src_ip_ctr = 0;
-  dev$new_dst_ip_ctr = 0;
 
   add epoch_new_l2devices[mac_src];
   if (!is_group) {
@@ -311,17 +329,20 @@ event raw_packet(p: raw_pkt_hdr)
     }
 
     if (p?$ip && p$ip$src !in dev$src_emitted_ipv4 && p$ip$src in local_nets) {
-        add dev$src_emitted_ipv4[p$ip$src];
-        dev$new_src_ip_ctr += 1;
+      add dev$src_emitted_ipv4[p$ip$src];
+      dev$new_src_ip_ctr += 1;
     }
 
-    if (p?$ip && mac_dst in dev$dst_emitted_ipv4 && p$ip$dst !in dev$dst_emitted_ipv4[mac_dst]) {
-      local ip_dst = p$ip$dst;
-      if (ip_dst in local_nets) {
-        local s = dev$dst_emitted_ipv4[mac_dst];
-        add s[ip_dst];
-
-        dev$new_dst_ip_ctr += 1;
+    if (use_l2_dev_table && p?$ip && p$ip$dst in local_nets) {
+      if (mac_dst !in dev$dst_emitted_ipv4) {
+        local t: table[string] of addr;
+        if (mac_src !in epoch_arp_table) {
+          t = table([mac_dst] = p$ip$dst);
+          epoch_arp_table[mac_src] = t;
+        } else {
+          t = epoch_arp_table[mac_src];
+        }
+        t[mac_dst] = p$ip$dst;
       }
     }
 

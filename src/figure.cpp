@@ -91,13 +91,13 @@ void DeviceDrawable::resetTParam() {
 
 
 void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& camera){
-    if (_drop) {
+    /*if (_drop) {
         _t = _t - 0.01f;
         if (_t < 0.0f) _drop = false;
     } else {
         _t = _t + 0.01f;
         if (_t > 1.0f) _drop = true;
-    }
+    }*/
 
     _shader.setTransformationMatrix(transformation*_primitiveTransformation)
            .setNormalMatrix(transformation.rotationScaling())
