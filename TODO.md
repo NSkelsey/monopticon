@@ -1,9 +1,12 @@
 TODO
 =====
-As of 19/7/19
+As of 23/7/19
 
-### Release Candidate v0.3.0 -- August 15;
+### Release Candidate v0.3.0 -- July 26;
 > ========================================
+- [ ] Make interactive.
+    - Select and move.
+    - Group select with
 
 - [ ] Add functionality to signalling logic
     - [x] support prefix pools
@@ -11,13 +14,6 @@ As of 19/7/19
     - [x] support broadcast pools
     - [ ] exit L2Devices that have not communicated in 5 mins
         - check once every second in epoch second
-
-- [ ] Add IP routes and labels to L2Devices:
-    - Use an enter `Thing Record` associated to the L2Device
-    - Issue updates for inferred arp table routes to the `Thing Record`
-    - [x] Labels are going to be there own entity inside of the visualization.
-      - [x] Level3 - Address Class
-      - [x] Placed Above first discovered MAC address with IP.
 
 - [ ] Improve layout:
     - [x] demo circle layout that expands
@@ -90,6 +86,14 @@ Replace thing
 
 DONE
 ====
+- [x] Add IP routes and labels to L2Devices:
+    - [x] Use an enter `Thing Record` associated to the L2Device
+    - Issue updates for inferred arp table routes to the `Thing Record`:
+      the epoch_arp_table updates here are the new additions to the device tables
+    - [x] Labels are going to be there own entity inside of the visualization.
+      - [x] Level3 - Address Class
+      - [x] Placed Above first discovered MAC address with IP.
+
 - [x] Bugfix text renderer assertion failure
     - [x] issue might be garbage the values passed from monopt_proto_iface (just print the output ~ this worked)
     - [no luck] use gef to hook the failure, hard to reach and trigger, could be a non initialized value within object

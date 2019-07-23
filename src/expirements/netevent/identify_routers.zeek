@@ -16,6 +16,11 @@ export {
        100.64.0.0/10
     };
 
+    type SubMac: record {
+        mac: string;
+        net: subnet;
+    };
+
     global mac_src_ip_emitted: table[string] of set[addr];
     global mac_src_vlan_emitted: table[string] of set[count];
 
@@ -26,7 +31,7 @@ export {
 
     global find_link_local: function(p: bool): count;
     global build_vlans: function(vlan_ip_tbl_set: table[count] of set[addr], p: bool) : table[count] of subnet;
-    global find_routers: function(mac_src_ip: table[string] of set[addr], threshold: count, p: bool): table[subnet] of string;
+    global find_routers: function(mac_src_ip: table[string] of set[addr], threshold: count, p: bool): vector of SubMac;
 
 }
 
@@ -70,7 +75,12 @@ function infer_subnet(ip_set: set[addr]): subnet {
         iv[0] = iv[0] & c[0];
     }
 
-    local b = floor(log10(|ip_set|)/log10(2))+6;
+    # Use the observed IP set to estimate the subnet mask
+    # the fudge factor here is 16 times the num of observed communicating IPs
+    local b = floor(log10(|ip_set|)/log10(2))+4;
+    if (b > 7 || b < 0) {
+        b = 32;
+    }
     local snet_mask = double_to_count(b);
     local pos_snet = counts_to_addr(iv);
 
@@ -112,14 +122,12 @@ function build_vlans(vlan_ip_tbl_set: table[count] of set[addr], p: bool) : tabl
         }
     };
 
-
-
     return vlan_subnets;
 }
 
-function find_routers(mac_src_ip: table[string] of set[addr], threshold: count, p: bool): table[subnet] of string {
+function find_routers(mac_src_ip: table[string] of set[addr], threshold: count, p: bool): vector of SubMac {
     # List all mac addrs with more than threshold ip
-    local r_t: table[subnet] of string;
+    local r_t: vector of SubMac;
 
     for (mac_src in mac_src_ip) {
         local ip_set = mac_src_ip[mac_src];
@@ -131,10 +139,8 @@ function find_routers(mac_src_ip: table[string] of set[addr], threshold: count, 
         }
         if (|ip_set| > threshold) {
             local sn = infer_subnet(ip_set);
-            if (sn in r_t && p) {
-                print "subnet", sn, "not unique!";
-            }
-            r_t[sn] = mac_src;
+            local submac = [$mac=mac_src, $net=sn];
+            r_t += submac;
         }
     }
 
@@ -160,8 +166,13 @@ function output_summary() {
     print vlan_subnets;
     print "";
     print "Routers with subnets behind:";
-    find_routers(T);
+    print find_routers(mac_src_ip_emitted, 4, T);
+
     local cnt = find_link_local(T);
     print "";
     print fmt("Seen: %d devices that could be link local", cnt);
+}
+
+event zeek_done() {
+    output_summary();
 }
