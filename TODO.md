@@ -59,7 +59,8 @@ As of 23/7/19
 
 - [ ] Expirements to attempt:
     - [ ] Timeline (with sliding window of pcap)
-    - [ ] Port Manifold Shader and Setup
+    - [x] Port Manifold Shader and Setup:
+    See `expirements/port-manifold`
 
 - [ ] Improve Portability v2:
     - [ ] Package application in .deb
