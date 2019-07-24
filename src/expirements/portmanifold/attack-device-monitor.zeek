@@ -1,23 +1,47 @@
 @load base/protocols/conn/main.bro
 @load policy/misc/stats.bro
 
-global target = 192.168.1.1;
+global target = 10.106.220.150;
 
-event raw_packet(p: raw_pkt_hdr)
-{
-    #print "rp";
+type EpochStep: record {
+  syn_summary: set[port];
+  ack_summary: set[port];
+};
+
+global epoch_syn_summary: set[port];
+global epoch_ack_summary: set[port];
+
+global tick_resolution = 10msec;
+
+
+event epoch_fire(m: EpochStep) {
 }
 
-event target_socket(sock: port)
+event epoch_step()
 {
-    print sock;
-}
+    local msg: EpochStep;
+    msg$syn_summary = epoch_syn_summary;
+    msg$ack_summary = epoch_ack_summary;
 
+    epoch_syn_summary = set();
+    epoch_ack_summary = set();
+
+    event epoch_fire(msg);
+
+    schedule tick_resolution { epoch_step() };
+}
 
 event connection_SYN_packet(c: connection, pkt: SYN_packet)
 {
     if (c$id$resp_h == target) {
-        event target_socket(c$id$resp_p);
+        add epoch_syn_summary[c$id$resp_p];
+    }
+}
+
+event connection_established(c: connection)
+{
+    if (c$id$resp_h == target) {
+        add epoch_ack_summary[c$id$resp_p];
     }
 }
 
@@ -33,6 +57,7 @@ event zeek_init()
 event Broker::peer_added(endpoint: Broker::EndpointInfo, msg: string)
 {
     print "peer added", endpoint;
-    Broker::auto_publish("monopt/port-manifold", target_socket);
+    Broker::auto_publish("monopt/epoch", epoch_fire);
     Broker::auto_publish("monopt/stats", Stats::log_stats);
+    schedule tick_resolution { epoch_step() };
 }
