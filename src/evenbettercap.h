@@ -145,37 +145,47 @@ namespace Util {
 
 namespace Device {
 
-class Stats {
+class Selectable {
   public:
-     Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev);
-     ~Stats();
+    ~Selectable();
+    void addHighlight(Vector3 t, Scene3D& scene, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D &group);
+    bool isSelected();
 
-     std::string create_device_string();
-     void renderText();
+    //void setSelected(bool selected);
 
-     void setSelected(bool selected);
-     bool isSelected();
+    Figure::UnitBoardDrawable *_highlight{nullptr};
 
-     void updateMaps(std::string ip_src_addr, std::string mac_dst);
-     std::string makeIpLabel();
+    void deleteHighlight();
+};
 
-     std::string                mac_addr;
-     Figure::DeviceDrawable     *_drawable;
-     Figure::UnitBoardDrawable  *_highlightedDrawable;
 
-     Figure::TextDrawable   *_ip_label;
-     Figure::TextDrawable   *_mac_label;
-     WindowMgr              *_windowMgr;
-     bool                   _selected;
+class Stats: public Selectable {
+  public:
+    Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev);
+    ~Stats();
 
-     //map<std::string, std::string>    src_arp_map;
-     std::vector<std::string>              _emitted_src_ips;
-     std::map<std::string, RouteMgr*>       _dst_arp_map;
+    std::string create_device_string();
+    void renderText();
 
-     Vector3 circPoint;
-     int num_pkts_sent;
-     int num_pkts_recv;
-     int health;
+    void updateMaps(std::string ip_src_addr, std::string mac_dst);
+    std::string makeIpLabel();
+
+    std::string                mac_addr;
+    Figure::DeviceDrawable     *_drawable;
+
+    Figure::TextDrawable   *_ip_label;
+    Figure::TextDrawable   *_mac_label;
+    WindowMgr              *_windowMgr;
+    bool                   _selected;
+
+    //map<std::string, std::string>    src_arp_map;
+    std::vector<std::string>              _emitted_src_ips;
+    std::map<std::string, RouteMgr*>       _dst_arp_map;
+
+    Vector3 circPoint;
+    int num_pkts_sent;
+    int num_pkts_recv;
+    int health;
 };
 
 class PrefixStats {
@@ -239,7 +249,7 @@ namespace Level3 {
 
 class Address: public Object3D,  public SceneGraph::Drawable3D  {
   public:
-    explicit Address(UnsignedByte id, Object3D& object, Shaders::Phong& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
+    explicit Address(UnsignedByte id, Object3D& object, Figure::PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
 
     std::string value;
 
@@ -248,7 +258,7 @@ class Address: public Object3D,  public SceneGraph::Drawable3D  {
 
     UnsignedByte _id;
     Color3 _color;
-    Shaders::Phong& _shader;
+    Figure::PhongIdShader& _shader;
     GL::Mesh& _mesh;
     Matrix4 _primitiveTransformation;
 };

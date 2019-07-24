@@ -8,7 +8,7 @@ list_ifaces() {
     EXCLUDED_INTERFACES=("lo")
 
     # For each interface active
-    for interface in `ip addr | grep "state UP" | grep -oP "([a-zA-Z0-9]+\d+)(?=:.+)"`; do
+    for interface in `ip addr | grep "state UP" | grep -oP "([a-zA-Z][a-zA-Z0-9]+\d+)(?=:.+)"`; do
         if `contains  $interface "${EXCLUDED_INTERFACES[@]}"`; then
             continue
         fi

@@ -27,7 +27,7 @@ const int num_rings = 8;
 const int elems_per_ring[8]{1, 4, 8, 16, 32, 64, 256, 10000};
 const float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
 
-const Vector3 offset{0.0f, 2.0f, 0.0f};
+const Vector3 offset{0.0f, 1.0f, 0.0f};
 
 // Zeek broker components
 broker::endpoint _ep;
@@ -89,7 +89,7 @@ class Application: public Platform::Application {
 
         void deselectDevice();
         void deviceClicked(Device::Stats *d_s);
-        void highlightDevice(Device::Stats *d_s);
+        void highlightDevice(Device::Selectable *selection);
 
         void DeleteEverything();
 
@@ -98,7 +98,7 @@ class Application: public Platform::Application {
         ImGuiIntegration::Context _imgui{NoCreate};
 
         // Graphic fields
-        GL::Mesh _sphere{}, _poolCircle{NoCreate}, _planeMesh{};
+        GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
         Color4 _clearColor = 0x002b36_rgbf;
         Color3 _pickColor = 0xffffff_rgbf;
 
@@ -124,7 +124,6 @@ class Application: public Platform::Application {
         Vector2i _previousMousePosition, _mousePressPosition;
         GL::Renderbuffer _color, _objectId, _depth;
 
-        GL::Buffer _sphereVertices, _sphereIndices;
 
         // Font graphics fields
         PluginManager::Manager<Text::AbstractFont> _manager;
@@ -143,7 +142,7 @@ class Application: public Platform::Application {
 
         std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
-        Device::Stats* _selectedDevice{nullptr};
+        Device::Selectable* _selectedObject{nullptr};
         Device::Stats* _listeningDevice{nullptr};
         Device::Stats* _activeGateway{nullptr};
 
@@ -209,23 +208,30 @@ Application::Application(const Arguments& arguments):
 
     {
         Trade::MeshData3D data = Primitives::uvSphereSolid(8.0f, 30.0f);
-        _sphereVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
-        _sphereIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
+
+        GL::Buffer sphereVertices, sphereIndices;
+
+        sphereVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
+        sphereIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
         _sphere.setCount(data.indices().size())
-            .setPrimitive(data.primitive())
-            .addVertexBuffer(_sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
-            .setIndexBuffer(_sphereIndices, 0, MeshIndexType::UnsignedShort);
+               .setPrimitive(data.primitive())
+               .addVertexBuffer(sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
+               .setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedShort);
     }
-
     {
-       // const Trade::MeshData3D cube = );
-       _planeMesh = MeshTools::compile(Primitives::cubeSolid());
+        Trade::MeshData3D data = Primitives::cubeSolid();
 
+        GL::Buffer cubeVertices, cubeIndices;
 
+        cubeVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
+        cubeIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
+        _cubeMesh.setCount(data.indices().size())
+               .setPrimitive(data.primitive())
+               .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
+               .setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
     }
 
     _poolCircle = MeshTools::compile(Primitives::circle3DWireframe(20));
-    //_planeMesh = MeshTools::compile(Primitives::planeSolid());
 
     _line_shader = Figure::ParaLineShader{};
     _phong_id_shader = Figure::PhongIdShader{};
@@ -486,16 +492,20 @@ void Application::drawIMGuiElements(int event_cnt) {
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
-        if (_selectedDevice != nullptr && _selectedDevice->_windowMgr == nullptr) {
-            Device::WindowMgr *dwm = new Device::WindowMgr(_selectedDevice);
-            _selectedDevice->_windowMgr = dwm;
+        /*
+        auto *selectedDevice = dynamic_cast<Stats::Device*>(_selectedObject);
+
+        if (selectedDevice != nullptr && selectedDevice->_windowMgr == nullptr) {
+
+            Device::WindowMgr *dwm = new Device::WindowMgr(selectedDevice);
+            selectedDevice->_windowMgr = dwm;
             _inspected_device_window_list.push_back(dwm);
 
             auto *obj = new Object3D{&_scene};
             dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
         } else {
             std::cerr << "Error! Ref to window already exists" << std::endl;
-        }
+        }*/
     }
 
     ImGui::SameLine(100.0f);
@@ -938,15 +948,9 @@ void Application::parse_stats_update(broker::zeek::Event event) {
 
 
 void Application::deselectDevice() {
-    if (_selectedDevice != nullptr) {
-        _selectedDevice->setSelected(false);
-
-        if (_selectedDevice->_highlightedDrawable != nullptr) {
-            delete _selectedDevice->_highlightedDrawable;
-            _selectedDevice->_highlightedDrawable = nullptr;
-        }
-
-        _selectedDevice = nullptr;
+    if (_selectedObject != nullptr) {
+        _selectedObject->deleteHighlight();
+        _selectedObject = nullptr;
     }
 }
 
@@ -982,30 +986,18 @@ void Application::addDirectLabels(Device::Stats *d_s) {
 }
 
 
-void Application::highlightDevice(Device::Stats *d_s) {
-    Object3D *o = new Object3D{&_scene};
+void Application::highlightDevice(Device::Selectable *selection) {
 
-    Matrix4 scaling = Matrix4::scaling(Vector3{2.5});
 
-    o->transform(scaling);
-
-    auto t = d_s->circPoint;
-    o->translate(t);
-
-    d_s->_highlightedDrawable = new Figure::UnitBoardDrawable{*o,
-                                                               _bbitem_shader,
-                                                               _billboard_drawables,
-                                                               0x00ff00_rgbf};
 }
 
 
 void Application::deviceClicked(Device::Stats *d_s) {
     deselectDevice();
 
-    d_s->setSelected(true);
-    _selectedDevice = d_s;
+    //d_s->setHighlight(d_s->circPoint, &scene, _bbitem_shader, _billboard_drawables);
+    //_selectedHighlight = d_s;
 
-    highlightDevice(d_s);
 }
 
 
@@ -1068,6 +1060,7 @@ Device::PrefixStats* Application::createBroadcastPool(const std::string mac_pref
     return dp_s;
 }
 
+
 Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vector3 pos) {
     auto t = pos+offset;
 
@@ -1083,10 +1076,10 @@ Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vec
     Level3::Address *address_obj = new Level3::Address {
         id,
         *o,
-        _phong_shader,
+        _phong_id_shader,
         c,
-        _planeMesh,
-        Matrix4::scaling(Vector3{0.125f}),
+        _cubeMesh,
+        Matrix4::scaling(Vector3{0.2f}),
         _drawables
     };
 
@@ -1103,6 +1096,7 @@ Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vec
     return address_obj;
 }
 
+
 void Application::addL2ConnectL3(Vector3 a, Vector3 b) {
     Object3D *j = new Object3D{&_scene};
     auto *line = new Figure::RingDrawable(*j, 0x999999_rgbf, _drawables);
@@ -1111,6 +1105,7 @@ void Application::addL2ConnectL3(Vector3 a, Vector3 b) {
 
     line->setMesh(Primitives::line3D(a,a+c));
 }
+
 
 void Application::createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum) {
     using namespace Monopticon::Util;
@@ -1175,6 +1170,7 @@ void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
 
     Color3 c = Util::typeColor(t);
     Color4 c4;
+    /*
     if (_selectedDevice != nullptr) {
         c4 = Color4(c, 0.5);
 
@@ -1185,6 +1181,9 @@ void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     } else {
         c4 = Color4(c, 1.0);
     }
+    */
+    c4 = Color4(c, 1.0);
+    // TODO delete line above
 
     auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a, b, _drawables, c4};
     _packet_line_queue.insert(pl);
@@ -1213,7 +1212,7 @@ void Application::DeleteEverything() {
     _prefix_group_map.clear();
 
     // re-initialize application state;
-    _selectedDevice = nullptr;
+    _selectedObject = nullptr;
     _listeningDevice = nullptr;
     _activeGateway = nullptr;
 
@@ -1311,7 +1310,8 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     unsigned short i = static_cast<unsigned short>(id);
     if(i > 0 && i < _device_objects.size()+1) {
         Device::Stats *d_s = _device_objects.at(i-1)->_deviceStats;
-        deviceClicked(d_s);
+        // TODO remedy types
+        //deviceClicked(d_s);
 
         _cameraRig->resetTransformation();
         _cameraRig->translate(d_s->circPoint);

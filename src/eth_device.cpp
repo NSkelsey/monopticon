@@ -2,11 +2,39 @@
 
 using namespace Monopticon::Device;
 
+Selectable::~Selectable() {
+    deleteHighlight();
+}
+
+
+void Selectable::addHighlight(Vector3 t, Scene3D& scene, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D &group) {
+    const Color3 c = 0x00ff00_rgbf;
+    const Matrix4 scaling = Matrix4::scaling(Vector3{2.5});
+
+    Object3D *o = new Object3D{&scene};
+    o->transform(scaling);
+    o->translate(t);
+
+    _highlight = new Figure::UnitBoardDrawable{*o, shader, group, c};
+}
+
+
+void Selectable::deleteHighlight() {
+    if (_highlight != nullptr) {
+        delete _highlight;
+        _highlight = nullptr;
+    }
+}
+
+
+bool Selectable::isSelected() {
+    return _highlight != nullptr;
+}
+
 
 Stats::Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
          _drawable{dev},
-         _highlightedDrawable{nullptr},
          _ip_label{nullptr},
          _mac_label{nullptr},
          _windowMgr{nullptr},
@@ -43,18 +71,14 @@ void Stats::renderText() {
 }
 
 
+/*
 void Stats::setSelected(bool selected) {
     _selected = selected;
 
     if (selected) {
         _drawable->resetTParam();
     }
-}
-
-
-bool Stats::isSelected() {
-    return _selected;
-}
+}*/
 
 
 void Stats::updateMaps(std::string ip_src, std::string mac_dst) {
@@ -98,10 +122,6 @@ Stats::~Stats() {
 
     _dst_arp_map.clear();
     _emitted_src_ips.clear();
-
-    if (_highlightedDrawable != nullptr) {
-        delete _highlightedDrawable;
-    }
 }
 
 
