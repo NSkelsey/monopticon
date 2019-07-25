@@ -2,18 +2,20 @@
 
 using namespace Monopticon::Device;
 
+
 Selectable::~Selectable() {
+    std::cerr << "Virtual destruct called!" << std::endl;
+    exit(1);
     deleteHighlight();
 }
 
 
-void Selectable::addHighlight(Vector3 t, Scene3D& scene, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D &group) {
+void Selectable::addHighlight(Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D &group) {
     const Color3 c = 0x00ff00_rgbf;
-    const Matrix4 scaling = Matrix4::scaling(Vector3{2.5});
+    const Matrix4 scaling = Matrix4::scaling(Vector3{8.0});
 
-    Object3D *o = new Object3D{&scene};
+    Object3D *o = new Object3D{&this->getObj()};
     o->transform(scaling);
-    o->translate(t);
 
     _highlight = new Figure::UnitBoardDrawable{*o, shader, group, c};
 }
@@ -32,6 +34,12 @@ bool Selectable::isSelected() {
 }
 
 
+Object3D& Stats::getObj() {
+    Object3D& t = *_drawable;
+    return t;
+}
+
+
 Stats::Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev):
          mac_addr{macAddr},
          _drawable{dev},
@@ -46,6 +54,11 @@ Stats::Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev):
         num_pkts_recv{0},
         health{60*30}
 {}
+
+
+Vector3 Stats::getTranslation() {
+    return circPoint;
+}
 
 
 std::string Stats::create_device_string() {

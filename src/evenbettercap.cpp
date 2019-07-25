@@ -87,9 +87,10 @@ class Application: public Platform::Application {
         void addDirectLabels(Device::Stats *d_s);
         void addL2ConnectL3(Vector3 a, Vector3 b);
 
-        void deselectDevice();
-        void deviceClicked(Device::Stats *d_s);
-        void highlightDevice(Device::Selectable *selection);
+        UnsignedByte newObjectId();
+        void deselectObject();
+        void objectClicked(Device::Selectable *selection);
+        void highlightObject(Device::Selectable *selection);
 
         void DeleteEverything();
 
@@ -133,7 +134,7 @@ class Application: public Platform::Application {
         Shaders::DistanceFieldVector3D _text_shader;
 
         // Scene objects
-        std::vector<Figure::DeviceDrawable*> _device_objects{};
+        std::vector<Device::Selectable*> _selectable_objects{};
         std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
 
         std::map<std::string, Device::Stats*> _device_map{};
@@ -317,7 +318,7 @@ void Application::prepare3DFont() {
 
      auto inner = 0x00ff00_rgbf;
      auto outline = 0x00ff00_rgbf;
-    _text_shader.setColor(inner)
+     _text_shader.setColor(inner)
            .setOutlineColor(outline)
            .setOutlineRange(0.45f, 0.445f);
 }
@@ -335,6 +336,8 @@ void Application::drawTextElements() {
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One, GL::Renderer::BlendFunction::Zero);
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
+
+    _camera->draw(_billboard_drawables);
 }
 
 
@@ -361,11 +364,11 @@ void Application::draw3DElements() {
     _camera->draw(_permanent_drawables);
     _camera->draw(_selectable_drawables);
     _camera->draw(_drawables);
-    _camera->draw(_billboard_drawables);
 
     GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
+
 }
 
 
@@ -389,7 +392,7 @@ void Application::drawIMGuiElements(int event_cnt) {
 
                 if (mac_addr.size() > 0) {
                     _listeningDevice = createSphere(mac_addr);
-                    deviceClicked(_listeningDevice);
+                    //objectClicked(_listeningDevice);
 
                     s = "monopt_iface_proto ipv4_addr ";
                     cmd = s.append(chosen_iface);
@@ -492,8 +495,7 @@ void Application::drawIMGuiElements(int event_cnt) {
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
-        /*
-        auto *selectedDevice = dynamic_cast<Stats::Device*>(_selectedObject);
+        auto *selectedDevice = dynamic_cast<Device::Stats*>(_selectedObject);
 
         if (selectedDevice != nullptr && selectedDevice->_windowMgr == nullptr) {
 
@@ -505,7 +507,7 @@ void Application::drawIMGuiElements(int event_cnt) {
             dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
         } else {
             std::cerr << "Error! Ref to window already exists" << std::endl;
-        }*/
+        }
     }
 
     ImGui::SameLine(100.0f);
@@ -532,7 +534,7 @@ void Application::drawIMGuiElements(int event_cnt) {
         sprintf(b, "%d", i);
         i++;
         if (ImGui::InvisibleButton(b, ImVec2(300, 18))) {
-            deviceClicked(d_s);
+            objectClicked(d_s);
         }
         ImGui::SameLine(5.0f);
         d_s->renderText();
@@ -885,6 +887,11 @@ void Application::parse_arp_table(std::map<broker::data, broker::data> *arp_tabl
 }
 
 
+UnsignedByte Application::newObjectId() {
+    return static_cast<UnsignedByte>(_selectable_objects.size());
+}
+
+
 void Application::parse_single_mcast(int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s) {
     Util::L2Summary sum;
     Device::PrefixStats *dp_s = nullptr;
@@ -947,7 +954,7 @@ void Application::parse_stats_update(broker::zeek::Event event) {
 }
 
 
-void Application::deselectDevice() {
+void Application::deselectObject() {
     if (_selectedObject != nullptr) {
         _selectedObject->deleteHighlight();
         _selectedObject = nullptr;
@@ -986,17 +993,22 @@ void Application::addDirectLabels(Device::Stats *d_s) {
 }
 
 
-void Application::highlightDevice(Device::Selectable *selection) {
+void Application::highlightObject(Device::Selectable *selection) {
 
 
 }
 
 
-void Application::deviceClicked(Device::Stats *d_s) {
-    deselectDevice();
+void Application::objectClicked(Device::Selectable *selection) {
+    deselectObject();
+    _selectedObject = selection;
 
-    //d_s->setHighlight(d_s->circPoint, &scene, _bbitem_shader, _billboard_drawables);
-    //_selectedHighlight = d_s;
+    //Object3D *o = selection->getObj();
+
+    //Level3::Address *a = dynamic_cast<Level3::Address*>(selection);
+    selection->addHighlight(_bbitem_shader, _billboard_drawables);
+
+    _selectedObject = selection;
 
 }
 
@@ -1004,7 +1016,7 @@ void Application::deviceClicked(Device::Stats *d_s) {
 Device::Stats* Application::createSphere(const std::string mac) {
     Object3D* o = new Object3D{&_scene};
 
-    int num_objs = _device_objects.size();
+    int num_objs = _device_map.size();
 
     // Sequentially add elements to rings of increasing radius
     int j = num_objs;
@@ -1030,7 +1042,8 @@ Device::Stats* Application::createSphere(const std::string mac) {
     o->transform(Matrix4::scaling(Vector3{0.25f}));
     o->translate(w);
 
-    UnsignedByte id = static_cast<UnsignedByte>(_device_objects.size());
+
+    UnsignedByte id = newObjectId();
 
     Color3 c = 0xa5c9ea_rgbf;
     Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{
@@ -1046,7 +1059,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
     Device::Stats* d_s = new Device::Stats{mac, w, dev};
     dev->_deviceStats = d_s;
 
-    _device_objects.push_back(dev);
+    _selectable_objects.push_back(d_s);
     _device_map.insert(std::make_pair(mac, d_s));
 
     return d_s;
@@ -1064,14 +1077,18 @@ Device::PrefixStats* Application::createBroadcastPool(const std::string mac_pref
 Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vector3 pos) {
     auto t = pos+offset;
 
-    Object3D* o = new Object3D{&_scene};
+    Utility::Debug{} << t;
 
+    Object3D* g = new Object3D{&_scene};
+    Object3D* o = new Object3D{g};
+
+    auto s = Matrix4::scaling(Vector3{0.25f});
+    o->transform(s);
     o->translate(t);
 
     Color3 c = 0xffffff_rgbf;
 
-    UnsignedByte id = 0xff;
-
+    UnsignedByte id = newObjectId();
 
     Level3::Address *address_obj = new Level3::Address {
         id,
@@ -1079,9 +1096,10 @@ Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vec
         _phong_id_shader,
         c,
         _cubeMesh,
-        Matrix4::scaling(Vector3{0.2f}),
-        _drawables
+        _selectable_drawables
     };
+
+    _selectable_objects.push_back(address_obj);
 
     Object3D *obj = new Object3D{&_scene};
     auto scaling = Matrix4::scaling(Vector3{0.10f});
@@ -1203,7 +1221,7 @@ void Application::DeleteEverything() {
     //delete _billboard_drawables;
     //delete _text_drawables;
 
-    _device_objects.clear();
+    _selectable_objects.clear();
     _packet_line_queue.clear();
     _inspected_device_window_list.clear();
 
@@ -1305,16 +1323,16 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
         Range2Di::fromSize({event.position().x(), _objselect_framebuffer.viewport().sizeY() - event.position().y() - 1}, {1, 1}),
         {PixelFormat::R32UI});
 
-    deselectDevice();
+    deselectObject();
     UnsignedByte id = data.data<UnsignedByte>()[0];
     unsigned short i = static_cast<unsigned short>(id);
-    if(i > 0 && i < _device_objects.size()+1) {
-        Device::Stats *d_s = _device_objects.at(i-1)->_deviceStats;
-        // TODO remedy types
-        //deviceClicked(d_s);
+    if(i > 0 && i < _selectable_objects.size()+1) {
+        Device::Selectable *selection = _selectable_objects.at(i-1);
+
+        objectClicked(selection);
 
         _cameraRig->resetTransformation();
-        _cameraRig->translate(d_s->circPoint);
+        _cameraRig->translate(selection->getTranslation());
     }
 
     event.setAccepted();

@@ -147,11 +147,15 @@ namespace Device {
 
 class Selectable {
   public:
-    ~Selectable();
-    void addHighlight(Vector3 t, Scene3D& scene, Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D &group);
+    virtual ~Selectable();
+    void addHighlight(Shaders::Flat3D& shader, SceneGraph::DrawableGroup3D &group);
     bool isSelected();
 
-    //void setSelected(bool selected);
+    virtual Vector3 getTranslation() {return Vector3{-3.0};}
+    virtual Object3D& getObj() {
+        // TODO remove
+        std::cerr << "Called virtual getObj" << std::endl; exit(1); return *(new Object3D{});
+    };
 
     Figure::UnitBoardDrawable *_highlight{nullptr};
 
@@ -166,12 +170,15 @@ class Stats: public Selectable {
 
     std::string create_device_string();
     void renderText();
-
     void updateMaps(std::string ip_src_addr, std::string mac_dst);
+
+    Vector3 getTranslation();
+
     std::string makeIpLabel();
 
     std::string                mac_addr;
     Figure::DeviceDrawable     *_drawable;
+    Object3D& getObj();
 
     Figure::TextDrawable   *_ip_label;
     Figure::TextDrawable   *_mac_label;
@@ -247,9 +254,12 @@ class RouteMgr {
 
 namespace Level3 {
 
-class Address: public Object3D,  public SceneGraph::Drawable3D  {
+class Address: public Device::Selectable, public Object3D, public SceneGraph::Drawable3D {
   public:
-    explicit Address(UnsignedByte id, Object3D& object, Figure::PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
+    explicit Address(UnsignedByte id, Object3D& object, Figure::PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, SceneGraph::DrawableGroup3D& drawables);
+
+    Object3D& getObj();
+    Vector3 getTranslation();
 
     std::string value;
 
@@ -260,7 +270,6 @@ class Address: public Object3D,  public SceneGraph::Drawable3D  {
     Color3 _color;
     Figure::PhongIdShader& _shader;
     GL::Mesh& _mesh;
-    Matrix4 _primitiveTransformation;
 };
 
 }
@@ -299,7 +308,7 @@ class PhongIdShader: public GL::AbstractShaderProgram {
         _projectionMatrixUniform;
 };
 
-class DeviceDrawable: public SceneGraph::Drawable3D {
+class DeviceDrawable: public Object3D, public SceneGraph::Drawable3D {
     public:
         explicit DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
 

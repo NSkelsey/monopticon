@@ -73,6 +73,7 @@ PhongIdShader& PhongIdShader::setProjectionMatrix(const Matrix4& matrix) {
 
 
 DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables):
+    Object3D{&object},
     SceneGraph::Drawable3D{object, &drawables},
     _id{id},
     _color{color},
