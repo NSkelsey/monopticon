@@ -12,10 +12,10 @@ The goal of the software is four fold:
 - Define network elements symbolically to simplify the explanation and diffusion of knowledge about computer networks.
 
 This software might be useful to you if you:
-- must configure local networks
-- must defend networks
-- try to penetrate networks
-- make _pew pew_ noises when pinging 8.8.8.8
+- Must configure local networks
+- Must defend networks
+- Penetrate networks
+- Make _pew pew_ noises when pinging 8.8.8.8
 
 
 All reactions to this project including silly questions are appreciated. Open an issue here or contact [Nick](https://nskelsey.com) directly.
@@ -53,7 +53,7 @@ Install monopticon and its dependencies from the Arch user repository.
 > yay monopticon
 ```
 
-Authorize the zeek binary to capture packets without sudo (for every user 0_o)
+Give the zeek binary the capability to capture packets without sudo.
 ```zsh
 > sudo setcap cap_net_raw=eip /usr/local/bro/bin/zeek
 ```

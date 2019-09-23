@@ -31,6 +31,7 @@ void Address::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& ca
     _mesh.draw(_shader);
 }
 
+
 Vector3 Address::getTranslation() {
     // TODO use _absoluteTransformationCache
     return Vector3{};

@@ -1,34 +1,41 @@
 TODO
 =====
-As of 23/7/19
+As of 23/9/19
 
-### Release Candidate v0.3.0 -- July 26;
-> ========================================
+### Release Candidate v0.3.0 -- Sep 27;
+========================================
+
 - [ ] Make interactive.
     - Select and move.
     - Group select with
+    - Add action drop down menu for IP cubes
+        - with ping
 
 - [ ] Add functionality to signalling logic
     - [x] support prefix pools
         -[x] bogons & selected prefixes transmit just like devices
-    - [x] support broadcast pools
+    - [?] support broadcast pools (needs improvement)
     - [ ] exit L2Devices that have not communicated in 5 mins
         - check once every second in epoch second
+        - requires coordination of the device_map b/w zeek and monopt processes
 
 - [ ] Improve layout:
+    - [x] fix label overlap
     - [x] demo circle layout that expands
         - [ ] Add list of known positions for known devices
-    - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
-    - Demo 3D cube layouts
+    - [x] Demo 3D cube layouts
 
-> ========================================
 ### Backlog
+========================================
 
 - [ ] Add Strict Ordering:
     - [x] figure out how to generate raw packet events from pcaps
         - Use tcpreplay to resend packets on some net interface
     - [ ] determine how the timeline works
     - [ ] slow down time to step through packet interactions
+
+- [ ] Improve layout:
+    - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
 - [ ] Improve analysis
     - [ ] Use find routers script to add subnets
@@ -82,7 +89,6 @@ Destroy thing:
 Update thing:
 Do Thing:
   [$effect: enum, $window_content: string, $color: uint, $things: string, $dst: string]
-Replace thing
 ```
 
 DONE

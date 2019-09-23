@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Monopticon {
 
-const int MSAA_CNT = 16; // Number of subpixel samples for MultiSampling Anti-Aliasing
+const int MSAA_CNT = 8; // Number of subpixel samples for MultiSampling Anti-Aliasing
 
 // Layout constants
 const int num_rings = 8;
@@ -697,9 +697,13 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
             return 0;
         }
 
-        Device::Stats *d_s = createSphere(*mac_src);
-        _device_map.insert(std::make_pair(*mac_src, d_s));
-        addDirectLabels(d_s);
+        auto search = _device_map.find(*mac_src);
+        if (search == _device_map.end()) {
+            Device::Stats *d_s = createSphere(*mac_src);
+            _device_map.insert(std::make_pair(*mac_src, d_s));
+            addDirectLabels(d_s);
+        }
+
     }
 
     std::map<broker::data, broker::data> *l2_dev_comm = broker::get_if<broker::table>(wrapper->at(1));
@@ -995,7 +999,6 @@ void Application::addDirectLabels(Device::Stats *d_s) {
 
 void Application::highlightObject(Device::Selectable *selection) {
 
-
 }
 
 
@@ -1077,7 +1080,8 @@ Device::PrefixStats* Application::createBroadcastPool(const std::string mac_pref
 Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vector3 pos) {
     auto t = pos+offset;
 
-    Utility::Debug{} << t;
+    //std::cout << ipv4_addr << std::endl;
+    //Utility::Debug{} << t;
 
     Object3D* g = new Object3D{&_scene};
     Object3D* o = new Object3D{g};

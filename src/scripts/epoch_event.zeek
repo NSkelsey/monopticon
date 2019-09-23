@@ -1,7 +1,4 @@
 # This program generates router identification events on a schedule
-
-#@load policy/protocols/conn/mac-logging
-#@load policy/protocols/conn/vlan-logging
 @load policy/misc/stats.bro
 
 export {
@@ -50,6 +47,8 @@ export {
     group: bool;
     label: string;
     new_src_ip_ctr: count;
+
+    ip_added: bool;
   };
 
   # Internal
@@ -135,8 +134,8 @@ event epoch_step()
   for (mac_src in L2DeviceTable) {
     local dev = L2DeviceTable[mac_src];
 
-    if (dev$new_src_ip_ctr > 0) {
-      dev$new_src_ip_ctr = 0;
+    if (dev$new_src_ip_ctr > 0 && !dev$ip_added) {
+      dev$ip_added = T;
       for (ip_src_addr in dev$src_emitted_ipv4) {
         msg$enter_l2_ipv4_addr_src[mac_src] = ip_src_addr;
       }
@@ -174,6 +173,7 @@ function create_L2Device(mac_src: string, is_group: bool): L2Device
   dev$emitted_ipv6 = set();
 
   dev$new_src_ip_ctr = 0;
+  dev$ip_added = F;
 
   add epoch_new_l2devices[mac_src];
   if (!is_group) {
