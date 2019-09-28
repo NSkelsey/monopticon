@@ -149,6 +149,8 @@ class Application: public Platform::Application {
 
         // Network interface state tracking
         std::vector<std::string> _iface_list;
+        std::string _chosen_iface;
+
         std::string _zeek_pid;
 
         // Custom ImGui interface components
@@ -468,16 +470,23 @@ void Application::drawIMGuiElements(int event_cnt) {
     }
 
     int offset = 100;
-    for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
+    if (peer_connected) {
         ImGui::SameLine(offset);
-        offset += 100;
         auto green = ImVec4(0,1,0,1);
-        if (_iface_list.begin() == it) {
-            ImGui::TextColored(green, (*it).c_str(), ImVec2(80, 20));
-        } else {
-            ImGui::Text((*it).c_str(), ImVec2(80, 20));
+        ImGui::TextColored(green, _chosen_iface.c_str(), ImVec2(80, 20));
+    } else {
+        for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
+            ImGui::SameLine(offset);
+            offset += 100;
+            const char *lbl = (*it).c_str();
+            if (*it == _chosen_iface) {
+                ImGui::Selectable(lbl, true, 0, ImVec2(80, 20));
+            } else {
+                if (ImGui::Selectable(lbl, false, 0, ImVec2(80, 20))) {
+                    _chosen_iface = *it;
+                }
+            }
         }
-
     }
 
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
