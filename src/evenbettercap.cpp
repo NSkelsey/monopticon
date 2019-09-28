@@ -90,7 +90,7 @@ class Application: public Platform::Application {
         UnsignedByte newObjectId();
         void deselectObject();
         void objectClicked(Device::Selectable *selection);
-        void highlightObject(Device::Selectable *selection);
+        void objectRightClicked(Device::Selectable *selection);
 
         void DeleteEverything();
 
@@ -166,6 +166,7 @@ class Application: public Platform::Application {
         int tot_epoch_drop;
 
         bool _orbit_toggle{false};
+        bool _openPopup{false};
 
         int inv_sample_rate{1};
 };
@@ -374,6 +375,20 @@ void Application::draw3DElements() {
 
 void Application::drawIMGuiElements(int event_cnt) {
     _imgui.newFrame();
+
+    ImGui::ShowDemoWindow();
+
+    int corner = 0;
+    if (_openPopup) {
+        ImGui::OpenPopup("mypopup");
+        _openPopup = false;
+    }
+
+    if (ImGui::BeginPopup("mypopup")) {
+        if (ImGui::MenuItem("Option 1", NULL, corner == 0)) corner = 0;
+        if (ImGui::MenuItem("Option 2", NULL, corner == 1)) corner = 1;
+        ImGui::EndPopup();
+    }
 
     ImGui::SetNextWindowSize(ImVec2(315, 245), ImGuiCond_Always);
     auto flags = ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoScrollbar;
@@ -997,8 +1012,8 @@ void Application::addDirectLabels(Device::Stats *d_s) {
 }
 
 
-void Application::highlightObject(Device::Selectable *selection) {
-
+void Application::objectRightClicked(Device::Selectable *selection) {
+    std::cout << "right click" << std::endl;
 }
 
 
@@ -1012,7 +1027,6 @@ void Application::objectClicked(Device::Selectable *selection) {
     selection->addHighlight(_bbitem_shader, _billboard_drawables);
 
     _selectedObject = selection;
-
 }
 
 
@@ -1308,9 +1322,10 @@ void Application::keyReleaseEvent(KeyEvent& event) {
 void Application::mousePressEvent(MouseEvent& event) {
     if(_imgui.handleMousePressEvent(event)) return;
 
-    if(event.button() != MouseEvent::Button::Left) return;
 
-    _previousMousePosition = _mousePressPosition = event.position();
+     if(event.button() != MouseEvent::Button::Left) return;
+
+     _previousMousePosition = _mousePressPosition = event.position();
 
     event.setAccepted();
 }
@@ -1319,7 +1334,8 @@ void Application::mousePressEvent(MouseEvent& event) {
 void Application::mouseReleaseEvent(MouseEvent& event) {
     if(_imgui.handleMouseReleaseEvent(event)) return;
 
-    if(event.button() != MouseEvent::Button::Left || _mousePressPosition != event.position()) return;
+    auto btn = event.button();
+    if(!(btn == MouseEvent::Button::Left || btn == MouseEvent::Button::Right)) return;
 
     /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
     _objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
@@ -1335,8 +1351,13 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
 
         objectClicked(selection);
 
-        _cameraRig->resetTransformation();
-        _cameraRig->translate(selection->getTranslation());
+        if (btn == MouseEvent::Button::Left) {
+            _cameraRig->resetTransformation();
+            _cameraRig->translate(selection->getTranslation());
+        } else if (btn == MouseEvent::Button::Right) {
+            _openPopup = true;
+            objectRightClicked(selection);
+        }
     }
 
     event.setAccepted();

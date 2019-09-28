@@ -30,7 +30,7 @@ The animation below demonstrates the output of Monopticon (v0.2.0) monitoring a 
 1) Install the software following the commands documented below.
 2) Prepare a suitable interface to capture packets on.
 
-Read the file mopt_iface_proto.sh to ensure that it will work with your system.
+Read the file `mopt_iface_proto.sh` to ensure that it will work with your system.
 
 3) Run:
 
@@ -55,5 +55,5 @@ Install monopticon and its dependencies from the Arch user repository.
 
 Give the zeek binary the capability to capture packets without sudo.
 ```zsh
-> sudo setcap cap_net_raw=eip /usr/local/bro/bin/zeek
+> sudo setcap cap_net_raw=eip `which zeek`
 ```

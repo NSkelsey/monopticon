@@ -8,8 +8,9 @@ As of 23/9/19
 - [ ] Make interactive.
     - Select and move.
     - Group select with
-    - Add action drop down menu for IP cubes
+    - [ ] Add action drop down menu for IP cubes
         - with ping
+        - watch command
 
 - [ ] Add functionality to signalling logic
     - [x] support prefix pools
@@ -17,7 +18,7 @@ As of 23/9/19
     - [?] support broadcast pools (needs improvement)
     - [ ] exit L2Devices that have not communicated in 5 mins
         - check once every second in epoch second
-        - requires coordination of the device_map b/w zeek and monopt processes
+        - requires coordination of the device_map w/ zeek and monopt processes
 
 - [ ] Improve layout:
     - [x] fix label overlap
@@ -73,6 +74,7 @@ As of 23/9/19
     - [ ] Package application in .deb
 
 - [ ] Make more bello:
+    - [ ] Traffic graphs should zero out or continue sliding after disconnect
     - [ ] Add a skybox that simulates __cyberspace__
     - [ ] Add sounds for specific events for __cyberspace__
     - [ ] Create a flat band mesh instead of single pix width wireframes
