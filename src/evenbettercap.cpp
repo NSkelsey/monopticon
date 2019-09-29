@@ -399,12 +399,18 @@ void Application::drawIMGuiElements(int event_cnt) {
     static bool peer_connected = false;
     if (!peer_connected && _iface_list.size() > 0) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
-            std::string chosen_iface = _iface_list.at(0);
-            std::string s, cmd;
+            // If an invalid iface is selected, or an empty value is used
+            // just use the first interface.
+            auto search = find(_iface_list.begin(), _iface_list.end(), _chosen_iface);
+            if (_chosen_iface.length() == 0 ||
+                search == _iface_list.end()) {
+                _chosen_iface = _iface_list.at(0);
+            }
 
+            std::string s, cmd;
             if (_listeningDevice == nullptr) {
                 s = "monopt_iface_proto mac_addr ";
-                cmd = s.append(chosen_iface);
+                cmd = s.append(_chosen_iface);
                 std::string mac_addr = Util::exec_output(cmd);
 
                 if (mac_addr.size() > 0) {
@@ -412,7 +418,7 @@ void Application::drawIMGuiElements(int event_cnt) {
                     //objectClicked(_listeningDevice);
 
                     s = "monopt_iface_proto ipv4_addr ";
-                    cmd = s.append(chosen_iface);
+                    cmd = s.append(_chosen_iface);
                     std::string ipv4_addr = Util::exec_output(cmd);
 
                     if (ipv4_addr.size() > 0) {
@@ -421,17 +427,17 @@ void Application::drawIMGuiElements(int event_cnt) {
                     addDirectLabels(_listeningDevice);
                     createIPv4Address(ipv4_addr, _listeningDevice->circPoint);
                 } else {
-                    std::cerr << "Empty mac addr for net interface: " << chosen_iface << std::endl;
+                    std::cerr << "Empty mac addr for net interface: " << _chosen_iface << std::endl;
                 }
             }
 
             s = "monopt_iface_proto gateway_ipv4_addr ";
-            cmd = s.append(chosen_iface);
+            cmd = s.append(_chosen_iface);
             std::string gw_ipv4_addr = Util::exec_output(cmd);
 
             if (_activeGateway == nullptr && gw_ipv4_addr.size() > 0) {
                 s = "monopt_iface_proto gateway_mac_addr ";
-                cmd = s.append(chosen_iface)
+                cmd = s.append(_chosen_iface)
                        .append(" ")
                        .append(gw_ipv4_addr);
 
@@ -449,7 +455,7 @@ void Application::drawIMGuiElements(int event_cnt) {
             }
 
             s = "monopt_iface_proto launch ";
-            cmd = s.append(chosen_iface);
+            cmd = s.append(_chosen_iface);
             _zeek_pid = Util::exec_output(cmd);
             std::cout << "Launched subprocess with pid: " << _zeek_pid << std::endl;
             peer_connected = true;
@@ -477,12 +483,14 @@ void Application::drawIMGuiElements(int event_cnt) {
     } else {
         for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
             ImGui::SameLine(offset);
-            offset += 100;
+            offset += 80;
             const char *lbl = (*it).c_str();
             if (*it == _chosen_iface) {
-                ImGui::Selectable(lbl, true, 0, ImVec2(80, 20));
+                if (ImGui::Selectable(lbl, true, 0, ImVec2(60, 15))) {
+                    _chosen_iface = "";
+                }
             } else {
-                if (ImGui::Selectable(lbl, false, 0, ImVec2(80, 20))) {
+                if (ImGui::Selectable(lbl, false, 0, ImVec2(60, 15))) {
                     _chosen_iface = *it;
                 }
             }
@@ -515,7 +523,7 @@ void Application::drawIMGuiElements(int event_cnt) {
 
     ImGui::End();
 
-    ImGui::SetNextWindowSize(ImVec2(330, 215), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
@@ -1260,6 +1268,9 @@ void Application::DeleteEverything() {
     _selectedObject = nullptr;
     _listeningDevice = nullptr;
     _activeGateway = nullptr;
+
+    ifaceLongChartMgr.empty();
+    ifaceChartMgr.empty();
 
     ring_level = 0;
     pos_in_ring = 0;

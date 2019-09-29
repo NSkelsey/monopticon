@@ -6,8 +6,8 @@ As of 23/9/19
 ========================================
 
 - [ ] Make interactive.
-    - Select and move.
-    - Group select with
+    - [ ] Select and move.
+    - [ ] Group select with
     - [ ] Add action drop down menu for IP cubes
         - with ping
         - watch command
