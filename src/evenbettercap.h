@@ -157,6 +157,9 @@ class Selectable {
         // TODO remove
         std::cerr << "Called virtual getObj" << std::endl; exit(1); return *(new Object3D{});
     };
+    virtual int rightClickActions() {
+        std::cerr << "Called virtual rclickActions" << std::endl; exit(1); return -1;
+    }
 
     Figure::UnitBoardDrawable *_highlight{nullptr};
 
@@ -180,6 +183,7 @@ class Stats: public Selectable {
     std::string                mac_addr;
     Figure::DeviceDrawable     *_drawable;
     Object3D& getObj();
+    int rightClickActions();
 
     Figure::TextDrawable   *_ip_label;
     Figure::TextDrawable   *_mac_label;
@@ -233,8 +237,9 @@ class ChartMgr {
         void draw();
         void resize(int len);
         void push(float new_val);
+        void empty();
 
-        long unsigned int arr_len;
+        unsigned int arr_len;
         std::vector<float> vec;
 
         float moving_avg;
@@ -261,6 +266,7 @@ class Address: public Device::Selectable, public Object3D, public SceneGraph::Dr
 
     Object3D& getObj();
     Vector3 getTranslation();
+    int rightClickActions();
 
     std::string value;
 

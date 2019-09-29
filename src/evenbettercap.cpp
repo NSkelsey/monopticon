@@ -90,7 +90,8 @@ class Application: public Platform::Application {
         UnsignedByte newObjectId();
         void deselectObject();
         void objectClicked(Device::Selectable *selection);
-        void objectRightClicked(Device::Selectable *selection);
+        void selectableMenuActions(Device::Selectable *selection);
+        void watchSelectedDevice();
 
         void DeleteEverything();
 
@@ -380,15 +381,13 @@ void Application::drawIMGuiElements(int event_cnt) {
 
     ImGui::ShowDemoWindow();
 
-    int corner = 0;
     if (_openPopup) {
-        ImGui::OpenPopup("mypopup");
+        ImGui::OpenPopup("selectablePopup");
         _openPopup = false;
     }
 
-    if (ImGui::BeginPopup("mypopup")) {
-        if (ImGui::MenuItem("Option 1", NULL, corner == 0)) corner = 0;
-        if (ImGui::MenuItem("Option 2", NULL, corner == 1)) corner = 1;
+    if (ImGui::BeginPopup("selectablePopup")) {
+        selectableMenuActions(_selectedObject);
         ImGui::EndPopup();
     }
 
@@ -527,19 +526,7 @@ void Application::drawIMGuiElements(int event_cnt) {
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
-        auto *selectedDevice = dynamic_cast<Device::Stats*>(_selectedObject);
-
-        if (selectedDevice != nullptr && selectedDevice->_windowMgr == nullptr) {
-
-            Device::WindowMgr *dwm = new Device::WindowMgr(selectedDevice);
-            selectedDevice->_windowMgr = dwm;
-            _inspected_device_window_list.push_back(dwm);
-
-            auto *obj = new Object3D{&_scene};
-            dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
-        } else {
-            std::cerr << "Error! Ref to window already exists" << std::endl;
-        }
+        watchSelectedDevice();
     }
 
     ImGui::SameLine(100.0f);
@@ -1029,8 +1016,19 @@ void Application::addDirectLabels(Device::Stats *d_s) {
 }
 
 
-void Application::objectRightClicked(Device::Selectable *selection) {
-    std::cout << "right click" << std::endl;
+void Application::selectableMenuActions(Device::Selectable *selection) {
+    int res = selection->rightClickActions();
+    if (res == 0) {
+        return;
+    } else if (res == 1) {
+        watchSelectedDevice();
+    } else if (res == 2) {
+        std::cout << "scan dev" << std::endl;
+    } else if (res == 3) {
+        std::cout << "change orbit" << std::endl;
+    } else {
+        std::cerr << "No selectable menu action found " << res << std::endl;
+    }
 }
 
 
@@ -1042,8 +1040,6 @@ void Application::objectClicked(Device::Selectable *selection) {
 
     //Level3::Address *a = dynamic_cast<Level3::Address*>(selection);
     selection->addHighlight(_bbitem_shader, _billboard_drawables);
-
-    _selectedObject = selection;
 }
 
 
@@ -1242,6 +1238,24 @@ void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
     _packet_line_queue.insert(pl);
 }
 
+void Application::watchSelectedDevice() {
+    // TODO can move logic into parent.
+    auto *selectedDevice = dynamic_cast<Device::Stats*>(_selectedObject);
+    if (selectedDevice != nullptr && selectedDevice->_windowMgr != nullptr) {
+        std::cerr << "Ref to window already exists" << std::endl;
+        return;
+    }
+    if (selectedDevice != nullptr) {
+
+        Device::WindowMgr *dwm = new Device::WindowMgr(selectedDevice);
+        selectedDevice->_windowMgr = dwm;
+        _inspected_device_window_list.push_back(dwm);
+
+        auto *obj = new Object3D{&_scene};
+        dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
+    }
+}
+
 
 void Application::DeleteEverything() {
     // Delete this stuff. . . .
@@ -1376,7 +1390,6 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
             _cameraRig->translate(selection->getTranslation());
         } else if (btn == MouseEvent::Button::Right) {
             _openPopup = true;
-            objectRightClicked(selection);
         }
     }
 

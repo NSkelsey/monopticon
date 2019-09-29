@@ -41,3 +41,11 @@ Vector3 Address::getTranslation() {
 Object3D& Address::getObj() {
     return *this;
 }
+
+int Address::rightClickActions() {
+    if (ImGui::MenuItem("Scan", NULL, false)) {
+        std::cout << "Want to scan" << std::endl;
+        return 2;
+    }
+    return 0;
+}

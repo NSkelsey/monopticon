@@ -126,6 +126,19 @@ std::string Stats::makeIpLabel() {
     return ss.str();
 }
 
+int Stats::rightClickActions() {
+    if (ImGui::MenuItem("Watch", NULL, false)) {
+        std::cout << "Want to watch" << std::endl;
+        return 1;
+    }
+    if (ImGui::MenuItem("Set Orbit", NULL, false)) {
+        //watchSelectedDevice();
+        std::cout << "Want to orbit" << std::endl;
+        return 3;
+    }
+    return 0;
+}
+
 
 Stats::~Stats() {
     delete _mac_label;
@@ -264,5 +277,12 @@ void ChartMgr::push(float new_val) {
         moving_avg = sum/static_cast<float>(n);
     } else {
         moving_avg = 0.0f;
+    }
+}
+
+
+void ChartMgr::empty() {
+    for (unsigned int i = 0; i < arr_len; i++) {
+        vec.assign(i, 0.0f);
     }
 }
