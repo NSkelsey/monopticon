@@ -1,8 +1,8 @@
 TODO
 =====
-As of 23/9/19
+As of 29/9/19
 
-### Release Candidate v0.3.0 -- Sep 27;
+### Release Candidate v0.3.0 -- Sep 30;
 ========================================
 
 - [ ] Make interactive.
@@ -10,24 +10,71 @@ As of 23/9/19
     - [ ] Group select with
     - [ ] Add action drop down menu for IP cubes
         - with ping
-        - watch command
+        - [x] watch command
 
-- [ ] Add functionality to signalling logic
+- [ ] Add functionality to signaling logic
     - [x] support prefix pools
         -[x] bogons & selected prefixes transmit just like devices
-    - [?] support broadcast pools (needs improvement)
+    - [?] support broadcast pools
+        - [ ] add labels
     - [ ] exit L2Devices that have not communicated in 5 mins
         - check once every second in epoch second
         - requires coordination of the device_map w/ zeek and monopt processes
 
-- [ ] Improve layout:
-    - [x] fix label overlap
-    - [x] demo circle layout that expands
-        - [ ] Add list of known positions for known devices
-    - [x] Demo 3D cube layouts
-
 ### Backlog
 ========================================
+
+#### Conn-event framework
+- [ ] Arbitrary zeek: conn based event framework.
+    - Components:
+        - stream event to graphics process
+        - imgui window
+        - this class:
+```c++
+        class EventWatcher {
+            string name // doubles as channel name
+            Vec3 color
+            Vector <Events> {
+                A, B // l3 device references
+                new_drawables // line; bbdrawable
+                int t // parameter
+            }
+        }
+```
+
+    - (zeek) side:
+        (on startup) - to start use programmed list
+            - load needed plugins
+            - (open - listening channel)
+        (on signal) write into brokered `monopt/event_name`:
+
+    - custom zeek-script
+        - `redef EventVizList += { "custom_event_name" };
+        - `EventMap::EventTable["custom_event_name"] = custom_event;`
+
+    - (streaming graphic):
+        - `map<str, EventW> _active_event_subscriptions`
+        - reads from currently watched "event_name":
+        - lookup and find L3 addresses:
+            - create `Event` add to `EventWatcher.events`
+                - add L3 device effect (highlighted red)
+                - draw a curve and set t
+        - in `draw`
+            - decrement t
+        - check `EventWatcher` remove `Events` and their drawables
+
+    - (peer_connected):
+        - open `monopt/event_subscriber`
+        - build "EventWatcher" from communicated list.
+
+    - IMGUI widget:
+        - [Pick event >]
+            [ x icmp-ping ] [ color ]
+            [ o ssh-auth-init ] [ color ]
+            [ o dhcp-bind ] [ color ]
+        - in `drawImGUI()`
+        - create `EventWatcher`; write name into `event_subscriber`
+
 
 - [ ] Add Strict Ordering:
     - [x] figure out how to generate raw packet events from pcaps
@@ -36,6 +83,7 @@ As of 23/9/19
     - [ ] slow down time to step through packet interactions
 
 - [ ] Improve layout:
+    - [ ] Add list of known positions for known devices
     - maybe implement a Radial Balloon Tree with groups based on MACs (bcast, gway, trusted, unknown)
 
 - [ ] Improve analysis
@@ -95,6 +143,11 @@ Do Thing:
 
 DONE
 ====
+- [x] Improve layout:
+    - [x] fix label overlap
+    - [x] demo circle layout that expands
+    - [x] Demo 3D cube layouts
+
 - [x] Add IP routes and labels to L2Devices:
     - [x] Use an enter `Thing Record` associated to the L2Device
     - Issue updates for inferred arp table routes to the `Thing Record`:
