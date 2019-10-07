@@ -286,9 +286,6 @@ void Application::prepareGLBuffers(const Range2Di& viewport) {
 
 
 void Application::prepareDrawables() {
-    //auto *ring = Util::createLayoutRing(_scene, _permanent_drawables, 10.0f, Vector3{1.0f, 0.0f, 1.0f});
-    //ring->setMesh(Primitives::grid3DWireframe(Vector2i(10, 10)));
-
     Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
     Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
     Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
@@ -378,8 +375,6 @@ void Application::draw3DElements() {
 
 void Application::drawIMGuiElements(int event_cnt) {
     _imgui.newFrame();
-
-    ImGui::ShowDemoWindow();
 
     if (_openPopup) {
         ImGui::OpenPopup("selectablePopup");
@@ -522,7 +517,7 @@ void Application::drawIMGuiElements(int event_cnt) {
 
     ImGui::End();
 
-    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Once);
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
@@ -1053,6 +1048,7 @@ Device::Stats* Application::createSphere(const std::string mac) {
     int pos = 0;
     int ring = 0;
 
+    // TODO add max creation number and kill simulation if it exceeds the limit
     for (int i = 0; i < num_rings; i++) {
         ring = i;
         if (j < elems_per_ring[i]) {
@@ -1378,7 +1374,7 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
         {PixelFormat::R32UI});
 
     deselectObject();
-    UnsignedByte id = data.data<UnsignedByte>()[0];
+    UnsignedByte id = Containers::arrayCast<UnsignedByte>(data.data())[0];
     unsigned short i = static_cast<unsigned short>(id);
     if(i > 0 && i < _selectable_objects.size()+1) {
         Device::Selectable *selection = _selectable_objects.at(i-1);
