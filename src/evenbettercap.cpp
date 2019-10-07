@@ -1094,6 +1094,15 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
 Device::PrefixStats* Application::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
     auto *ring = Util::createLayoutRing(_scene, _permanent_drawables, 1.0f, pos);
+
+    // Add a label to the bcast ring
+    auto scaling = Matrix4::scaling(Vector3{0.10f});
+    Object3D *obj = new Object3D{&_scene};
+    obj->transform(scaling);
+    obj->translate(pos);
+    auto c = 0xaaaaaa_rgbf;
+    new Figure::TextDrawable(mac_prefix, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+
     Device::PrefixStats* dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
 
     return dp_s;
