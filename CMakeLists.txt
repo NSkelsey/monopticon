@@ -10,6 +10,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
 find_package(Broker REQUIRED)
 
 
+set(IMGUI_DIR "src/imgui")
+
 find_package(MagnumIntegration REQUIRED ImGui)
 find_package(Magnum REQUIRED
                     GL
