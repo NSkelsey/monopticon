@@ -191,7 +191,7 @@ Application::Application(const Arguments& arguments):
     if (res == 0) {
         std::cerr << "Could not listen on: ";
         std::cerr << addr << ":" << listen_port << std::endl;
-        exit(1);
+        std::exit(1);
     } else {
         std::cout << "Endpoint listening on: ";
         std::cout << addr << ":" << listen_port << std::endl;
@@ -310,10 +310,11 @@ void Application::prepare3DFont() {
 
     /* Open the font and fill glyph cache */
     Utility::Resource rs("monopticon");
-    if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 110.0f)) {
+    // TODO disabled to handle subtle lib issue for now
+    /*if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 110.0f)) {
         Error() << "Cannot open font file";
         std::exit(1);
-    }
+    }*/
 
     _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/-+,.! \n");
 

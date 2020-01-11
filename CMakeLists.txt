@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_BUILD_TYPE Debug)
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -ltcmalloc")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
 
@@ -40,8 +40,11 @@ set(monopticon_FILES
 
 add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 
+# TODO make a CMAKE variable for config TODO
 # included to reach libbroker and libcaf installed in non default locations
-link_directories("/usr/local/lib/")
+link_directories("/opt/zeek/lib/")
+
+
 target_link_libraries(monopticon PRIVATE
     broker
     caf_core
