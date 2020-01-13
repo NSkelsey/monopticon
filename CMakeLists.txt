@@ -58,6 +58,7 @@ target_link_libraries(monopticon PRIVATE
     Magnum::Text
     Magnum::Trade
     MagnumIntegration::ImGui
+    Magnum::Sdl2Application
 )
 
 
