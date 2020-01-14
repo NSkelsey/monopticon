@@ -46,8 +46,8 @@ link_directories("/opt/zeek/lib/")
 
 
 target_link_libraries(monopticon PRIVATE
-    broker
-    caf_core
+    "/opt/zeek/lib/libbroker.so"
+    "/opt/zeek/lib/libcaf_core.so"
     Magnum::Application
     Magnum::GL
     Magnum::Magnum
