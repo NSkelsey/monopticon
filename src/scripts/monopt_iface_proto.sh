@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 # This script allows the customization of the underlying system interactions
 # that monopticon uses to connect with zeek.
 
 ############# Modifiable Functions #############
 
 list_ifaces() {
-    EXCLUDED_INTERFACES=("lo")
+    EXCLUDED_INTERFACES=("lo", "enp0s31f6")
 
     # For each interface active
-    for interface in `ip addr | grep "state UP" | grep -oP "([a-zA-Z][a-zA-Z0-9]+\d+)(?=:.+)"`; do
+    for interface in `ip addr | egrep "UP|UNKNOWN" | grep -oP "([a-zA-Z][a-zA-Z0-9]+\d+)(?=:.+)"`; do
         if `contains  $interface "${EXCLUDED_INTERFACES[@]}"`; then
             continue
         fi
@@ -77,7 +77,7 @@ launch() {
     zeek_path="/bin/zeek"
     zeek_lib_path="/usr/share/zeek/"
     script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_lib_path/policy/misc/stats.zeek"
-    $zeek_path -i $iface -b $script_path >/dev/null &
+    $zeek_path -w /home/synnick/projects/monopticon/localnet.pcap -i $iface -b $script_path >/dev/null &
     echo $!
 }
 
@@ -121,8 +121,13 @@ then
   # call arguments verbatim
   "$@"
 else
+  if [ -z "$1" ]
+  then
+    echo "No arguments supplied"
+  else
   # Show a helpful error
   echo "'$1' is not a known function name" >&2
+  fi
   usage
   exit 1
 fi
