@@ -310,11 +310,16 @@ void Application::prepare3DFont() {
 
     /* Open the font and fill glyph cache */
     Utility::Resource rs("monopticon");
-    // TODO disabled to handle subtle lib issue for now
-    /*if(!_font->openData(rs.getRaw("src/assets/DejaVuSans.ttf"), 110.0f)) {
-        Error() << "Cannot open font file";
-        std::exit(1);
-    }*/
+
+    std::string fname = "src/assets/DejaVuSans.ttf";
+    Containers::ArrayView<const char> a = rs.getRaw(fname);
+
+    std::vector<std::pair<std::string, Containers::ArrayView<const char>>> f_pair = {std::make_pair(fname, a)};
+
+    if(!_font->openData(f_pair, 110.0f)) {
+       Error() << "Cannot open font file";
+       std::exit(1);
+    }
 
     _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/-+,.! \n");
 
