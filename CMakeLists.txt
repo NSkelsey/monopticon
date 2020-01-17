@@ -46,7 +46,6 @@ add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 # included to reach libbroker and libcaf installed in non default locations
 link_directories("/opt/zeek/lib/")
 
-
 target_link_libraries(monopticon PRIVATE
     "/opt/zeek/lib/libbroker.so"
     "/opt/zeek/lib/libcaf_core.so"

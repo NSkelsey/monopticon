@@ -38,22 +38,13 @@ Read the file `mopt_iface_proto.sh` to ensure that it will work with your system
 > monopticon
 ```
 
+### OpenSuse Leap
+
+ARM and x86 rpm packages are available on the [Open Build System](https://software.opensuse.org/package/monopticon?search_term=monopticon).
+
+
 ### Arch Linux
 
-Download the imgui-src package for the imgui headers.
+This project is developed primarily on Arch, so its possible to use it, but its constantly evolving.
 
-```zsh
-> wget https://github.com/NSkelsey/monopticon/raw/master/pkg/imgui-src-1.66b-1-any.pkg.tar
-> sudo pacman -U imgui-src-1.66b-1-any.pkg.tar
-```
-
-Install monopticon and its dependencies from the Arch user repository.
-
-```zsh
-> yay monopticon
-```
-
-Give the zeek binary the capability to capture packets without sudo.
-```zsh
-> sudo setcap cap_net_raw=eip `which zeek`
-```
+A well written PKGBUILD is under development, but in the meantime see the monopticon package in the [AUR](https://aur.archlinux.org/packages/monopticon/) and [BUILDING.md](./BUILDING.md)

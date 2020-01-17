@@ -74,10 +74,10 @@ launch() {
         return 0
     fi
     iface=$1
-    zeek_path="/bin/zeek"
-    zeek_lib_path="/usr/share/zeek/"
+    zeek_path="/opt/zeek/bin/zeek"
+    zeek_lib_path="/opt/zeek/lib"
     script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_lib_path/policy/misc/stats.zeek"
-    $zeek_path -w /home/synnick/projects/monopticon/localnet.pcap -i $iface -b $script_path >/dev/null &
+    $zeek_path -i $iface -b $script_path >/dev/null &
     echo $!
 }
 
