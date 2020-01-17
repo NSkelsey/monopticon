@@ -13,6 +13,8 @@ include_directories(BEFORE ${BROKER_INCLUDE_DIR})
 
 set(IMGUI_DIR "src/imgui")
 
+find_package(Corrade REQUIRED PluginManager)
+find_package(MagnumPlugins REQUIRED FreeTypeFont)
 find_package(MagnumIntegration REQUIRED ImGui)
 find_package(Magnum REQUIRED
                     GL
