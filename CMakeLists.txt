@@ -42,13 +42,9 @@ set(monopticon_FILES
 
 add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 
-# TODO make a CMAKE variable for config TODO
-# included to reach libbroker and libcaf installed in non default locations
-link_directories("/opt/zeek/lib/")
-
 target_link_libraries(monopticon PRIVATE
-    "/opt/zeek/lib/libbroker.so"
-    "/opt/zeek/lib/libcaf_core.so"
+    "${BROKER_LIBRARY}"
+    "${BROKER_ROOT_DIR}/lib/libcaf_core.so"
     Magnum::Application
     Magnum::GL
     Magnum::Magnum
@@ -73,3 +69,5 @@ install(TARGETS monopticon DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")
 
 install(PROGRAMS src/scripts/monopt_iface_proto.sh DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME monopt_iface_proto)
 install(DIRECTORY src/scripts DESTINATION ${CMAKE_INSTALL_PREFIX}/share/monopticon  FILES_MATCHING PATTERN "*.zeek")
+
+install(FILES src/ld.so.conf DESTINATION /etc/ld.so.conf.d/ RENAME monopticon.conf)
