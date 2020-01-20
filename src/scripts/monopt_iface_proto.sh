@@ -48,7 +48,7 @@ gateway_ipv4_addr() {
         return 0
     fi
     iface=$1
-    gateway_ip=`ip route show default dev $iface | grep -oP "(\d+\.\d+.\d+.\d+)"`
+    gateway_ip=`ip route show default dev $iface | grep -m1 -oP "(\d+\.\d+.\d+.\d+)"`
 
     echo -en "$gateway_ip"
 }
@@ -75,8 +75,8 @@ launch() {
     fi
     iface=$1
     zeek_path="/opt/zeek/bin/zeek"
-    zeek_lib_path="/opt/zeek/lib"
-    script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_lib_path/policy/misc/stats.zeek"
+    zeek_script_path="/opt/zeek/share/zeek"
+    script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_script_path/policy/misc/stats.zeek"
     $zeek_path -i $iface -b $script_path >/dev/null &
     echo $!
 }
@@ -111,7 +111,7 @@ function usage() {
     echo "     {mac_addr <iface>}"
     echo "     {ipv4_addr <iface>}"
     echo "     {gateway_ipv4_addr <iface>}"
-    echo "     {gateway_mac_addr <iface>}"
+    echo "     {gateway_mac_addr <iface> <ip_addr>}"
 }
 
 
