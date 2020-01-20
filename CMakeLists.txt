@@ -13,7 +13,7 @@ include_directories(BEFORE ${BROKER_INCLUDE_DIR})
 
 set(IMGUI_DIR "src/imgui")
 
-find_package(Corrade REQUIRED PluginManager)
+find_package(Corrade REQUIRED PluginManager Utility Containers)
 find_package(MagnumPlugins REQUIRED FreeTypeFont)
 find_package(MagnumIntegration REQUIRED ImGui)
 find_package(Magnum REQUIRED
@@ -45,6 +45,8 @@ add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 target_link_libraries(monopticon PRIVATE
     "${BROKER_LIBRARY}"
     "${BROKER_ROOT_DIR}/lib/libcaf_core.so"
+    Corrade::Utility
+    Corrade::Containers
     Magnum::Application
     Magnum::GL
     Magnum::Magnum
