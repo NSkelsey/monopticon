@@ -1,0 +1,8 @@
+[Desktop Entry]
+ Type=Application
+ Name=Monopticon
+ Comment=Even better network traffic viz
+ Icon=/usr/local/share/monopticon/res/icon-mo-512.png
+ Exec=/usr/local/bin/monopticon
+ Terminal=false
+ Categories=Network;Application;
