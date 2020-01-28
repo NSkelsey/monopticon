@@ -70,6 +70,10 @@ set_target_properties(monopticon
 install(TARGETS monopticon DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")
 
 install(PROGRAMS src/scripts/monopt_iface_proto.sh DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME monopt_iface_proto)
+
 install(DIRECTORY src/scripts DESTINATION ${CMAKE_INSTALL_PREFIX}/share/monopticon  FILES_MATCHING PATTERN "*.zeek")
 
 install(FILES src/ld.so.conf DESTINATION /etc/ld.so.conf.d/ RENAME monopticon.conf)
+
+install(FILES src/assets/app-entry/monopticon.desktop DESTINATION /usr/share/applications/)
+install(FILES src/assets/app-entry/icon-mo-512.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/monopticon/res)

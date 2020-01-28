@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <unistd.h>
 
+#include <SDL.h>
+
 #include "broker/broker.hh"
 #include "broker/message.hh"
 #include "broker/zeek.hh"

@@ -187,6 +187,19 @@ Application::Application(const Arguments& arguments):
 {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
 
+    // Setup the SDL window icon
+    Utility::Resource rs("monopticon");
+    std::string s = rs.get("icon.bmp");
+    SDL_RWops *rw = SDL_RWFromConstMem(s.c_str(), s.size());
+
+    SDL_Surface* sdl_surf = SDL_LoadBMP_RW(rw, 1);
+    if (sdl_surf == nullptr) {
+        std::cerr << "Could not set window icon. SDL startup failed.";
+        std::exit(1);
+    }
+    SDL_Window* sdl_window = Magnum::Platform::Sdl2Application::window();
+    SDL_SetWindowIcon(sdl_window, sdl_surf);
+
     std::cout << "Waiting for broker connection" << std::endl;
 
     uint16_t listen_port = 9999;
