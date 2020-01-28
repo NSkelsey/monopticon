@@ -73,8 +73,10 @@ class Application: public Platform::Application {
         void parse_bcast_summaries(broker::vector *dComm, Device::Stats* tran_d_s);
         void parse_single_mcast(int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
 
-        Device::Stats* createSphere(const std::string);
+        Vector2 nextVlanPos(const int vlan);
+        Vector2 nextRingPos();
 
+        Device::Stats* createSphere(const std::string);
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
         void createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
@@ -183,6 +185,8 @@ Application::Application(const Arguments& arguments):
             GLConfiguration{}.setSampleCount(MSAA_CNT)},
         _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
+    MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
+
     std::cout << "Waiting for broker connection" << std::endl;
 
     uint16_t listen_port = 9999;
@@ -1044,9 +1048,20 @@ void Application::objectClicked(Device::Selectable *selection) {
 }
 
 
-Device::Stats* Application::createSphere(const std::string mac) {
-    Object3D* o = new Object3D{&_scene};
+Vector2 Application::nextVlanPos(const int vlan) {
+    int vlan_size = 256;
+    int row_size = 4;
 
+    int num_objs_in_vlan = _device_map.size()/3; // NOTE replace with vlan
+
+    int vlan_x = num_objs_in_vlan / row_size;
+    int vlan_y = num_objs_in_vlan % row_size;
+
+    return 4*Vector2(vlan_x+1, vlan_y+1);
+}
+
+
+Vector2 Application::nextRingPos() {
     int num_objs = _device_map.size();
 
     // Sequentially add elements to rings of increasing radius
@@ -1069,11 +1084,21 @@ Device::Stats* Application::createSphere(const std::string mac) {
 
     float ring_radius = ring_radii[ring];
     Vector2 v = ring_radius*Util::paramCirclePoint(elems_per_ring[ring], pos);
+    return v;
+}
+
+Device::Stats* Application::createSphere(const std::string mac) {
+    Object3D* o = new Object3D{&_scene};
+
+    int num_objs = _device_map.size();
+    int vlan = num_objs%3;
+    Vector2 v = nextVlanPos(vlan);
     Vector3 w = Vector3{v.x(), 0.0f, v.y()};
 
     o->transform(Matrix4::scaling(Vector3{0.25f}));
     o->translate(w);
-
+    o->rotateY(120.0_degf*(float)vlan);
+    //o->rotateY(120.0_degf*(float)vlan);
 
     UnsignedByte id = newObjectId();
 
@@ -1088,7 +1113,9 @@ Device::Stats* Application::createSphere(const std::string mac) {
         _selectable_drawables};
 
 
-    Device::Stats* d_s = new Device::Stats{mac, w, dev};
+    auto tmp = o->transformationMatrix().translation();
+
+    Device::Stats* d_s = new Device::Stats{mac, tmp, dev};
     dev->_deviceStats = d_s;
 
     _selectable_objects.push_back(d_s);
