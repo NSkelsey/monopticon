@@ -2,7 +2,7 @@ TODO
 =====
 As of 29/9/19
 
-### Release v0.4.0 -- Oct 30;
+### Release v0.4.0;
 ========================================
 
 - [ ] Make interactive.

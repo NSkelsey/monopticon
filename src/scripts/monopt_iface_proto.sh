@@ -74,10 +74,16 @@ launch() {
         return 0
     fi
     iface=$1
-    zeek_path="/opt/zeek/bin/zeek"
-    zeek_script_path="/opt/zeek/share/zeek"
+
+    # Check if ZEEK_ROOT is set, otherwise use the default package install path
+    if [ -z ${ZEEK_ROOT+x} ];
+    then
+        ZEEK_ROOT=/opt/zeek
+    fi
+    zeek_bin_path="${ZEEK_ROOT}/bin/zeek"
+    zeek_script_path="${ZEEK_ROOT}/share/zeek"
     script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_script_path/policy/misc/stats.zeek"
-    $zeek_path -i $iface -b $script_path >/dev/null &
+    $zeek_bin_path -i $iface -b $script_path >/dev/null &
     echo $!
 }
 
