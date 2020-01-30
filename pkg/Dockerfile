@@ -35,11 +35,10 @@ RUN yes | yay -Sy --searchby maintainer=synnick zeek
 
 RUN yes | yay --noconfirm -S magnum-plugins-git imgui-src monopticon-magnum-integration
 
+RUN yes | yay -Sy --searchby maintainer=synnick monopticon
 CMD /bin/bash
 
 #RUN yay -S magnum-plugins-git
 #RUN yay -S magnum-integration
 #RUN yes | sudo yay zeek
 #RUN yes | sudo yay monopticon
-
-
