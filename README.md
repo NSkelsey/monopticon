@@ -1,9 +1,7 @@
 Monopticon
 ==========
 
-This was a fork of Wireshark version [2.6.8](https://github.com/wireshark/wireshark/tree/wireshark-2.6.8).
-
-Now it is a stand alone application that visualizes ethernet traffic in realtime. It leverages [Zeek](https://www.zeek.org/) to capture packets and broker messages and then renders traffic flow with [Magnum](https://magnum.graphics/) and OpenGL.
+This is an application that visualizes ethernet traffic in realtime. It leverages [Zeek](https://www.zeek.org/) to capture packets and broker messages and then renders traffic flow with [Magnum](https://magnum.graphics/) and OpenGL.
 
 The goal of the software is four fold:
 - Provide simple visual network diagnostics to resolve configuration issues.
@@ -30,7 +28,7 @@ The animation below demonstrates the output of Monopticon (v0.2.0) monitoring a 
 1) Install the software following the commands documented below.
 2) Prepare a suitable interface to capture packets on.
 
-Read the file `mopt_iface_proto.sh` to ensure that it will work with your system.
+Read the file `monpt_iface_proto.sh` to ensure that it will work with your system.
 
 3) Run:
 
@@ -45,6 +43,10 @@ ARM and x86 rpm packages are available on the [Open Build System](https://softwa
 
 ### Arch Linux
 
-This project is developed primarily on Arch, so its possible to use it, but its constantly evolving.
+In an alternative rolling universe the following command may function:
 
-A well written PKGBUILD is under development, but in the meantime see the monopticon package in the [AUR](https://aur.archlinux.org/packages/monopticon/) and [BUILDING.md](./BUILDING.md)
+```zsh
+> yay monopticon
+```
+
+For the true believers there is a Dockerfile in `pkg/` that can be used to debug CMake problems.

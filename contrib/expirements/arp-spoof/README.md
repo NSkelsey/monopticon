@@ -67,7 +67,7 @@ ARP Table of Cocco
 
 As shown the once the Lenovo machine starts broadcasting IP addresses
 
-![what it looks like](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/screens/local-mitm.webm)
+![what it looks like](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/screens/local-mitm.gif)
 
 Appendix
 --------
