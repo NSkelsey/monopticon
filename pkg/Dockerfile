@@ -23,20 +23,19 @@ RUN echo "Set disable_coredump false" > /etc/sudo.conf
 
 USER build
 
+#Use as much core as we have when uilding pakages
+RUN sudo sed -i '/#MAKEFLAGS="-j2"/c\MAKEFLAGS="-j$(nproc)"' /etc/makepkg.conf
+
 RUN cd yay && yes | makepkg -si
 
 
 RUN yes | sudo pacman -Sy glfw-x11
+
 RUN yes | yay --noconfirm -S magnum-git
 
 RUN yes | yay --noconfirm -S magnum-plugins-git
 
-RUN yes | pacman -Sy swig libmaxminddb
-
-# The build as of 29/1/2020 worked up to here.
-#RUN yes | yay --noconfirm -S zeek
-
-#RUN yes | sudo pacman -Sy magnum
+RUN yes | sudo pacman -Sy swig libmaxminddb
 
 CMD /bin/bash
 
