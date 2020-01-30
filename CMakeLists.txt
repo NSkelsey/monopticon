@@ -10,8 +10,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
 find_package(Broker REQUIRED)
 include_directories(BEFORE ${BROKER_INCLUDE_DIR})
 
-
-set(IMGUI_DIR "src/imgui")
+set(WITH_IMGUI ON)
 
 find_package(Corrade REQUIRED PluginManager Utility Containers)
 find_package(MagnumPlugins REQUIRED FreeTypeFont)
