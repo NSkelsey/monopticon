@@ -31,9 +31,9 @@ RUN cd yay && yes | makepkg -si
 
 RUN yes | yay --noconfirm -S magnum-git
 
-RUN yes | yay --noconfirm -S magnum-plugins-git
+RUN yes | yay -Sy --searchby maintainer=synnick zeek
 
-RUN yes | sudo yay --noconfirm zeek
+RUN yes | yay --noconfirm -S magnum-plugins-git imgui-src monopticon-magnum-integration
 
 CMD /bin/bash
 
