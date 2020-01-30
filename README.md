@@ -23,7 +23,7 @@ All reactions to this project including silly questions are appreciated. Open an
 
 The animation below demonstrates the output of Monopticon (v0.2.0) monitoring a local network from a span port. For more examples visit `src/expirements`.
 
-![what it looks like](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/screens/span-traffic.gif)
+![what it looks like](https://raw.githubusercontent.com/nskelsey/monopticon/master/contrib/screens/span-traffic.webm)
 
 ## Usage
 
