@@ -18,9 +18,10 @@ RUN git clone https://aur.archlinux.org/yay.git && cd yay
 
 RUN yes | sudo pacman -Sy go
 
+RUN yes | sudo pacman -Sy glfw-x11
+
 USER root
 RUN echo "Set disable_coredump false" > /etc/sudo.conf
-
 USER build
 
 #Use as much core as we have when uilding pakages
@@ -28,14 +29,11 @@ RUN sudo sed -i '/#MAKEFLAGS="-j2"/c\MAKEFLAGS="-j$(nproc)"' /etc/makepkg.conf
 
 RUN cd yay && yes | makepkg -si
 
-
-RUN yes | sudo pacman -Sy glfw-x11
-
 RUN yes | yay --noconfirm -S magnum-git
 
 RUN yes | yay --noconfirm -S magnum-plugins-git
 
-RUN yes | sudo pacman -Sy swig libmaxminddb
+RUN yes | sudo yay --noconfirm zeek
 
 CMD /bin/bash
 
