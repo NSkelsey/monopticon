@@ -83,7 +83,8 @@ launch() {
     zeek_bin_path="${ZEEK_ROOT}/bin/zeek"
     zeek_script_path="${ZEEK_ROOT}/share/zeek"
     script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_script_path/policy/misc/stats.zeek"
-    $zeek_bin_path -i $iface -b $script_path >/dev/null &
+    cd /var/log/monopticon
+    $zeek_bin_path -i $iface -b $script_path >monopticon.log &
     echo $!
 }
 

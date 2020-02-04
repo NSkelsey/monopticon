@@ -25,3 +25,7 @@ package() {
     cd "$srcdir/monopticon/build"
     make DESTDIR="$pkgdir/" install
 }
+
+post_install() {
+    setcap cap_net_raw=eip /opt/zeek/bin/zeek
+}
