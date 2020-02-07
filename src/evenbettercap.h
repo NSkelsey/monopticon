@@ -45,6 +45,7 @@
 #include <Magnum/GL/Version.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Constants.h>
+#include <Magnum/Math/Intersection.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -53,6 +54,7 @@
 #include <Magnum/MeshTools/Interleave.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/Platform/Sdl2Application.h>
+#include <Magnum/Primitives/Axis.h>
 #include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Circle.h>
 #include <Magnum/Primitives/Line.h>
@@ -67,6 +69,7 @@
 #include <Magnum/Shaders/Flat.h>
 #include <Magnum/Shaders/MeshVisualizer.h>
 #include <Magnum/Shaders/Phong.h>
+#include <Magnum/Shaders/VertexColor.h>
 #include <Magnum/Timeline.h>
 #include <Magnum/Text/AbstractFont.h>
 #include <Magnum/Text/DistanceFieldGlyphCache.h>
@@ -129,7 +132,7 @@ namespace Util {
     Vector2 randCirclePoint();
     Vector2 paramCirclePoint(int num_elem, int pos);
     Vector2 randOffset(float z);
-    Figure::RingDrawable* createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans);
+    Figure::RingDrawable* createLayoutRing(Object3D &parent, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans);
 
 
     void print_peer_subs();
@@ -145,6 +148,37 @@ namespace Util {
 
     Color3 typeColor(L3Type t);
 }
+
+namespace Movement {
+
+struct Ray {
+  Magnum::Vector3 origin;
+  Magnum::Vector3 direction;
+};
+
+Ray getCameraToViewportRay(Magnum::SceneGraph::Camera3D& camera, const Magnum::Vector2& screenPoint);
+
+
+class TranslateController : public Object3D {
+  public:
+    explicit TranslateController(Object3D *parent = nullptr, Magnum::SceneGraph::DrawableGroup3D *group = nullptr);
+
+    void grab(const Ray &cameraRay);
+    void move(const Ray &cameraRay);
+    void release();
+
+  private:
+    Magnum::Vector3 _startPosition;
+    Magnum::Vector3 _startPoint;
+    Magnum::Vector3 _dir;
+    Magnum::Vector4 _plane;
+    Magnum::Float _axisThreshold = 0.3f;
+
+    bool _missed = true;
+};
+
+}
+
 
 namespace Device {
 

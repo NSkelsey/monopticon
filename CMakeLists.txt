@@ -32,11 +32,12 @@ corrade_add_resource(monopticon_RESOURCES resources.conf)
 
 set(monopticon_FILES
         src/evenbettercap.h
+        src/translate_ctrl.cpp
         src/eth_device.cpp
         src/figure.cpp
         src/levelthree.cpp
         src/util.cpp
-        src/evenbettercap.cpp
+        src/simpopticon.cpp
     )
 
 add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})

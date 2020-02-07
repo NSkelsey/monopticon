@@ -270,9 +270,9 @@ void Application::prepareDrawables() {
 
     createFakeIPv4Address("111.111.111.111", trans);
 
-    auto trans2 = Vector3{3.0f, 0.0f, 3.0f};
+    //auto trans2 = Vector3{3.0f, 0.0f, 3.0f};
 
-    createFakeIPv4Address("8.8.8.8", trans2);
+    //createFakeIPv4Address("8.8.8.8", trans2);
 /*
     auto trans = Vector3{1.0f, -4.0f, 1.0f};
 
@@ -771,6 +771,18 @@ void Application::keyPressEvent(KeyEvent& event) {
 
 void Application::keyReleaseEvent(KeyEvent& event) {
     if(_imgui.handleKeyReleaseEvent(event)) return;
+
+
+    if(event.key() == KeyEvent::Key::M && _selectedObject != nullptr) {
+        std::cout << "m released" << std::endl;
+        //Vector3 t = _selectedObject->getObj().transformationMatrix().translation();
+        // CREATE plan ring centered on object; add object that follows pos.
+        Vector3 v = Vector3{0.0f};
+        Util::createLayoutRing(_selectedObject->getObj(), _drawables, 30.0, v);
+
+        
+        // project pos onto plane surface.
+    }
 }
 
 

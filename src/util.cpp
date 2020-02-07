@@ -127,11 +127,11 @@ Color3 Util::typeColor(Util::L3Type t) {
 }
 
 
-Figure::RingDrawable* Util::createLayoutRing(Scene3D &scene, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
-    Object3D *obj = new Object3D{&scene};
+Figure::RingDrawable* Util::createLayoutRing(Object3D &parent, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
+    Object3D *obj = new Object3D{&parent};
     Matrix4 scaling = Matrix4::scaling(Vector3{r});
     obj->transform(scaling);
     obj->rotateX(90.0_degf);
     obj->translate(trans);
-    return new Figure::RingDrawable{*obj, 0xcccccc_rgbf, group};
+    return new Figure::RingDrawable{*obj, 0x00ff00_rgbf, group};
 }
