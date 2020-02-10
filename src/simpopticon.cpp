@@ -9,8 +9,6 @@ const int num_rings = 8;
 const int elems_per_ring[8]{1, 4, 8, 16, 32, 64, 256, 10000};
 const float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
 
-const Vector3 offset{0.0f, 1.0f, 0.0f};
-
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -20,9 +18,6 @@ class Application: public Platform::Application {
         explicit Application(const Arguments& arguments);
 
         void prepareDrawables();
-        void prepareGLBuffers(const Range2Di& viewport);
-
-        void destroyGLBuffers();
 
         void drawEvent() override;
         void drawTextElements();
@@ -44,6 +39,8 @@ class Application: public Platform::Application {
         void objectClicked(Device::Selectable *selection);
         void selectableMenuActions(Device::Selectable *selection);
         void watchSelectedDevice();
+
+        void DeleteEverything();
 
         Parse::BrokerCtx     *brokerCtx;
         Context::GraphicsCtx *gCtx;
@@ -133,15 +130,15 @@ Application::Application(const Arguments& arguments):
 
 
 void Application::prepareDrawables() {
-    //Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
-    //Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
-    //Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
-    //Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
+    Device::PrefixStats *ff_bcast = gCtx->createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *three_bcast = gCtx->createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
+    Device::PrefixStats *one_bcast = gCtx->createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *odd_bcast = gCtx->createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
 
-    //_dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
-    //_dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
-    //_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
-    //_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
+    sCtx->_dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
+    sCtx->_dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
+    sCtx->_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
+    sCtx->_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 
 }
 
@@ -256,7 +253,7 @@ void Application::drawIMGuiElements() {
             std::cout << "Disconnected" << std::endl;
             brokerCtx->peer_connected = false;
 
-            //DeleteEverything();
+            DeleteEverything();
         }
     }
 
@@ -449,6 +446,53 @@ void Application::drawEvent() {
     frame_cnt ++;
     swapBuffers();
     _timeline.nextFrame();
+    redraw();
+}
+
+void Application::DeleteEverything() {
+    // Delete this stuff. . . .
+    /*
+    for (int i = 0; i < _drawables.size(); ) {
+        auto *o = _drawables[i];
+        _drawables.remove(i);
+        delete o;
+
+    }*/
+    //delete _selectable_drawables;
+    //delete _billboard_drawables;
+    //delete _text_drawables;
+
+    sCtx->_selectable_objects.clear();
+    sCtx->_packet_line_queue.clear();
+    sCtx->_device_map.clear();
+    sCtx->_prefix_group_map.clear();
+
+    _inspected_device_window_list.clear();
+
+    //_dst_prefix_group_map.clear();
+
+    // re-initialize application state;
+    _selectedObject = nullptr;
+    _listeningDevice = nullptr;
+    _activeGateway = nullptr;
+
+    //brokerCtx->resetCtx();
+
+    brokerCtx->ifaceLongChartMgr.empty();
+    brokerCtx->ifaceChartMgr.empty();
+
+    ring_level = 0;
+    pos_in_ring = 0;
+
+    _orbit_toggle = false;
+
+    // TODO the objects under these values are not destroyed.
+    // Reset scene state
+    gCtx->_drawables = SceneGraph::DrawableGroup3D{};
+    gCtx->_selectable_drawables = SceneGraph::DrawableGroup3D{};
+    gCtx->_billboard_drawables = SceneGraph::DrawableGroup3D{};
+    gCtx->_text_drawables = SceneGraph::DrawableGroup3D{};
+
     redraw();
 }
 

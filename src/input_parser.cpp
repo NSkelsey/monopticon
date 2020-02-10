@@ -22,7 +22,7 @@ BrokerCtx::BrokerCtx(std::string addr, uint16_t port):
 }
 
 
-void BrokerCtx::processNetworkEvents(Context::SceneCtx *sceneCtx, Context::GraphicsCtx *graphCtx) {
+void BrokerCtx::processNetworkEvents(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx) {
     // Process all messages from status_subscriber before doing anything
     if (status_subscriber.available()) {
         auto ss_res = status_subscriber.get();
@@ -59,7 +59,7 @@ void BrokerCtx::processNetworkEvents(Context::SceneCtx *sceneCtx, Context::Graph
             broker::zeek::Event event = broker::get_data(msg);
             std::string name = to_string(topic);
             if (name.compare("monopt/l2") == 0) {
-                //epoch_packets_sum += parse_epoch_step(sceneCtx, graphCtx, event);
+                epoch_packets_sum += parse_epoch_step(sCtx, gCtx, event);
             } else if (name.compare("monopt/stats") == 0) {
                 parse_stats_update(event);
             } else {
@@ -81,6 +81,243 @@ void BrokerCtx::processNetworkEvents(Context::SceneCtx *sceneCtx, Context::Graph
     }
 
     ifaceChartMgr.push(static_cast<float>(epoch_packets_sum));
+}
+
+
+int BrokerCtx::parse_epoch_step(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, broker::zeek::Event event) {
+    broker::vector parent_content = event.args();
+
+    broker::vector *wrapper = broker::get_if<broker::vector>(parent_content.at(0));
+    if (wrapper == nullptr) {
+        std::cerr << "wrapper" << std::endl;
+        return 0;
+    }
+
+    broker::set *enter_l2_devices = broker::get_if<broker::set>(wrapper->at(0));
+    if (enter_l2_devices == nullptr) {
+        std::cerr << "enter_l2_devices" << std::endl;
+        return 0;
+    }
+
+    for (auto it = enter_l2_devices->begin(); it != enter_l2_devices->end(); it++) {
+        auto *mac_src = broker::get_if<std::string>(*it);
+        if (mac_src == nullptr) {
+            std::cerr << "mac_src e_l2_dev" << std::endl;
+            return 0;
+        }
+
+
+        // If the mac_src is not already in the _device_map create a new device.
+        // This means that a frame with a never before seen source MAC creates a new Device.
+        auto search = sCtx->_device_map.find(*mac_src);
+        if (search == sCtx->_device_map.end()) {
+            Device::Stats *d_s = gCtx->createSphere(sCtx, *mac_src);
+            sCtx->_device_map.insert(std::make_pair(*mac_src, d_s));
+            gCtx->addDirectLabels(d_s);
+        }
+    }
+
+    std::map<broker::data, broker::data> *l2_dev_comm = broker::get_if<broker::table>(wrapper->at(1));
+    if (l2_dev_comm == nullptr) {
+        std::cerr << "l2_dev_comm" << std::endl;
+        return 0;
+    }
+
+    int pkt_tot = 0;
+
+    for (auto it2 = l2_dev_comm->begin(); it2 != l2_dev_comm->end(); it2++) {
+        auto pair = *it2;
+
+        auto *mac_src = broker::get_if<std::string>(pair.first);
+        if (mac_src == nullptr) {
+            std::cerr << "mac_src e_l2_dev" << std::endl;
+            continue;
+        }
+
+        Device::Stats *tran_d_s;
+        auto search = sCtx->_device_map.find(*mac_src);
+        if (search != sCtx->_device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "tran_d_s not found! " << *mac_src << std::endl;
+            continue;
+        }
+
+        auto *dComm = broker::get_if<broker::vector>(pair.second);
+        if (dComm == nullptr) {
+            std::cerr << "dComm" <<  std::endl;
+            continue;
+        }
+
+        parse_bcast_summaries(sCtx, gCtx, dComm, tran_d_s);
+
+        std::map<broker::data, broker::data> *tx_summary = broker::get_if<broker::table>(dComm->at(1));
+        if (tx_summary == nullptr) {
+            std::cerr << "tx_summary" <<  std::endl;
+            continue;
+        }
+
+        for (auto it3 = tx_summary->begin(); it3 != tx_summary->end(); it3++) {
+            auto comm_pair = *it3;
+            auto *mac_dst = broker::get_if<std::string>(comm_pair.first);
+            if (mac_dst == nullptr) {
+                std::cerr << "mac_dst tx_summary:" << mac_src << std::endl;
+                continue;
+            }
+
+            Device::Stats *recv_d_s;
+            auto search = sCtx->_device_map.find(*mac_dst);
+            if (search != sCtx->_device_map.end()) {
+                recv_d_s = search->second;
+            } else {
+                std::cerr << "recv_d_s not found! " << *mac_dst << std::endl;
+                continue;
+            }
+
+            auto *l2summary = broker::get_if<broker::vector>(comm_pair.second);
+            if (l2summary == nullptr) {
+                std::cerr << "l2summary" << mac_src << std::endl;
+                continue;
+            }
+            Util::L2Summary struct_l2 = Util::parseL2Summary(l2summary);
+
+            Vector3 p1 = tran_d_s->circPoint;
+            Vector3 p2 = recv_d_s->circPoint;
+
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::IPV4, struct_l2.ipv4_cnt);
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::IPV6, struct_l2.ipv6_cnt);
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::ARP, struct_l2.arp_cnt);
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::UNKNOWN, struct_l2.unknown_cnt);
+            int dev_tot = Util::SumTotal(struct_l2);
+            tran_d_s->num_pkts_sent += dev_tot;
+            recv_d_s->num_pkts_recv += dev_tot;
+
+            pkt_tot += dev_tot;
+        }
+    }
+
+    std::map<broker::data, broker::data> *enter_l2_ipv4_addr_src = broker::get_if<broker::table>(wrapper->at(2));
+    if (enter_l2_ipv4_addr_src == nullptr) {
+        std::cerr << "l2_ipv4_addr_src" << std::endl;
+        return 0;
+    }
+    parse_enter_l3_addr(sCtx, gCtx, enter_l2_ipv4_addr_src);
+
+    std::map<broker::data, broker::data> *enter_arp_table = broker::get_if<broker::table>(wrapper->at(3));
+    if (enter_l2_ipv4_addr_src == nullptr) {
+        std::cerr << "enter_arp_table" << std::endl;
+        return 0;
+    }
+    parse_arp_table(sCtx, gCtx, enter_arp_table);
+
+
+    return pkt_tot;
+}
+
+
+void BrokerCtx::parse_single_mcast(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s) {
+    Util::L2Summary sum;
+    Device::PrefixStats *dp_s = nullptr;
+
+    auto *bcast_val = broker::get_if<broker::vector>(dComm->at(pos));
+    if (bcast_val != nullptr) {
+        sum = Util::parseL2Summary(bcast_val);
+        dp_s = sCtx->_dst_prefix_group_map.at(v);
+        gCtx->createPoolHits(sCtx, tran_d_s, dp_s, sum);
+    }
+}
+
+
+void BrokerCtx::parse_bcast_summaries(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, broker::vector *dComm, Device::Stats* tran_d_s) {
+    parse_single_mcast(sCtx, gCtx, 2, "ff", dComm, tran_d_s);
+    parse_single_mcast(sCtx, gCtx, 3, "33", dComm, tran_d_s);
+    parse_single_mcast(sCtx, gCtx, 4, "01", dComm, tran_d_s);
+    parse_single_mcast(sCtx, gCtx, 5, "odd", dComm, tran_d_s);
+}
+
+
+void BrokerCtx::parse_enter_l3_addr(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, std::map<broker::data, broker::data> *addr_map) {
+     for (auto it = addr_map->begin(); it != addr_map->end(); it++) {
+        auto pair = *it;
+        auto *mac_src = broker::get_if<std::string>(pair.first);
+        if (mac_src == nullptr) {
+            std::cerr << "mac_src l2_ipv4_addr:" << std::endl;
+            continue;
+        }
+
+        Device::Stats *tran_d_s;
+        auto search = sCtx->_device_map.find(*mac_src);
+        if (search != sCtx->_device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "tran_d_s l2_ipv4_addr not found! " << *mac_src << std::endl;
+            continue;
+        }
+
+        auto *ip_addr_src = broker::get_if<broker::address>(pair.second);
+        if (ip_addr_src == nullptr) {
+            std::cerr << "ip_addr_src l2_ipv4_addr:" << *mac_src << std::endl;
+            continue;
+        }
+
+        std::string s = to_string(*ip_addr_src);
+
+        gCtx->createIPv4Address(sCtx, s, tran_d_s->circPoint);
+    }
+}
+
+void BrokerCtx::parse_arp_table(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, std::map<broker::data, broker::data> *arp_table) {
+    for (auto it = arp_table->begin(); it != arp_table->end(); it++) {
+        auto pair = *it;
+        auto *mac_src = broker::get_if<std::string>(pair.first);
+        if (mac_src == nullptr) {
+            std::cerr << "mac_src arp_table:" << std::endl;
+            continue;
+        }
+
+        Device::Stats *tran_d_s;
+        auto search = sCtx->_device_map.find(*mac_src);
+        if (search != sCtx->_device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "mac_src arp_table not found! " << *mac_src << std::endl;
+            continue;
+        }
+
+        std::map<broker::data, broker::data> *src_table = broker::get_if<broker::table>(pair.second);
+        if (src_table == nullptr) {
+            std::cerr << "src_table arp_table:" << *mac_src << std::endl;
+            continue;
+        }
+
+        for (auto it2 = src_table->begin(); it2 != src_table->end(); it2++) {
+            auto pair2 = *it2;
+            auto *mac_dst = broker::get_if<std::string>(pair2.first);
+            if (mac_dst == nullptr) {
+                std::cerr << "mac_dst arp_table:" << std::endl;
+                continue;
+            }
+
+            Device::Stats *recv_d_s;
+            auto search2 = sCtx->_device_map.find(*mac_dst);
+            if (search2 != sCtx->_device_map.end()) {
+                recv_d_s = search2->second;
+            } else {
+                std::cerr << "mac_dst arp_table not found! " << *mac_dst << std::endl;
+                continue;
+            }
+
+            auto *ip_addr_dst = broker::get_if<broker::address>(pair2.second);
+            if (ip_addr_dst == nullptr) {
+                std::cerr << "ip_addr_dst arp_table:" << *mac_dst << std::endl;
+                continue;
+            }
+
+            const Vector3 offset{0.0f, 1.0f, 0.0f};
+            gCtx->addL2ConnectL3(tran_d_s->circPoint, recv_d_s->circPoint+offset);
+            gCtx->addL2ConnectL3(recv_d_s->circPoint+offset, tran_d_s->circPoint);
+        }
+    }
 }
 
 void BrokerCtx::StatsGui() {

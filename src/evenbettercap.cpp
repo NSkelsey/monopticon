@@ -29,6 +29,11 @@ const float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
 
 const Vector3 offset{0.0f, 1.0f, 0.0f};
 
+// Zeek broker components
+broker::endpoint _ep;
+broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2", "monopt/stats"});
+broker::status_subscriber _status_subscriber = _ep.make_status_subscriber(true);
+
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -76,8 +81,7 @@ class Application: public Platform::Application {
         void createPoolHits(Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
         Level3::Address* createIPv4Address(const std::string ipv4_addr, Vector3 pos);
-        
-        Level3::Address* createFakeIPv4Address(const std::string ipv4_addr, Vector3 pos);
+
 
         void createLines(Vector3, Vector3, Util::L3Type, int num);
         void createLine(Vector3, Vector3, Util::L3Type);
@@ -124,8 +128,6 @@ class Application: public Platform::Application {
         Vector2i _previousMousePosition, _mousePressPosition;
         GL::Renderbuffer _color, _objectId, _depth;
 
-
-        Movement::TranslateController *_translateController;
 
         // Font graphics fields
         PluginManager::Manager<Text::AbstractFont> _manager;
@@ -197,6 +199,20 @@ Application::Application(const Arguments& arguments):
     }
     SDL_Window* sdl_window = Magnum::Platform::Sdl2Application::window();
     SDL_SetWindowIcon(sdl_window, sdl_surf);
+
+    std::cout << "Waiting for broker connection" << std::endl;
+
+    uint16_t listen_port = 9999;
+    std::string addr = "127.0.0.1";
+    auto res = _ep.listen(addr, listen_port);
+    if (res == 0) {
+        std::cerr << "Could not listen on: ";
+        std::cerr << addr << ":" << listen_port << std::endl;
+        std::exit(1);
+    } else {
+        std::cout << "Endpoint listening on: ";
+        std::cout << addr << ":" << listen_port << std::endl;
+    }
 
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
@@ -287,42 +303,15 @@ void Application::prepareGLBuffers(const Range2Di& viewport) {
 
 
 void Application::prepareDrawables() {
-    //Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
-    //Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
-    //Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
-    //Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
+    Device::PrefixStats *ff_bcast = createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *three_bcast = createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
+    Device::PrefixStats *one_bcast = createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
+    Device::PrefixStats *odd_bcast = createBroadcastPool("odd", Vector3{-1.0f, -4.0f, -1.0f});
 
-    //_dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
-    //_dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
-    //_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
-    //_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
-    _translateController = new Movement::TranslateController{&_scene, &_drawables};
-    
-    auto trans = Vector3{0.0f, 0.0f, 0.0f};
-
-    //createFakeIPv4Address("111.111.111.111", trans);
-
-/*
-    auto trans = Vector3{1.0f, -4.0f, 1.0f};
-
-    Object3D *obj = new Object3D{_translateController};
-    Matrix4 scaling = Matrix4::scaling(Vector3{1.0});
-    obj->transform(scaling);
-    obj->rotateX(90.0_degf);
-    obj->translate(trans);
-    auto ring = new Figure::RingDrawable{*obj, 0xcccccc_rgbf, _drawables};
-
-    // Add a label to the bcast ring
-    auto scaling2 = Matrix4::scaling(Vector3{0.10f});
-    Object3D *obj2 = new Object3D{&_scene};
-    obj2->transform(scaling2);
-    obj2->translate(trans);
-    auto c = 0xaaaaaa_rgbf;
-    new Figure::TextDrawable("BB:BB:BB", c, _font, &_glyphCache, _text_shader, *obj2, _text_drawables);
-
-    //Device::PrefixStats* dp_s = new Device::PrefixStats{"BB:BB:BB", trans, ring};
-
-    */
+    _dst_prefix_group_map.insert(std::make_pair("ff", ff_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
+    _dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 }
 
 
@@ -384,6 +373,7 @@ void Application::draw3DElements() {
 
     // Draw selectable objects to custom framebuffer
     _camera->draw(_selectable_drawables);
+
 
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
@@ -623,6 +613,103 @@ void Application::drawIMGuiElements(int event_cnt) {
 }
 
 
+int Application::processNetworkEvents() {
+    // Process all messages from status_subscriber before doing anything
+    if (_status_subscriber.available()) {
+        auto ss_res = _status_subscriber.get();
+
+        auto err = caf::get_if<broker::error>(&ss_res);
+        if (err != nullptr) {
+            std::cerr << "Broker status error: " << err->code() << ", " << to_string(*err) << std::endl;
+        }
+
+        auto st = caf::get_if<broker::status>(&ss_res);
+        if (st != nullptr) {
+            auto ctx = st->context<broker::endpoint_info>();
+            if (ctx != nullptr) {
+                std::cerr << "Broker status update regarding "
+                          << ctx->network->address
+                          << ":" << to_string(*st) << std::endl;
+            } else {
+               std::cerr << "Broker status update:"
+                         << to_string(*st) << std::endl;
+            }
+        }
+    }
+
+    int event_cnt = 0;
+    int processed_event_cnt = 0;
+
+    int epoch_packets_sum = 0;
+
+    // Read and parse packets
+    for (auto msg : _subscriber.poll()) {
+        event_cnt++;
+        if (event_cnt % inv_sample_rate == 0) {
+            broker::topic topic = broker::get_topic(msg);
+            broker::zeek::Event event = broker::get_data(msg);
+            std::string name = to_string(topic);
+            if (name.compare("monopt/l2") == 0) {
+                epoch_packets_sum += parse_epoch_step(event);
+            } else if (name.compare("monopt/stats") == 0) {
+                parse_stats_update(event);
+            } else {
+                std::cerr << "Unhandled Event: " << event.name() << std::endl;
+            }
+            processed_event_cnt ++;
+        } else {
+            tot_epoch_drop += 1;
+        }
+        if (event_cnt % 16 == 0 && inv_sample_rate <= 16) {
+            inv_sample_rate = inv_sample_rate * 2;
+        }
+    }
+
+    // TODO NOTE WARNING dropping events on this side can introduce non existent mac_src
+    // devices into the graphic
+    if (event_cnt < 8 && inv_sample_rate > 1) {
+        inv_sample_rate = inv_sample_rate/2;
+    }
+
+    if (frame_cnt % 60 == 0) {
+        _iface_list = Util::get_iface_list();
+    }
+
+    ifaceChartMgr.push(static_cast<float>(epoch_packets_sum));
+
+    // Remove packet_lines that have expired from the queue
+    std::set<Figure::PacketLineDrawable *>::iterator it;
+    for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
+        // Note this is an O(N) operation
+        Figure::PacketLineDrawable *pl = *it;
+        if (pl->_expired) {
+            it = _packet_line_queue.erase(it);
+            delete pl;
+        } else {
+            ++it;
+        }
+    }
+
+    // Remove mcast drawables that have expired
+    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
+        Device::PrefixStats *dp_s = (*it2).second;
+        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
+        for (auto it3 = c.begin(); it3 != c.end(); ) {
+            auto pair = *it3;
+            if ((pair.first)->expired) {
+                it3 = c.erase(it3);
+                delete pair.first;
+                delete pair.second;
+            } else {
+                ++it3;
+            }
+        }
+        // TODO get answers from xenomit
+        dp_s->contacts = c;
+    }
+
+    return event_cnt;
+}
 
 
 int Application::parse_epoch_step(broker::zeek::Event event) {
@@ -647,15 +734,13 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
             return 0;
         }
 
-
-        // If the mac_src is not already in the _device_map create a new device.
-        // This means that a frame with a never before seen source MAC creates a new Device.
         auto search = _device_map.find(*mac_src);
         if (search == _device_map.end()) {
             Device::Stats *d_s = createSphere(*mac_src);
             _device_map.insert(std::make_pair(*mac_src, d_s));
             addDirectLabels(d_s);
         }
+
     }
 
     std::map<broker::data, broker::data> *l2_dev_comm = broker::get_if<broker::table>(wrapper->at(1));
@@ -729,6 +814,7 @@ int Application::parse_epoch_step(broker::zeek::Event event) {
             createLines(p1, p2, Util::L3Type::IPV6, struct_l2.ipv6_cnt);
             createLines(p1, p2, Util::L3Type::ARP, struct_l2.arp_cnt);
             createLines(p1, p2, Util::L3Type::UNKNOWN, struct_l2.unknown_cnt);
+
             int dev_tot = Util::SumTotal(struct_l2);
             tran_d_s->num_pkts_sent += dev_tot;
             recv_d_s->num_pkts_recv += dev_tot;
@@ -1068,50 +1154,6 @@ Device::PrefixStats* Application::createBroadcastPool(const std::string mac_pref
     return dp_s;
 }
 
-Level3::Address* Application::createFakeIPv4Address(const std::string ipv4_addr, Vector3 pos) {
-    auto t = pos+offset;
-
-    //std::cout << ipv4_addr << std::endl;
-    //Utility::Debug{} << t;
-
-    _translateController = new Movement::TranslateController{&_scene, &_drawables};
-
-    Object3D* g = new Object3D{_translateController};
-    Object3D* o = new Object3D{g};
-
-    auto s = Matrix4::scaling(Vector3{0.25f});
-    o->transform(s);
-    o->translate(t);
-
-    Color3 c = 0xffffff_rgbf;
-
-    UnsignedByte id = newObjectId();
-
-    Level3::Address *address_obj = new Level3::Address {
-        id,
-        *o,
-        _phong_id_shader,
-        c,
-        _cubeMesh,
-        _selectable_drawables
-    };
-
-    _selectable_objects.push_back(address_obj);
-
-    Object3D *obj = new Object3D{g};
-    auto scaling = Matrix4::scaling(Vector3{0.10f});
-    obj->transform(scaling);
-
-    auto p = Vector3(0.0f, 1.5f, 0.0f);
-    obj->translate(p);
-
-    c = 0xeeeeee_rgbf;
-    new Figure::TextDrawable(ipv4_addr, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
-
-    return address_obj;
-}
-
-
 
 Level3::Address* Application::createIPv4Address(const std::string ipv4_addr, Vector3 pos) {
     auto t = pos+offset;
@@ -1366,16 +1408,9 @@ void Application::mousePressEvent(MouseEvent& event) {
     if(_imgui.handleMousePressEvent(event)) return;
 
 
-    if(event.button() == MouseEvent::Button::Left) {
-        _previousMousePosition = _mousePressPosition = event.position();
-    }
+     if(event.button() != MouseEvent::Button::Left) return;
 
-    if (event.button() == MouseEvent::Button::Right) {
-        Vector2 screenPoint = Vector2{event.position()} / Vector2{windowSize()};
-        Movement::Ray cameraRay = Movement::getCameraToViewportRay(*_camera, screenPoint);
-
-        _translateController->grab(cameraRay);
-    }
+     _previousMousePosition = _mousePressPosition = event.position();
 
     event.setAccepted();
 }
@@ -1387,12 +1422,6 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     auto btn = event.button();
     if(!(btn == MouseEvent::Button::Left || btn == MouseEvent::Button::Right)) return;
 
-
-    if(event.button() == MouseEvent::Button::Right) {
-         _translateController->release();
-    }
-
-    if(event.button() == MouseEvent::Button::Left) {
     /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
     _objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
     Image2D data = _objselect_framebuffer.read(
@@ -1414,22 +1443,14 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
             _openPopup = true;
         }
     }
-    }
+
     event.setAccepted();
     redraw();
-    
 }
 
 
 void Application::mouseMoveEvent(MouseMoveEvent& event) {
     if(_imgui.handleMouseMoveEvent(event)) return;
-
-  if (event.buttons() == MouseMoveEvent::Button::Right) {
-    Vector2 screenPoint = Vector2{event.position()} / Vector2{windowSize()};
-    Movement::Ray cameraRay = Movement::getCameraToViewportRay(*_camera, screenPoint);
-
-    _translateController->move(cameraRay);
-  }
 
     if(!(event.buttons() & MouseMoveEvent::Button::Left)) return;
 
