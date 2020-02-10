@@ -38,7 +38,7 @@ set(monopticon_FILES
         src/util.cpp
         src/context.cpp
         src/input_parser.cpp
-        src/simpopticon.cpp
+        src/evenbettercap.cpp
     )
 
 add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})

@@ -2,7 +2,7 @@
 
 using namespace Monopticon::Context;
 
-GraphicsCtx::GraphicsCtx():
+Graphic::Graphic():
     _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
@@ -63,7 +63,7 @@ GraphicsCtx::GraphicsCtx():
     //prepareDrawables();
 }
 
-void GraphicsCtx::prepareGLBuffers(const Range2Di& viewport) {
+void Graphic::prepareGLBuffers(const Range2Di& viewport) {
     GL::defaultFramebuffer.setViewport(viewport);
 
     // Prepare the object select buffer;
@@ -77,11 +77,11 @@ void GraphicsCtx::prepareGLBuffers(const Range2Di& viewport) {
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 }
 
-void GraphicsCtx::destroyGLBuffers() {
+void Graphic::destroyGLBuffers() {
    _objselect_framebuffer.detach(GL::Framebuffer::ColorAttachment{0});
 }
 
-void GraphicsCtx::prepare3DFont() {
+void Graphic::prepare3DFont() {
     /* Load FreeTypeFont plugin */
     _font = _manager.loadAndInstantiate("FreeTypeFont");
     if(!_font) std::exit(1);
@@ -104,7 +104,7 @@ void GraphicsCtx::prepare3DFont() {
 }
 
 
-Monopticon::Device::Stats* GraphicsCtx::createSphere(SceneCtx *sCtx, const std::string mac) {
+Monopticon::Device::Stats* Graphic::createSphere(Store *sCtx, const std::string mac) {
     Object3D* o = new Object3D{&_scene};
 
     int num_objs = sCtx->_device_map.size();
@@ -142,7 +142,7 @@ Monopticon::Device::Stats* GraphicsCtx::createSphere(SceneCtx *sCtx, const std::
 }
 
 
-Monopticon::Level3::Address* GraphicsCtx::createIPv4Address(Context::SceneCtx *sCtx, const std::string ipv4_addr, Vector3 pos) {
+Monopticon::Level3::Address* Graphic::createIPv4Address(Context::Store *sCtx, const std::string ipv4_addr, Vector3 pos) {
     Vector3 offset{0.0f, 1.0f, 0.0f};
     auto t = pos+offset;
 
@@ -185,7 +185,7 @@ Monopticon::Level3::Address* GraphicsCtx::createIPv4Address(Context::SceneCtx *s
 }
 
 
-Monopticon::Device::PrefixStats* GraphicsCtx::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
+Monopticon::Device::PrefixStats* Graphic::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
     auto *ring = Util::createLayoutRing(_scene, _permanent_drawables, 1.0f, pos);
 
     // Add a label to the bcast ring
@@ -202,23 +202,23 @@ Monopticon::Device::PrefixStats* GraphicsCtx::createBroadcastPool(const std::str
 }
 
 
-void GraphicsCtx::createPoolHits(Context::SceneCtx *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum) {
+void Graphic::createPoolHits(Context::Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum) {
     using namespace Monopticon::Util;
 
     if (sum.ipv4_cnt > 0) {
-        createPoolHit(sCtx, dp_s, typeColor(L3Type::IPV4));
+        createPoolHit(dp_s, typeColor(L3Type::IPV4));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::IPV4);
     }
     if (sum.ipv6_cnt > 0) {
-        createPoolHit(sCtx, dp_s, typeColor(L3Type::IPV6));
+        createPoolHit(dp_s, typeColor(L3Type::IPV6));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::IPV6);
     }
     if (sum.arp_cnt > 0) {
-        createPoolHit(sCtx, dp_s, typeColor(L3Type::ARP));
+        createPoolHit(dp_s, typeColor(L3Type::ARP));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::ARP);
     }
     if (sum.unknown_cnt > 0) {
-        createPoolHit(sCtx, dp_s, typeColor(L3Type::UNKNOWN));
+        createPoolHit(dp_s, typeColor(L3Type::UNKNOWN));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::UNKNOWN);
     }
 
@@ -226,7 +226,7 @@ void GraphicsCtx::createPoolHits(Context::SceneCtx *sCtx, Device::Stats* tran_d_
 }
 
 
-void GraphicsCtx::createPoolHit(Context::SceneCtx *sCtx, Device::PrefixStats *dp_s, Color3 c) {
+void Graphic::createPoolHit(Device::PrefixStats *dp_s, Color3 c) {
     // No-op if the contact pool is already drawing lots of rings
     if (dp_s->contacts.size() > 9) {
         return;
@@ -252,7 +252,7 @@ void GraphicsCtx::createPoolHit(Context::SceneCtx *sCtx, Device::PrefixStats *dp
 }
 
 
-void GraphicsCtx::addDirectLabels(Device::Stats *d_s) {
+void Graphic::addDirectLabels(Device::Stats *d_s) {
     auto scaling = Matrix4::scaling(Vector3{0.10f});
     auto t = d_s->circPoint;
 
@@ -283,7 +283,7 @@ void GraphicsCtx::addDirectLabels(Device::Stats *d_s) {
 }
 
 
-void GraphicsCtx::addL2ConnectL3(Vector3 a, Vector3 b) {
+void Graphic::addL2ConnectL3(Vector3 a, Vector3 b) {
     Object3D *j = new Object3D{&_scene};
     auto *line = new Figure::RingDrawable(*j, 0x999999_rgbf, _drawables);
 
@@ -292,14 +292,14 @@ void GraphicsCtx::addL2ConnectL3(Vector3 a, Vector3 b) {
     line->setMesh(Primitives::line3D(a,a+c));
 }
 
-void GraphicsCtx::createLines(Context::SceneCtx *sCtx, Vector3 a, Vector3 b, Util::L3Type t, int count) {
+void Graphic::createLines(Context::Store *sCtx, Vector3 a, Vector3 b, Util::L3Type t, int count) {
     int ceiling = std::min(count, 4);
     for (int i = 0; i < ceiling; i++) {
         createLine(sCtx, a, b, t);
     }
 }
 
-void GraphicsCtx::createLine(Context::SceneCtx *sCtx, Vector3 a, Vector3 b, Util::L3Type t) {
+void Graphic::createLine(Context::Store *sCtx, Vector3 a, Vector3 b, Util::L3Type t) {
     Object3D* line = new Object3D{&_scene};
 
     Color3 c = Util::typeColor(t);
@@ -324,7 +324,7 @@ void GraphicsCtx::createLine(Context::SceneCtx *sCtx, Vector3 a, Vector3 b, Util
     sCtx->_packet_line_queue.insert(pl);
 }
 
-void GraphicsCtx::draw3DElements() {
+void Graphic::draw3DElements() {
     // Ensure the custom framebuffer is clear for the draw
     _objselect_framebuffer
         .clear(GL::FramebufferClear::Color)
@@ -355,19 +355,19 @@ void GraphicsCtx::draw3DElements() {
 
 
 
-SceneCtx::SceneCtx() {
+Store::Store() {
 
 
 
 }
 
 
-UnsignedByte SceneCtx::newObjectId() {
+UnsignedByte Store::newObjectId() {
     return static_cast<UnsignedByte>(_selectable_objects.size());
 }
 
 
-Vector2 SceneCtx::nextVlanPos(const int vlan) {
+Vector2 Store::nextVlanPos(const int vlan) {
     int row_size = 4 + vlan - vlan;
 
     int num_objs_in_vlan = _device_map.size()/3; // NOTE replace with vlan

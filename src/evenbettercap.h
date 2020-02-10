@@ -520,9 +520,9 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
 }
 
 namespace Context {
-    class SceneCtx {
+    class Store {
         public:
-            SceneCtx();
+            Store();
 
             Vector2 nextVlanPos(const int vlan);
             UnsignedByte newObjectId();
@@ -539,24 +539,24 @@ namespace Context {
             int pos_in_ring{0};
     };
 
-    class GraphicsCtx {
+    class Graphic {
         public:
-            GraphicsCtx();
+            Graphic();
 
             void prepare3DFont();
             void prepareGLBuffers(const Range2Di& viewport);
 
             void draw3DElements();
 
-            Device::Stats* createSphere(SceneCtx *sCtx, const std::string mac);
+            Device::Stats* createSphere(Store *sCtx, const std::string mac);
             Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
 
-            void createPoolHits(SceneCtx *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum);
-            void createPoolHit(SceneCtx *sCtx, Device::PrefixStats *dp_s, Color3 c);
-            Level3::Address* createIPv4Address(SceneCtx *sCtx, const std::string ipv4_addr, Vector3 pos);
+            void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum);
+            void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
+            Level3::Address* createIPv4Address(Store *sCtx, const std::string ipv4_addr, Vector3 pos);
 
-            void createLines(SceneCtx *sCtx, Vector3, Vector3, Util::L3Type, int num);
-            void createLine(SceneCtx *sCtx, Vector3, Vector3, Util::L3Type);
+            void createLines(Store *sCtx, Vector3, Vector3, Util::L3Type, int num);
+            void createLine(Store *sCtx, Vector3, Vector3, Util::L3Type);
 
             void addDirectLabels(Device::Stats *d_s);
             void addL2ConnectL3(Vector3 a, Vector3 b);
@@ -624,15 +624,15 @@ class BrokerCtx {
 
         BrokerCtx(std::string addr, uint16_t port);
 
-        int parse_epoch_step(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, broker::zeek::Event event);
-        void parse_enter_l3_addr(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, std::map<broker::data, broker::data> *addr_map);
-        void parse_arp_table(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, std::map<broker::data, broker::data> *arp_table);
+        int parse_epoch_step(Context::Store *sCtx, Context::Graphic *gCtx, broker::zeek::Event event);
+        void parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *addr_map);
+        void parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *arp_table);
 
         void parse_stats_update(broker::zeek::Event event);
-        void parse_bcast_summaries(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, broker::vector *dComm, Device::Stats* tran_d_s);
-        void parse_single_mcast(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
+        void parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, broker::vector *dComm, Device::Stats* tran_d_s);
+        void parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
 
-        void processNetworkEvents(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx);
+        void processNetworkEvents(Context::Store *sCtx, Context::Graphic *gCtx);
 
         void StatsGui();
     };

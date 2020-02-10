@@ -22,7 +22,7 @@ BrokerCtx::BrokerCtx(std::string addr, uint16_t port):
 }
 
 
-void BrokerCtx::processNetworkEvents(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx) {
+void BrokerCtx::processNetworkEvents(Context::Store *sCtx, Context::Graphic *gCtx) {
     // Process all messages from status_subscriber before doing anything
     if (status_subscriber.available()) {
         auto ss_res = status_subscriber.get();
@@ -84,7 +84,7 @@ void BrokerCtx::processNetworkEvents(Context::SceneCtx *sCtx, Context::GraphicsC
 }
 
 
-int BrokerCtx::parse_epoch_step(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, broker::zeek::Event event) {
+int BrokerCtx::parse_epoch_step(Context::Store *sCtx, Context::Graphic *gCtx, broker::zeek::Event event) {
     broker::vector parent_content = event.args();
 
     broker::vector *wrapper = broker::get_if<broker::vector>(parent_content.at(0));
@@ -215,7 +215,7 @@ int BrokerCtx::parse_epoch_step(Context::SceneCtx *sCtx, Context::GraphicsCtx *g
 }
 
 
-void BrokerCtx::parse_single_mcast(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s) {
+void BrokerCtx::parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s) {
     Util::L2Summary sum;
     Device::PrefixStats *dp_s = nullptr;
 
@@ -228,7 +228,7 @@ void BrokerCtx::parse_single_mcast(Context::SceneCtx *sCtx, Context::GraphicsCtx
 }
 
 
-void BrokerCtx::parse_bcast_summaries(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, broker::vector *dComm, Device::Stats* tran_d_s) {
+void BrokerCtx::parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, broker::vector *dComm, Device::Stats* tran_d_s) {
     parse_single_mcast(sCtx, gCtx, 2, "ff", dComm, tran_d_s);
     parse_single_mcast(sCtx, gCtx, 3, "33", dComm, tran_d_s);
     parse_single_mcast(sCtx, gCtx, 4, "01", dComm, tran_d_s);
@@ -236,7 +236,7 @@ void BrokerCtx::parse_bcast_summaries(Context::SceneCtx *sCtx, Context::Graphics
 }
 
 
-void BrokerCtx::parse_enter_l3_addr(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, std::map<broker::data, broker::data> *addr_map) {
+void BrokerCtx::parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *addr_map) {
      for (auto it = addr_map->begin(); it != addr_map->end(); it++) {
         auto pair = *it;
         auto *mac_src = broker::get_if<std::string>(pair.first);
@@ -266,7 +266,7 @@ void BrokerCtx::parse_enter_l3_addr(Context::SceneCtx *sCtx, Context::GraphicsCt
     }
 }
 
-void BrokerCtx::parse_arp_table(Context::SceneCtx *sCtx, Context::GraphicsCtx *gCtx, std::map<broker::data, broker::data> *arp_table) {
+void BrokerCtx::parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *arp_table) {
     for (auto it = arp_table->begin(); it != arp_table->end(); it++) {
         auto pair = *it;
         auto *mac_src = broker::get_if<std::string>(pair.first);
