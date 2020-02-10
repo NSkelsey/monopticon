@@ -59,3 +59,14 @@ packaging/portableapps/Files/
 packaging/portableapps/appinfo.ini
 vgcore.*
 build
+
+# Project Specific #
+*.log
+*.tar
+*.tar.xz
+imgui.ini
+pkg/arch/src
+pkg/arch/.*
+pkg/arch/pkg
+pkg/arch/monopticon
+pkg/docker/*.txt

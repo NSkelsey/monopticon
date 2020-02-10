@@ -19,7 +19,7 @@ This software might be useful to you if you:
 All reactions to this project including silly questions are appreciated. Open an issue here or contact [Nick](https://nskelsey.com) directly.
 
 
-The animation below demonstrates the output of Monopticon (v0.2.0) monitoring a local network from a span port. For more examples visit `src/expirements`.
+The animation below demonstrates the output of Monopticon (v0.3.0) monitoring a local network from a span port. For more examples visit `contrib/expirements`.
 
 ![what it looks like](https://nskelsey.com/res/span-traffic.gif)
 
@@ -49,4 +49,8 @@ In an alternative rolling universe the following command may function:
 > yay monopticon
 ```
 
-For the true believers there is a Dockerfile in `pkg/` that can be used to debug CMake problems.
+### Building
+
+See `INSTALL.md` for notes on building.
+
+For true believers there is a Dockerfile in `pkg/docker` that should work out of the box.
