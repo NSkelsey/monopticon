@@ -149,37 +149,6 @@ namespace Util {
     Color3 typeColor(L3Type t);
 }
 
-namespace Movement {
-
-struct Ray {
-  Magnum::Vector3 origin;
-  Magnum::Vector3 direction;
-};
-
-Ray getCameraToViewportRay(Magnum::SceneGraph::Camera3D& camera, const Magnum::Vector2& screenPoint);
-
-
-class TranslateController : public Object3D {
-  public:
-    explicit TranslateController(Object3D *parent = nullptr, Magnum::SceneGraph::DrawableGroup3D *group = nullptr);
-
-    void grab(const Ray &cameraRay);
-    void move(const Ray &cameraRay);
-    void release();
-
-  private:
-    Magnum::Vector3 _startPosition;
-    Magnum::Vector3 _startPoint;
-    Magnum::Vector3 _dir;
-    Magnum::Vector4 _plane;
-    Magnum::Float _axisThreshold = 0.3f;
-
-    bool _missed = true;
-};
-
-}
-
-
 namespace Device {
 
 class Selectable {

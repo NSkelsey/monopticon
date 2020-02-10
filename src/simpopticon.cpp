@@ -43,8 +43,6 @@ class Application: public Platform::Application {
         void textInputEvent(TextInputEvent& event) override;
 
         Device::Stats* createSphere(const std::string);
-  
-        Level3::Address* createFakeIPv4Address(const std::string ipv4_addr, Vector3 pos);
 
         void createLines(Vector3, Vector3, Util::L3Type, int num);
         void createLine(Vector3, Vector3, Util::L3Type);
@@ -93,7 +91,6 @@ class Application: public Platform::Application {
         GL::Renderbuffer _color, _objectId, _depth;
 
 
-        Movement::TranslateController *_translateController;
 
         // Font graphics fields
         PluginManager::Manager<Text::AbstractFont> _manager;
@@ -264,36 +261,8 @@ void Application::prepareDrawables() {
     //_dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
     //_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
     //_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
-    _translateController = new Movement::TranslateController{&_scene, &_drawables};
-    
+
     auto trans = Vector3{0.0f, 0.0f, 0.0f};
-
-    createFakeIPv4Address("111.111.111.111", trans);
-
-    //auto trans2 = Vector3{3.0f, 0.0f, 3.0f};
-
-    //createFakeIPv4Address("8.8.8.8", trans2);
-/*
-    auto trans = Vector3{1.0f, -4.0f, 1.0f};
-
-    Object3D *obj = new Object3D{_translateController};
-    Matrix4 scaling = Matrix4::scaling(Vector3{1.0});
-    obj->transform(scaling);
-    obj->rotateX(90.0_degf);
-    obj->translate(trans);
-    auto ring = new Figure::RingDrawable{*obj, 0xcccccc_rgbf, _drawables};
-
-    // Add a label to the bcast ring
-    auto scaling2 = Matrix4::scaling(Vector3{0.10f});
-    Object3D *obj2 = new Object3D{&_scene};
-    obj2->transform(scaling2);
-    obj2->translate(trans);
-    auto c = 0xaaaaaa_rgbf;
-    new Figure::TextDrawable("BB:BB:BB", c, _font, &_glyphCache, _text_shader, *obj2, _text_drawables);
-
-    //Device::PrefixStats* dp_s = new Device::PrefixStats{"BB:BB:BB", trans, ring};
-
-    */
 }
 
 
@@ -614,53 +583,6 @@ Device::Stats* Application::createSphere(const std::string mac) {
 }
 
 
-Level3::Address* Application::createFakeIPv4Address(const std::string ipv4_addr, Vector3 pos) {
-    auto t = pos+offset;
-
-    //std::cout << ipv4_addr << std::endl;
-    //Utility::Debug{} << t;
-
-    _translateController = new Movement::TranslateController{&_scene, &_drawables};
-
-    Object3D* g = new Object3D{_translateController};
-    Object3D* o = new Object3D{g};
-
-    auto s = Matrix4::scaling(Vector3{0.25f});
-    o->transform(s);
-    o->translate(t);
-
-    Color3 c = 0xffffff_rgbf;
-
-    UnsignedByte id = newObjectId();
-
-    Level3::Address *address_obj = new Level3::Address {
-        id,
-        *o,
-        _phong_id_shader,
-        c,
-        _cubeMesh,
-        _selectable_drawables
-    };
-
-    _selectable_objects.push_back(address_obj);
-
-    Object3D *obj = new Object3D{g};
-    auto scaling = Matrix4::scaling(Vector3{0.10f});
-    obj->transform(scaling);
-
-    auto p = Vector3(0.0f, 1.5f, 0.0f);
-    obj->translate(p);
-
-    c = 0xeeeeee_rgbf;
-    new Figure::TextDrawable(ipv4_addr, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
-
-    return address_obj;
-}
-
-
-
-
-
 void Application::addL2ConnectL3(Vector3 a, Vector3 b) {
     Object3D *j = new Object3D{&_scene};
     auto *line = new Figure::RingDrawable(*j, 0x999999_rgbf, _drawables);
@@ -794,13 +716,6 @@ void Application::mousePressEvent(MouseEvent& event) {
         _previousMousePosition = _mousePressPosition = event.position();
     }
 
-    if (event.button() == MouseEvent::Button::Right) {
-        Vector2 screenPoint = Vector2{event.position()} / Vector2{windowSize()};
-        Movement::Ray cameraRay = Movement::getCameraToViewportRay(*_camera, screenPoint);
-
-        _translateController->grab(cameraRay);
-    }
-
     event.setAccepted();
 }
 
@@ -811,10 +726,6 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     auto btn = event.button();
     if(!(btn == MouseEvent::Button::Left || btn == MouseEvent::Button::Right)) return;
 
-
-    if(event.button() == MouseEvent::Button::Right) {
-         _translateController->release();
-    }
 
     if(event.button() == MouseEvent::Button::Left) {
     /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
@@ -847,13 +758,6 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
 
 void Application::mouseMoveEvent(MouseMoveEvent& event) {
     if(_imgui.handleMouseMoveEvent(event)) return;
-
-  if (event.buttons() == MouseMoveEvent::Button::Right) {
-    Vector2 screenPoint = Vector2{event.position()} / Vector2{windowSize()};
-    Movement::Ray cameraRay = Movement::getCameraToViewportRay(*_camera, screenPoint);
-
-    _translateController->move(cameraRay);
-  }
 
     if(!(event.buttons() & MouseMoveEvent::Button::Left)) return;
 
