@@ -115,6 +115,10 @@ namespace Monopticon {
 
   }
 
+  namespace Parse {
+      class BrokerCtx;
+  }
+
 // Definitions
 namespace Util {
 
@@ -513,6 +517,48 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
         GL::Mesh _mesh;
 };
 
+}
+
+namespace Parse {
+
+class BrokerCtx {
+    public:
+        // Zeek broker components
+        broker::endpoint _ep;
+
+        broker::subscriber subscriber;
+        broker::status_subscriber status_subscriber;
+        bool peer_connected = false;
+
+        std::chrono::duration<int64_t, std::nano> curr_pkt_lag;
+
+        // Custom ImGui interface components
+        Device::ChartMgr ifaceChartMgr{240, 3.0f};
+        Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
+
+        int tot_pkt_drop{0};
+        int tot_epoch_drop{0};
+        int event_cnt{0};
+
+        int inv_sample_rate{1};
+        int epoch_packets_sum{0};
+
+        BrokerCtx(std::string addr, uint16_t port);
+
+        int parse_epoch_step(broker::zeek::Event event);
+        void parse_enter_l3_addr(std::map<broker::data, broker::data> *addr_map);
+        void parse_arp_table(std::map<broker::data, broker::data> *arp_table);
+
+        void parse_stats_update(broker::zeek::Event event);
+        void parse_bcast_summaries(broker::vector *dComm, Device::Stats* tran_d_s);
+        void parse_single_mcast(int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
+
+        void processNetworkEvents();
+
+        void StatsGui();
+
+
+    };
 }
 
 }

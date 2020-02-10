@@ -14,7 +14,38 @@ const Vector3 offset{0.0f, 1.0f, 0.0f};
 using namespace Magnum;
 using namespace Math::Literals;
 
+class GraphicsContext {
+    public:
+        Shaders::Phong _phong_shader;
+        Figure::PhongIdShader _phong_id_shader;
+        Figure::ParaLineShader _line_shader;
+        Figure::PoolShader _pool_shader;
+        Figure::WorldLinkShader _link_shader;
+        Shaders::Flat3D _bbitem_shader;
 
+        Scene3D _scene;
+        SceneGraph::Camera3D* _camera;
+        SceneGraph::DrawableGroup3D _drawables;
+        SceneGraph::DrawableGroup3D _permanent_drawables;
+        SceneGraph::DrawableGroup3D _selectable_drawables;
+        SceneGraph::DrawableGroup3D _billboard_drawables;
+        SceneGraph::DrawableGroup3D _text_drawables;
+
+};
+
+class SceneContext {
+    public:
+        // Scene objects
+        std::vector<Device::Selectable*> _selectable_objects{};
+        std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
+
+        std::map<std::string, Device::Stats*> _device_map{};
+        std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
+        std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
+
+        int ring_level{0};
+        int pos_in_ring{0};
+};
 class Application: public Platform::Application {
     public:
         explicit Application(const Arguments& arguments);
@@ -26,10 +57,9 @@ class Application: public Platform::Application {
         void destroyGLBuffers();
 
         void drawEvent() override;
-        int processNetworkEvents();
         void drawTextElements();
         void draw3DElements();
-        void drawIMGuiElements(int event_cnt);
+        void drawIMGuiElements();
 
         void viewportEvent(ViewportEvent& event) override;
 
@@ -58,6 +88,7 @@ class Application: public Platform::Application {
 
         Vector2 nextVlanPos(const int vlan);
 
+        Parse::BrokerCtx *brokerCtx;
 
     private:
         // UI fields
@@ -119,24 +150,15 @@ class Application: public Platform::Application {
 
         std::string _zeek_pid;
 
-        // Custom ImGui interface components
-        Device::ChartMgr ifaceChartMgr{240, 3.0f};
-        Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
-
         int ring_level{0};
         int pos_in_ring{0};
 
         int run_sum;
         int frame_cnt;
-        std::chrono::duration<int64_t, std::nano> curr_pkt_lag;
-
-        int tot_pkt_drop;
-        int tot_epoch_drop;
 
         bool _orbit_toggle{false};
         bool _openPopup{false};
 
-        int inv_sample_rate{1};
 };
 
 
@@ -162,6 +184,10 @@ Application::Application(const Arguments& arguments):
     }
     SDL_Window* sdl_window = Magnum::Platform::Sdl2Application::window();
     SDL_SetWindowIcon(sdl_window, sdl_surf);
+
+    uint16_t listen_port = 9999;
+    std::string addr = "127.0.0.1";
+    brokerCtx = new Parse::BrokerCtx(addr, listen_port);
 
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
@@ -219,9 +245,6 @@ Application::Application(const Arguments& arguments):
 
     run_sum = 0;
     frame_cnt = 0;
-    tot_pkt_drop = 0;
-    tot_epoch_drop = 0;
-    curr_pkt_lag = broker::timespan(0);
 
     setSwapInterval(1);
     setMinimalLoopPeriod(16);
@@ -262,7 +285,6 @@ void Application::prepareDrawables() {
     //_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
     //_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 
-    auto trans = Vector3{0.0f, 0.0f, 0.0f};
 }
 
 
@@ -278,15 +300,10 @@ void Application::prepare3DFont() {
 
     /* Open the font and fill glyph cache */
     Utility::Resource rs("monopticon");
-
     std::string fname = "src/assets/DejaVuSans.ttf";
-    Containers::ArrayView<const char> a = rs.getRaw(fname);
 
-    std::vector<std::pair<std::string, Containers::ArrayView<const char>>> f_pair = {std::make_pair(fname, a)};
-
-    if(!_font->openData(f_pair, 110.0f)) {
-       Error() << "Cannot open font file";
-       std::exit(1);
+    if(!_font->openData(rs.getRaw(fname), 110.0f)) {
+       Fatal{} << "Cannot open font file";
     }
 
     _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/-+,.! \n");
@@ -346,7 +363,7 @@ void Application::draw3DElements() {
 }
 
 
-void Application::drawIMGuiElements(int event_cnt) {
+void Application::drawIMGuiElements() {
     _imgui.newFrame();
 
     if (_openPopup) {
@@ -363,29 +380,88 @@ void Application::drawIMGuiElements(int event_cnt) {
     auto flags = ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoScrollbar;
     ImGui::Begin("Tap Status", nullptr, flags);
 
+    if (!brokerCtx->peer_connected && _iface_list.size() > 0) {
+        if (ImGui::Button("Connect", ImVec2(80, 20))) {
+            // If an invalid iface is selected, or an empty value is used
+            // just use the first interface.
+            auto search = find(_iface_list.begin(), _iface_list.end(), _chosen_iface);
+            if (_chosen_iface.length() == 0 ||
+                search == _iface_list.end()) {
+                _chosen_iface = _iface_list.at(0);
+            }
+
+            std::string s, cmd;
+            if (_listeningDevice == nullptr) {
+                s = "monopt_iface_proto mac_addr ";
+                cmd = s.append(_chosen_iface);
+                std::string mac_addr = Util::exec_output(cmd);
+
+                if (mac_addr.size() > 0) {
+                    _listeningDevice = createSphere(mac_addr);
+                    //objectClicked(_listeningDevice);
+
+                    s = "monopt_iface_proto ipv4_addr ";
+                    cmd = s.append(_chosen_iface);
+                    std::string ipv4_addr = Util::exec_output(cmd);
+
+                    if (ipv4_addr.size() > 0) {
+                        //_listeningDevice->updateMaps(ipv4_addr, "");
+                    }
+                    addDirectLabels(_listeningDevice);
+                    //createIPv4Address(ipv4_addr, _listeningDevice->circPoint);
+                } else {
+                    std::cerr << "Empty mac addr for net interface: " << _chosen_iface << std::endl;
+                }
+            }
+
+            s = "monopt_iface_proto gateway_ipv4_addr ";
+            cmd = s.append(_chosen_iface);
+            std::string gw_ipv4_addr = Util::exec_output(cmd);
+
+            if (_activeGateway == nullptr && gw_ipv4_addr.size() > 0) {
+                s = "monopt_iface_proto gateway_mac_addr ";
+                cmd = s.append(_chosen_iface)
+                       .append(" ")
+                       .append(gw_ipv4_addr);
+
+                std::string gw_mac_addr = Util::exec_output(cmd);
+                if (gw_mac_addr.size() > 0) {
+                    _activeGateway = createSphere(gw_mac_addr);
+                    //_activeGateway->updateMaps("0.0.0.0/32", "");
+                    //_activeGateway->updateMaps(gw_ipv4_addr, "");
+
+                    addDirectLabels(_activeGateway);
+                    //createIPv4Address(gw_ipv4_addr, _activeGateway->circPoint);
+                } else {
+                    std::cerr << "Empty mac addr for gateway: " << gw_ipv4_addr << std::endl;
+                }
+            }
+
+            s = "monopt_iface_proto launch ";
+            cmd = s.append(_chosen_iface);
+            _zeek_pid = Util::exec_output(cmd);
+            std::cout << "Launched subprocess with pid: " << _zeek_pid << std::endl;
+            brokerCtx->peer_connected = true;
+        }
+    } else {
+        if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
+            std::string s = "monopt_iface_proto sstop ";
+            auto cmd = s.append(_zeek_pid);
+            int r = std::system(cmd.c_str());
+            if (r != 0) {
+                std::cerr << "Listener shutdown failed" << std::endl;
+            }
+            std::cout << "Disconnected" << std::endl;
+            brokerCtx->peer_connected = false;
+
+            //DeleteEverything();
+        }
+    }
+
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
             1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
 
-    auto s = "Sample rate %.3f SPS event cnt %d";
-    if (inv_sample_rate > 1.0) {
-        ImGui::TextColored(ImVec4(1,0,0,1), s, 1.0/inv_sample_rate, event_cnt);
-    } else {
-        ImGui::Text(s, 1.0/inv_sample_rate, event_cnt);
-    }
-
-    auto r = "Pkt Lag %.1f ms; Pkt drop: %d; Epoch drop: %d";
-    double t = curr_pkt_lag.count()/1000000.0;
-    if (curr_pkt_lag > std::chrono::milliseconds(5)) {
-        ImGui::TextColored(ImVec4(1,0,0,1), r, t, tot_pkt_drop, tot_epoch_drop);
-    } else {
-        ImGui::Text(r, t, tot_pkt_drop, tot_epoch_drop);
-    }
-
-    ImGui::Separator();
-    ifaceChartMgr.draw();
-    ImGui::Separator();
-    ifaceLongChartMgr.draw();
-    ImGui::Separator();
+    brokerCtx->StatsGui();
 
     ImGui::End();
 
@@ -533,7 +609,7 @@ void Application::objectClicked(Device::Selectable *selection) {
 
 
 Vector2 Application::nextVlanPos(const int vlan) {
-    int row_size = 4;
+    int row_size = 4 + vlan - vlan;
 
     int num_objs_in_vlan = _device_map.size()/3; // NOTE replace with vlan
 
@@ -648,11 +724,49 @@ void Application::watchSelectedDevice() {
 
 void Application::drawEvent() {
 
+    brokerCtx->processNetworkEvents();
+
+    if (frame_cnt % 60 == 0) {
+        _iface_list = Util::get_iface_list();
+    }
+
+
+    // Remove packet_lines that have expired from the queue
+    std::set<Figure::PacketLineDrawable *>::iterator it;
+    for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
+        // Note this is an O(N) operation
+        Figure::PacketLineDrawable *pl = *it;
+        if (pl->_expired) {
+            it = _packet_line_queue.erase(it);
+            delete pl;
+        } else {
+            ++it;
+        }
+    }
+
+    // Remove mcast drawables that have expired
+    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
+        Device::PrefixStats *dp_s = (*it2).second;
+        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
+        for (auto it3 = c.begin(); it3 != c.end(); ) {
+            auto pair = *it3;
+            if ((pair.first)->expired) {
+                it3 = c.erase(it3);
+                delete pair.first;
+                delete pair.second;
+            } else {
+                ++it3;
+            }
+        }
+        // TODO get answers from xenomit
+        dp_s->contacts = c;
+    }
+
     draw3DElements();
 
     drawTextElements();
 
-    drawIMGuiElements(0);
+    drawIMGuiElements();
 
     frame_cnt ++;
     swapBuffers();

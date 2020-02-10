@@ -29,11 +29,6 @@ const float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
 
 const Vector3 offset{0.0f, 1.0f, 0.0f};
 
-// Zeek broker components
-broker::endpoint _ep;
-broker::subscriber _subscriber = _ep.make_subscriber({"monopt/l2", "monopt/stats"});
-broker::status_subscriber _status_subscriber = _ep.make_status_subscriber(true);
-
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -202,20 +197,6 @@ Application::Application(const Arguments& arguments):
     }
     SDL_Window* sdl_window = Magnum::Platform::Sdl2Application::window();
     SDL_SetWindowIcon(sdl_window, sdl_surf);
-
-    std::cout << "Waiting for broker connection" << std::endl;
-
-    uint16_t listen_port = 9999;
-    std::string addr = "127.0.0.1";
-    auto res = _ep.listen(addr, listen_port);
-    if (res == 0) {
-        std::cerr << "Could not listen on: ";
-        std::cerr << addr << ":" << listen_port << std::endl;
-        std::exit(1);
-    } else {
-        std::cout << "Endpoint listening on: ";
-        std::cout << addr << ":" << listen_port << std::endl;
-    }
 
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
@@ -642,103 +623,6 @@ void Application::drawIMGuiElements(int event_cnt) {
 }
 
 
-int Application::processNetworkEvents() {
-    // Process all messages from status_subscriber before doing anything
-    if (_status_subscriber.available()) {
-        auto ss_res = _status_subscriber.get();
-
-        auto err = caf::get_if<broker::error>(&ss_res);
-        if (err != nullptr) {
-            std::cerr << "Broker status error: " << err->code() << ", " << to_string(*err) << std::endl;
-        }
-
-        auto st = caf::get_if<broker::status>(&ss_res);
-        if (st != nullptr) {
-            auto ctx = st->context<broker::endpoint_info>();
-            if (ctx != nullptr) {
-                std::cerr << "Broker status update regarding "
-                          << ctx->network->address
-                          << ":" << to_string(*st) << std::endl;
-            } else {
-               std::cerr << "Broker status update:"
-                         << to_string(*st) << std::endl;
-            }
-        }
-    }
-
-    int event_cnt = 0;
-    int processed_event_cnt = 0;
-
-    int epoch_packets_sum = 0;
-
-    // Read and parse packets
-    for (auto msg : _subscriber.poll()) {
-        event_cnt++;
-        if (event_cnt % inv_sample_rate == 0) {
-            broker::topic topic = broker::get_topic(msg);
-            broker::zeek::Event event = broker::get_data(msg);
-            std::string name = to_string(topic);
-            if (name.compare("monopt/l2") == 0) {
-                epoch_packets_sum += parse_epoch_step(event);
-            } else if (name.compare("monopt/stats") == 0) {
-                parse_stats_update(event);
-            } else {
-                std::cerr << "Unhandled Event: " << event.name() << std::endl;
-            }
-            processed_event_cnt ++;
-        } else {
-            tot_epoch_drop += 1;
-        }
-        if (event_cnt % 16 == 0 && inv_sample_rate <= 16) {
-            inv_sample_rate = inv_sample_rate * 2;
-        }
-    }
-
-    // TODO NOTE WARNING dropping events on this side can introduce non existent mac_src
-    // devices into the graphic
-    if (event_cnt < 8 && inv_sample_rate > 1) {
-        inv_sample_rate = inv_sample_rate/2;
-    }
-
-    if (frame_cnt % 60 == 0) {
-        _iface_list = Util::get_iface_list();
-    }
-
-    ifaceChartMgr.push(static_cast<float>(epoch_packets_sum));
-
-    // Remove packet_lines that have expired from the queue
-    std::set<Figure::PacketLineDrawable *>::iterator it;
-    for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
-        // Note this is an O(N) operation
-        Figure::PacketLineDrawable *pl = *it;
-        if (pl->_expired) {
-            it = _packet_line_queue.erase(it);
-            delete pl;
-        } else {
-            ++it;
-        }
-    }
-
-    // Remove mcast drawables that have expired
-    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
-        Device::PrefixStats *dp_s = (*it2).second;
-        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
-        for (auto it3 = c.begin(); it3 != c.end(); ) {
-            auto pair = *it3;
-            if ((pair.first)->expired) {
-                it3 = c.erase(it3);
-                delete pair.first;
-                delete pair.second;
-            } else {
-                ++it3;
-            }
-        }
-        // TODO get answers from xenomit
-        dp_s->contacts = c;
-    }
-
-    return event_cnt;
-}
 
 
 int Application::parse_epoch_step(broker::zeek::Event event) {
