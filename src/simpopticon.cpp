@@ -14,43 +14,11 @@ const Vector3 offset{0.0f, 1.0f, 0.0f};
 using namespace Magnum;
 using namespace Math::Literals;
 
-class GraphicsContext {
-    public:
-        Shaders::Phong _phong_shader;
-        Figure::PhongIdShader _phong_id_shader;
-        Figure::ParaLineShader _line_shader;
-        Figure::PoolShader _pool_shader;
-        Figure::WorldLinkShader _link_shader;
-        Shaders::Flat3D _bbitem_shader;
 
-        Scene3D _scene;
-        SceneGraph::Camera3D* _camera;
-        SceneGraph::DrawableGroup3D _drawables;
-        SceneGraph::DrawableGroup3D _permanent_drawables;
-        SceneGraph::DrawableGroup3D _selectable_drawables;
-        SceneGraph::DrawableGroup3D _billboard_drawables;
-        SceneGraph::DrawableGroup3D _text_drawables;
-
-};
-
-class SceneContext {
-    public:
-        // Scene objects
-        std::vector<Device::Selectable*> _selectable_objects{};
-        std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
-
-        std::map<std::string, Device::Stats*> _device_map{};
-        std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
-        std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
-
-        int ring_level{0};
-        int pos_in_ring{0};
-};
 class Application: public Platform::Application {
     public:
         explicit Application(const Arguments& arguments);
 
-        void prepare3DFont();
         void prepareDrawables();
         void prepareGLBuffers(const Range2Di& viewport);
 
@@ -58,7 +26,6 @@ class Application: public Platform::Application {
 
         void drawEvent() override;
         void drawTextElements();
-        void draw3DElements();
         void drawIMGuiElements();
 
         void viewportEvent(ViewportEvent& event) override;
@@ -72,71 +39,19 @@ class Application: public Platform::Application {
         void mouseScrollEvent(MouseScrollEvent& event) override;
         void textInputEvent(TextInputEvent& event) override;
 
-        Device::Stats* createSphere(const std::string);
-
-        void createLines(Vector3, Vector3, Util::L3Type, int num);
-        void createLine(Vector3, Vector3, Util::L3Type);
-
-        void addDirectLabels(Device::Stats *d_s);
-        void addL2ConnectL3(Vector3 a, Vector3 b);
-
         UnsignedByte newObjectId();
         void deselectObject();
         void objectClicked(Device::Selectable *selection);
         void selectableMenuActions(Device::Selectable *selection);
         void watchSelectedDevice();
 
-        Vector2 nextVlanPos(const int vlan);
-
-        Parse::BrokerCtx *brokerCtx;
+        Parse::BrokerCtx     *brokerCtx;
+        Context::GraphicsCtx *gCtx;
+        Context::SceneCtx    *sCtx;
 
     private:
         // UI fields
         ImGuiIntegration::Context _imgui{NoCreate};
-
-        // Graphic fields
-        GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
-        Color4 _clearColor = 0x002b36_rgbf;
-        Color3 _pickColor = 0xffffff_rgbf;
-
-        Shaders::Phong _phong_shader;
-        Figure::PhongIdShader _phong_id_shader;
-        Figure::ParaLineShader _line_shader;
-        Figure::PoolShader _pool_shader;
-        Figure::WorldLinkShader _link_shader;
-        Shaders::Flat3D _bbitem_shader;
-
-        Scene3D _scene;
-        SceneGraph::Camera3D* _camera;
-        SceneGraph::DrawableGroup3D _drawables;
-        SceneGraph::DrawableGroup3D _permanent_drawables;
-        SceneGraph::DrawableGroup3D _selectable_drawables;
-        SceneGraph::DrawableGroup3D _billboard_drawables;
-        SceneGraph::DrawableGroup3D _text_drawables;
-        Timeline _timeline;
-
-        Object3D *_cameraRig, *_cameraObject;
-
-        GL::Framebuffer _objselect_framebuffer{NoCreate};
-        Vector2i _previousMousePosition, _mousePressPosition;
-        GL::Renderbuffer _color, _objectId, _depth;
-
-
-
-        // Font graphics fields
-        PluginManager::Manager<Text::AbstractFont> _manager;
-        Containers::Pointer<Text::AbstractFont> _font;
-
-        Text::DistanceFieldGlyphCache _glyphCache;
-        Shaders::DistanceFieldVector3D _text_shader;
-
-        // Scene objects
-        std::vector<Device::Selectable*> _selectable_objects{};
-        std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
-
-        std::map<std::string, Device::Stats*> _device_map{};
-        std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
-        std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
 
         std::vector<Device::WindowMgr*> _inspected_device_window_list{};
 
@@ -144,11 +59,17 @@ class Application: public Platform::Application {
         Device::Stats* _listeningDevice{nullptr};
         Device::Stats* _activeGateway{nullptr};
 
+
+        // User input fields
+        Vector2i _previousMousePosition, _mousePressPosition;
+
         // Network interface state tracking
         std::vector<std::string> _iface_list;
         std::string _chosen_iface;
 
         std::string _zeek_pid;
+
+        Timeline _timeline;
 
         int ring_level{0};
         int pos_in_ring{0};
@@ -158,7 +79,6 @@ class Application: public Platform::Application {
 
         bool _orbit_toggle{false};
         bool _openPopup{false};
-
 };
 
 
@@ -167,10 +87,8 @@ Application::Application(const Arguments& arguments):
             .setTitle("Monopticon")
             .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
             .setSize(Vector2i{1400,1000}),
-            GLConfiguration{}.setSampleCount(MSAA_CNT)},
-        _glyphCache(Vector2i(2048), Vector2i(512), 22)
+            GLConfiguration{}.setSampleCount(MSAA_CNT)}
 {
-    MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
 
     // Setup the SDL window icon
     Utility::Resource rs("monopticon");
@@ -187,56 +105,11 @@ Application::Application(const Arguments& arguments):
 
     uint16_t listen_port = 9999;
     std::string addr = "127.0.0.1";
+
     brokerCtx = new Parse::BrokerCtx(addr, listen_port);
 
-    auto viewport = GL::defaultFramebuffer.viewport();
-    prepareGLBuffers(viewport);
-
-    /* Camera setup */
-    (*(_cameraRig = new Object3D{&_scene}))
-        .rotateY(40.0_degf);
-    (*(_cameraObject = new Object3D{_cameraRig}))
-        .translate(Vector3::zAxis(20.0f))
-        .rotateX(-25.0_degf);
-    (_camera = new SceneGraph::Camera3D(*_cameraObject))
-        ->setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::Extend)
-        .setProjectionMatrix(Matrix4::perspectiveProjection(50.0_degf, 1.0f, 0.001f, 100.0f))
-        .setViewport(viewport.size());
-
-    {
-        Trade::MeshData3D data = Primitives::uvSphereSolid(8.0f, 30.0f);
-
-        GL::Buffer sphereVertices, sphereIndices;
-
-        sphereVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
-        sphereIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
-        _sphere.setCount(data.indices().size())
-               .setPrimitive(data.primitive())
-               .addVertexBuffer(sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
-               .setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedShort);
-    }
-    {
-        Trade::MeshData3D data = Primitives::cubeSolid();
-
-        GL::Buffer cubeVertices, cubeIndices;
-
-        cubeVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
-        cubeIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
-        _cubeMesh.setCount(data.indices().size())
-               .setPrimitive(data.primitive())
-               .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
-               .setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
-    }
-
-    _poolCircle = MeshTools::compile(Primitives::circle3DWireframe(20));
-
-    _line_shader = Figure::ParaLineShader{};
-    _phong_id_shader = Figure::PhongIdShader{};
-    _pool_shader = Figure::PoolShader{};
-    _link_shader = Figure::WorldLinkShader{};
-
-    _bbitem_shader = Shaders::Flat3D{};
-    _bbitem_shader.setColor(0x00ff00_rgbf);
+    gCtx = new Context::GraphicsCtx();
+    sCtx = new Context::SceneCtx();
 
     srand(time(nullptr));
 
@@ -253,25 +126,10 @@ Application::Application(const Arguments& arguments):
     _iface_list = Util::get_iface_list();
     _zeek_pid = "#nop";
 
-    prepare3DFont();
-
     prepareDrawables();
 }
 
 
-void Application::prepareGLBuffers(const Range2Di& viewport) {
-    GL::defaultFramebuffer.setViewport(viewport);
-
-    // Prepare the object select buffer;
-    _objectId.setStorage(GL::RenderbufferFormat::R32UI, viewport.size());
-
-    _objselect_framebuffer = GL::Framebuffer{viewport};
-
-    _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _objectId)
-                .mapForDraw({{Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{0}}});
-
-    CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
-}
 
 
 void Application::prepareDrawables() {
@@ -288,79 +146,23 @@ void Application::prepareDrawables() {
 }
 
 
-void Application::destroyGLBuffers() {
-   _objselect_framebuffer.detach(GL::Framebuffer::ColorAttachment{0});
-}
-
-
-void Application::prepare3DFont() {
-    /* Load FreeTypeFont plugin */
-    _font = _manager.loadAndInstantiate("FreeTypeFont");
-    if(!_font) std::exit(1);
-
-    /* Open the font and fill glyph cache */
-    Utility::Resource rs("monopticon");
-    std::string fname = "src/assets/DejaVuSans.ttf";
-
-    if(!_font->openData(rs.getRaw(fname), 110.0f)) {
-       Fatal{} << "Cannot open font file";
-    }
-
-    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/-+,.! \n");
-
-     auto inner = 0x00ff00_rgbf;
-     auto outline = 0x00ff00_rgbf;
-     _text_shader.setColor(inner)
-           .setOutlineColor(outline)
-           .setOutlineRange(0.45f, 0.445f);
-}
-
-
 void Application::drawTextElements() {
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
 
-    _text_shader.bindVectorTexture(_glyphCache.texture());
+    gCtx->_text_shader.bindVectorTexture(gCtx->_glyphCache.texture());
 
-    _camera->draw(_text_drawables);
+    gCtx->_camera->draw(gCtx->_text_drawables);
 
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One, GL::Renderer::BlendFunction::Zero);
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
 
-    _camera->draw(_billboard_drawables);
+    gCtx->_camera->draw(gCtx->_billboard_drawables);
 }
 
 
-void Application::draw3DElements() {
-    // Ensure the custom framebuffer is clear for the draw
-    _objselect_framebuffer
-        .clear(GL::FramebufferClear::Color)
-        .bind();
-
-    // Draw selectable objects to custom framebuffer
-    _camera->draw(_selectable_drawables);
-
-    /* Bind the main buffer back */
-    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
-        .bind();
-
-    GL::Renderer::setClearColor(_clearColor);
-
-    GL::Renderer::enable(GL::Renderer::Feature::Blending);
-    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
-
-    _camera->draw(_permanent_drawables);
-    _camera->draw(_selectable_drawables);
-    _camera->draw(_drawables);
-
-    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
-    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::disable(GL::Renderer::Feature::Blending);
-
-}
 
 
 void Application::drawIMGuiElements() {
@@ -397,7 +199,7 @@ void Application::drawIMGuiElements() {
                 std::string mac_addr = Util::exec_output(cmd);
 
                 if (mac_addr.size() > 0) {
-                    _listeningDevice = createSphere(mac_addr);
+                    _listeningDevice = gCtx->createSphere(sCtx, mac_addr);
                     //objectClicked(_listeningDevice);
 
                     s = "monopt_iface_proto ipv4_addr ";
@@ -407,7 +209,7 @@ void Application::drawIMGuiElements() {
                     if (ipv4_addr.size() > 0) {
                         //_listeningDevice->updateMaps(ipv4_addr, "");
                     }
-                    addDirectLabels(_listeningDevice);
+                    gCtx->addDirectLabels(_listeningDevice);
                     //createIPv4Address(ipv4_addr, _listeningDevice->circPoint);
                 } else {
                     std::cerr << "Empty mac addr for net interface: " << _chosen_iface << std::endl;
@@ -426,11 +228,11 @@ void Application::drawIMGuiElements() {
 
                 std::string gw_mac_addr = Util::exec_output(cmd);
                 if (gw_mac_addr.size() > 0) {
-                    _activeGateway = createSphere(gw_mac_addr);
+                    _activeGateway = gCtx->createSphere(sCtx, gw_mac_addr);
                     //_activeGateway->updateMaps("0.0.0.0/32", "");
                     //_activeGateway->updateMaps(gw_ipv4_addr, "");
 
-                    addDirectLabels(_activeGateway);
+                    gCtx->addDirectLabels(_activeGateway);
                     //createIPv4Address(gw_ipv4_addr, _activeGateway->circPoint);
                 } else {
                     std::cerr << "Empty mac addr for gateway: " << gw_ipv4_addr << std::endl;
@@ -482,14 +284,14 @@ void Application::drawIMGuiElements() {
        if (ImGui::Button("Stop Orbit", ImVec2(80,20))) {
            _orbit_toggle = false;
        }
-       _cameraRig->rotateY(0.10_degf);
+       gCtx->_cameraRig->rotateY(0.10_degf);
     }
 
     ImGui::Text("Observed Addresses");
     ImGui::Separator();
     ImGui::BeginChild("Scrolling");
     int i = 1;
-    for (auto it = _device_map.begin(); it != _device_map.end(); it++) {
+    for (auto it = sCtx->_device_map.begin(); it != sCtx->_device_map.end(); it++) {
         Device::Stats *d_s = it->second;
 
         char b[4] = {};
@@ -537,10 +339,6 @@ void Application::drawIMGuiElements() {
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 }
 
-UnsignedByte Application::newObjectId() {
-    return static_cast<UnsignedByte>(_selectable_objects.size());
-}
-
 
 void Application::deselectObject() {
     if (_selectedObject != nullptr) {
@@ -549,36 +347,6 @@ void Application::deselectObject() {
     }
 }
 
-
-void Application::addDirectLabels(Device::Stats *d_s) {
-    auto scaling = Matrix4::scaling(Vector3{0.10f});
-    auto t = d_s->circPoint;
-
-    int num_ips = d_s->_emitted_src_ips.size();
-    if (num_ips > 0 && num_ips < 3) {
-        if (d_s->_ip_label != nullptr) {
-            delete d_s->_ip_label;
-        }
-
-        Object3D *obj = new Object3D{&_scene};
-        obj->transform(scaling);
-
-        float offset = num_ips*0.2f;
-        obj->translate(t+Vector3(0.0f, 0.5f+offset, 0.0f));
-
-        auto c = 0xeeeeee_rgbf;
-        d_s->_ip_label = new Figure::TextDrawable(d_s->makeIpLabel(), c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
-    }
-
-    if (d_s->_mac_label == nullptr) {
-        Object3D *obj = new Object3D{&_scene};
-        obj->transform(scaling);
-        obj->translate(t+Vector3(0.0f, -0.7f, 0.0f));
-
-        auto c = 0xaaaaaa_rgbf;
-        d_s->_mac_label = new Figure::TextDrawable(d_s->mac_addr, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
-    }
-}
 
 
 void Application::selectableMenuActions(Device::Selectable *selection) {
@@ -604,104 +372,12 @@ void Application::objectClicked(Device::Selectable *selection) {
     //Object3D *o = selection->getObj();
 
     //Level3::Address *a = dynamic_cast<Level3::Address*>(selection);
-    selection->addHighlight(_bbitem_shader, _billboard_drawables);
-}
-
-
-Vector2 Application::nextVlanPos(const int vlan) {
-    int row_size = 4 + vlan - vlan;
-
-    int num_objs_in_vlan = _device_map.size()/3; // NOTE replace with vlan
-
-    int vlan_x = num_objs_in_vlan / row_size;
-    int vlan_y = num_objs_in_vlan % row_size;
-
-    return 4*Vector2(vlan_x+1, vlan_y+1);
-}
-
-
-
-Device::Stats* Application::createSphere(const std::string mac) {
-    Object3D* o = new Object3D{&_scene};
-
-    int num_objs = _device_map.size();
-    int vlan = num_objs%3;
-    Vector2 v = nextVlanPos(vlan);
-    Vector3 w = Vector3{v.x(), 0.0f, v.y()};
-
-    o->transform(Matrix4::scaling(Vector3{0.25f}));
-    o->translate(w);
-    o->rotateY(120.0_degf*static_cast<float>(vlan));
-    //o->rotateY(120.0_degf*(float)vlan);
-
-    UnsignedByte id = newObjectId();
-
-    Color3 c = 0xa5c9ea_rgbf;
-    Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{
-        id,
-        *o,
-        _phong_id_shader,
-        c,
-        _sphere,
-        Matrix4{},
-        _selectable_drawables};
-
-
-    auto tmp = o->transformationMatrix().translation();
-
-    Device::Stats* d_s = new Device::Stats{mac, tmp, dev};
-    dev->_deviceStats = d_s;
-
-    _selectable_objects.push_back(d_s);
-    _device_map.insert(std::make_pair(mac, d_s));
-
-    return d_s;
-}
-
-
-void Application::addL2ConnectL3(Vector3 a, Vector3 b) {
-    Object3D *j = new Object3D{&_scene};
-    auto *line = new Figure::RingDrawable(*j, 0x999999_rgbf, _drawables);
-
-    auto c = (b-a).normalized();
-
-    line->setMesh(Primitives::line3D(a,a+c));
+    selection->addHighlight(gCtx->_bbitem_shader, gCtx->_billboard_drawables);
 }
 
 
 
 
-void Application::createLines(Vector3 a, Vector3 b, Util::L3Type t, int count) {
-    int ceiling = std::min(count, 4);
-    for (int i = 0; i < ceiling; i++) {
-        createLine(a, b, t);
-    }
-}
-
-
-void Application::createLine(Vector3 a, Vector3 b, Util::L3Type t) {
-    Object3D* line = new Object3D{&_scene};
-
-    Color3 c = Util::typeColor(t);
-    Color4 c4;
-    /*
-    if (_selectedDevice != nullptr) {
-        c4 = Color4(c, 0.5);
-
-        auto v = _selectedDevice->circPoint;
-        if (a == v || b == v) {
-            c4 = Color4(c, 1.00);
-        }
-    } else {
-        c4 = Color4(c, 1.0);
-    }
-    */
-    c4 = Color4(c, 1.0);
-    // TODO delete line above
-
-    auto *pl = new Figure::PacketLineDrawable{*line, _line_shader, a, b, _drawables, c4};
-    _packet_line_queue.insert(pl);
-}
 
 void Application::watchSelectedDevice() {
     // TODO can move logic into parent.
@@ -716,15 +392,17 @@ void Application::watchSelectedDevice() {
         selectedDevice->_windowMgr = dwm;
         _inspected_device_window_list.push_back(dwm);
 
-        auto *obj = new Object3D{&_scene};
-        dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf, _link_shader, _drawables);
+        auto *obj = new Object3D{&gCtx->_scene};
+        dwm->_lineDrawable = new Figure::WorldScreenLink(*obj, 0xffffff_rgbf,
+            gCtx->_link_shader,
+            gCtx->_drawables);
     }
 }
 
 
 void Application::drawEvent() {
 
-    brokerCtx->processNetworkEvents();
+    brokerCtx->processNetworkEvents(sCtx, gCtx);
 
     if (frame_cnt % 60 == 0) {
         _iface_list = Util::get_iface_list();
@@ -733,11 +411,11 @@ void Application::drawEvent() {
 
     // Remove packet_lines that have expired from the queue
     std::set<Figure::PacketLineDrawable *>::iterator it;
-    for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
+    for (it = sCtx->_packet_line_queue.begin(); it != sCtx->_packet_line_queue.end(); ) {
         // Note this is an O(N) operation
         Figure::PacketLineDrawable *pl = *it;
         if (pl->_expired) {
-            it = _packet_line_queue.erase(it);
+            it = sCtx->_packet_line_queue.erase(it);
             delete pl;
         } else {
             ++it;
@@ -745,7 +423,7 @@ void Application::drawEvent() {
     }
 
     // Remove mcast drawables that have expired
-    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
+    for (auto it2 = sCtx->_dst_prefix_group_map.begin(); it2 != sCtx->_dst_prefix_group_map.end(); it2++) {
         Device::PrefixStats *dp_s = (*it2).second;
         std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
         for (auto it3 = c.begin(); it3 != c.end(); ) {
@@ -762,7 +440,7 @@ void Application::drawEvent() {
         dp_s->contacts = c;
     }
 
-    draw3DElements();
+    gCtx->draw3DElements();
 
     drawTextElements();
 
@@ -779,10 +457,9 @@ void Application::viewportEvent(ViewportEvent& event) {
     auto size = event.framebufferSize();
     const Range2Di newViewport = {{}, size};
 
-    destroyGLBuffers();
-    prepareGLBuffers(newViewport);
-
-    _camera->setViewport(size);
+    gCtx->destroyGLBuffers();
+    gCtx->prepareGLBuffers(newViewport);
+    gCtx->_camera->setViewport(size);
 
     _imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
         event.windowSize(), size);
@@ -794,13 +471,13 @@ void Application::keyPressEvent(KeyEvent& event) {
 
     /* Movement */
     if(event.key() == KeyEvent::Key::Down) {
-        _cameraObject->rotateX(5.0_degf);
+        gCtx->_cameraObject->rotateX(5.0_degf);
     } else if(event.key() == KeyEvent::Key::Up) {
-        _cameraObject->rotateX(-5.0_degf);
+        gCtx->_cameraObject->rotateX(-5.0_degf);
     } else if(event.key() == KeyEvent::Key::Left) {
-        _cameraRig->rotateY(-5.0_degf);
+        gCtx->_cameraRig->rotateY(-5.0_degf);
     } else if(event.key() == KeyEvent::Key::Right) {
-        _cameraRig->rotateY(5.0_degf);
+        gCtx->_cameraRig->rotateY(5.0_degf);
     }
 }
 
@@ -814,9 +491,9 @@ void Application::keyReleaseEvent(KeyEvent& event) {
         //Vector3 t = _selectedObject->getObj().transformationMatrix().translation();
         // CREATE plan ring centered on object; add object that follows pos.
         Vector3 v = Vector3{0.0f};
-        Util::createLayoutRing(_selectedObject->getObj(), _drawables, 30.0, v);
+        Util::createLayoutRing(_selectedObject->getObj(), gCtx->_drawables, 30.0, v);
 
-        
+
         // project pos onto plane surface.
     }
 }
@@ -843,22 +520,24 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
 
     if(event.button() == MouseEvent::Button::Left) {
     /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
-    _objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
-    Image2D data = _objselect_framebuffer.read(
-        Range2Di::fromSize({event.position().x(), _objselect_framebuffer.viewport().sizeY() - event.position().y() - 1}, {1, 1}),
+    gCtx->_objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+    Image2D data = gCtx->_objselect_framebuffer.read(
+        Range2Di::fromSize({event.position().x(),
+        gCtx->_objselect_framebuffer.viewport().sizeY() - event.position().y() - 1},
+        {1, 1}),
         {PixelFormat::R32UI});
 
     deselectObject();
     UnsignedByte id = Containers::arrayCast<UnsignedByte>(data.data())[0];
     unsigned short i = static_cast<unsigned short>(id);
-    if(i > 0 && i < _selectable_objects.size()+1) {
-        Device::Selectable *selection = _selectable_objects.at(i-1);
+    if(i > 0 && i < sCtx->_selectable_objects.size()+1) {
+        Device::Selectable *selection = sCtx->_selectable_objects.at(i-1);
 
         objectClicked(selection);
 
         if (btn == MouseEvent::Button::Left) {
-            _cameraRig->resetTransformation();
-            _cameraRig->translate(selection->getTranslation());
+            gCtx->_cameraRig->resetTransformation();
+            gCtx->_cameraRig->translate(selection->getTranslation());
         } else if (btn == MouseEvent::Button::Right) {
             _openPopup = true;
         }
@@ -866,7 +545,7 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     }
     event.setAccepted();
     redraw();
-    
+
 }
 
 
@@ -879,8 +558,8 @@ void Application::mouseMoveEvent(MouseMoveEvent& event) {
         Vector2{event.position() - _previousMousePosition}/
         Vector2{GL::defaultFramebuffer.viewport().size()};
 
-    (*_cameraObject)
-        .rotate(Rad{-delta.y()}, _cameraObject->transformation().right().normalized())
+    (*gCtx->_cameraObject)
+        .rotate(Rad{-delta.y()}, gCtx->_cameraObject->transformation().right().normalized())
         .rotateY(Rad{-delta.x()});
 
     _previousMousePosition = event.position();
@@ -897,7 +576,7 @@ void Application::mouseScrollEvent(MouseScrollEvent& event) {
     const Float direction = event.offset().y();
     if (!direction) return;
 
-    auto c = _cameraObject->transformationMatrix().translation();
+    auto c = gCtx->_cameraObject->transformationMatrix().translation();
     auto d = relRotationPoint*direction*0.1f;
     auto f = c+d;
 
@@ -910,7 +589,7 @@ void Application::mouseScrollEvent(MouseScrollEvent& event) {
     if ((distance < 5.0f && direction > 0.0f) || (distance > 35.0f && direction < 0.0f)) {
         return;
     }
-    _cameraObject->translateLocal(d);
+    gCtx->_cameraObject->translateLocal(d);
 
     redraw();
 }

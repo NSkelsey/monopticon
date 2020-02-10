@@ -2,7 +2,7 @@
 
 using namespace Monopticon::Parse;
 
-BrokerCtx::BrokerCtx(std::string addr, uint16_t port) :
+BrokerCtx::BrokerCtx(std::string addr, uint16_t port):
     subscriber(_ep.make_subscriber({"monopt/l2", "monopt/stats"})),
     status_subscriber(_ep.make_status_subscriber(true))
 {
@@ -22,7 +22,7 @@ BrokerCtx::BrokerCtx(std::string addr, uint16_t port) :
 }
 
 
-void BrokerCtx::processNetworkEvents() {
+void BrokerCtx::processNetworkEvents(Context::SceneCtx *sceneCtx, Context::GraphicsCtx *graphCtx) {
     // Process all messages from status_subscriber before doing anything
     if (status_subscriber.available()) {
         auto ss_res = status_subscriber.get();
@@ -59,7 +59,7 @@ void BrokerCtx::processNetworkEvents() {
             broker::zeek::Event event = broker::get_data(msg);
             std::string name = to_string(topic);
             if (name.compare("monopt/l2") == 0) {
-                //epoch_packets_sum += parse_epoch_step(event);
+                //epoch_packets_sum += parse_epoch_step(sceneCtx, graphCtx, event);
             } else if (name.compare("monopt/stats") == 0) {
                 parse_stats_update(event);
             } else {

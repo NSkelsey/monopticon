@@ -36,6 +36,7 @@ set(monopticon_FILES
         src/figure.cpp
         src/levelthree.cpp
         src/util.cpp
+        src/context.cpp
         src/input_parser.cpp
         src/simpopticon.cpp
     )

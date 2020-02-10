@@ -519,6 +519,79 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
 
 }
 
+namespace Context {
+    class SceneCtx {
+        public:
+            SceneCtx();
+
+            Vector2 nextVlanPos(const int vlan);
+            UnsignedByte newObjectId();
+
+            // Scene objects
+            std::vector<Device::Selectable*> _selectable_objects{};
+            std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
+
+            std::map<std::string, Device::Stats*> _device_map{};
+            std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
+            std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
+
+            int ring_level{0};
+            int pos_in_ring{0};
+    };
+
+    class GraphicsCtx {
+        public:
+            GraphicsCtx();
+
+            void prepare3DFont();
+            void prepareGLBuffers(const Range2Di& viewport);
+
+            void draw3DElements();
+
+            Device::Stats* createSphere(SceneCtx *sceneCtx, const std::string mac);
+            void createLines(Vector3, Vector3, Util::L3Type, int num);
+            void createLine(Vector3, Vector3, Util::L3Type);
+
+            void addDirectLabels(Device::Stats *d_s);
+            void addL2ConnectL3(Vector3 a, Vector3 b);
+
+            void destroyGLBuffers();
+
+            // Graphic fields
+            GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
+            Color4 _clearColor = 0x002b36_rgbf;
+            Color3 _pickColor = 0xffffff_rgbf;
+
+            Shaders::Phong _phong_shader;
+            Figure::PhongIdShader _phong_id_shader;
+            Figure::ParaLineShader _line_shader;
+            Figure::PoolShader _pool_shader;
+            Figure::WorldLinkShader _link_shader;
+            Shaders::Flat3D _bbitem_shader;
+
+            Scene3D _scene;
+            SceneGraph::Camera3D* _camera;
+            SceneGraph::DrawableGroup3D _drawables;
+            SceneGraph::DrawableGroup3D _permanent_drawables;
+            SceneGraph::DrawableGroup3D _selectable_drawables;
+            SceneGraph::DrawableGroup3D _billboard_drawables;
+            SceneGraph::DrawableGroup3D _text_drawables;
+
+            Object3D *_cameraRig, *_cameraObject;
+
+            GL::Framebuffer _objselect_framebuffer{NoCreate};
+            GL::Renderbuffer _color, _objectId, _depth;
+
+            // Font graphics fields
+            PluginManager::Manager<Text::AbstractFont> _manager;
+            Containers::Pointer<Text::AbstractFont> _font;
+
+            Text::DistanceFieldGlyphCache _glyphCache;
+            Shaders::DistanceFieldVector3D _text_shader;
+    };
+
+}
+
 namespace Parse {
 
 class BrokerCtx {
@@ -553,11 +626,9 @@ class BrokerCtx {
         void parse_bcast_summaries(broker::vector *dComm, Device::Stats* tran_d_s);
         void parse_single_mcast(int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
 
-        void processNetworkEvents();
+        void processNetworkEvents(Context::SceneCtx *sceneCtx, Context::GraphicsCtx *graphCtx);
 
         void StatsGui();
-
-
     };
 }
 
