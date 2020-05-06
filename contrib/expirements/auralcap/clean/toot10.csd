@@ -47,6 +47,7 @@ endin
 
 f1   0    4096 10 1                                         ; Sine
 f2   0    8    -2 8.00 8.02 8.04 8.05 8.07 8.09 8.11 9.00   ; cpspch C major scale
+f3   0    8    -2 9.00 8.11 8.09 8.07 7.05 8.04 7.02 8.0    ; C major scale reversed
 
 /*
 ; method 1 - direct index of table values

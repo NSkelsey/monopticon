@@ -1,7 +1,7 @@
 <CsoundSynthesizer>
 <CsOptions>
 -odac    ;;;realtime audio out
-;-m0 ;; uncomment to disable warnings
+-m0 ;; uncomment to disable warnings
 </CsOptions>
 <CsInstruments>
 
@@ -74,11 +74,16 @@ instr 9
           itab      =         2
           itabsize  =         8
 
+if (imeth == 1)     kgoto     downlfo
 if (imeth == 2)     kgoto     lfo
 if (imeth == 3)     kgoto     random
 
 lfo:      kindex    phasor    ilforate
           kpitch    table     kindex * itabsize, itab
+                    kgoto     contin
+
+downlfo:  kindex    phasor    ilforate
+          kpitch    table     kindex * itabsize,  3
                     kgoto     contin
 
 seed 42
@@ -88,7 +93,7 @@ random:   kindex    randh     int(7), ilforate, 42
 contin:   ;kamp      linseg    0, ilinb * 0.1, iamp, ilinb * 0.90, 0  ; amp envelope
           ;kamp      linen    0, p3 * 0.1, p3, p3 * 0.90  ; amp envelope
 
-          kenv linen 0.7, p3*.1, p3, p3*0.1
+          kenv linen 1.0, p3*.1, p3, p3*0.1
           asig      oscil     kenv, cpspch(kpitch), 1       ; audio oscillator
                     out       asig, asig
 endin
@@ -100,6 +105,7 @@ f0 3600 ; play for 1hr
 
 f1 0 16384 10 1
 f2   0    8    -2 8.00 8.02 8.04 8.05 8.07 8.09 8.11 9.00   ; cpspch C major scale
+f3   0    8    -2 9.00 8.11 8.09 8.07 8.05 8.04 8.02 8.0    ; C major scale reversed
 
 ;instr start stop
 ;i 1 0 6
@@ -110,8 +116,8 @@ f2   0    8    -2 8.00 8.02 8.04 8.05 8.07 8.09 8.11 9.00   ; cpspch C major sca
 ;i 1 5 6
 
 ;instr start stop p4;method p5:lforate
-; 9 0 1 3 4
-; 9 1 . 3 4
+i 9 0 0.5 2 2
+;i 9 1 . 1 2
 ;i 9 + . 3 4
 ;i 9 + . 3 4
 ;i 9 + . 3 4
