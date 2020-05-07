@@ -1,6 +1,5 @@
 // Like tcpdump but with music.
-// capstats -I 1 -i wlp3s0 2>&1 | tee listen/stats.txt
-// cd listen
+// capstats -I 1 -i wlp3s0 2>&1 | grep --color=never -oPe ' pkts=\K\d+(?= )'
 // /opt/zeek/bin/zeek -i wlp3s0 -b ../sound-filters.zeek
 
 #include <csound/csound.hpp>
@@ -8,7 +7,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
-#include <fstream>
 #include <chrono>
 
 #include <assert.h>
@@ -86,21 +84,6 @@ int parse_first_arg(int argc, char *argv[]) {
   }
 
   return inotifyFd;
-}
-
-
-FILE* open_stats_file(int argc, char *argv[]) {
-  char s[255];
-  // TODO deal with sprintf overflow.
-  sprintf(s, "%s/stats.txt", argv[1]);
-
-  FILE *fd = fopen(s, "r");
-  if (fd == nullptr) {
-    fprintf(stderr, "Requires a file in %s called stats.txt\n", argv[2]);
-    usage(4);
-  }
-
-  return fd;
 }
 
 
@@ -198,25 +181,18 @@ double compute_exp_mov_avg(double last_l, int new_p) {
 }
 
 
+// TODO change stdin read to read from pipe
 // handle_stats_event reads the last line from streamfd and uses the first int
 // encountered to update the moving weighted average.
-void handle_stats_event(FILE* streamfd) {
-/* The line format from capstats follows. We want pkts:
-1588776391.095325 pkts=15 kpps=0.0 kbytes=1 mbps=0.0 nic_pkts=169 nic_drops=0 u=0 t=15 i=0 o=0 nonip=0
-*/
-  static const long max_len = 200;
-  char buf[max_len+1];
+void handle_stats_event(int fd, short evnt, void *z) {
+  static const long max_len = 30;
 
-  fseek(streamfd, -max_len, SEEK_END);
-  ssize_t len = fread(buf, 1, max_len, streamfd);
+  char *line = NULL;
+  size_t size;
+  getline(&line, &size, stdin); // TODO handle error
 
-  buf[len] = '\0';
-  char *last_newline = strchr(buf, '\n');
-  char *last_line = last_newline+1;
-  char *last_pkts_val_strt;
-  double ts = strtod(last_line, &last_pkts_val_strt);
-
-  int num_pkts = atoi(last_pkts_val_strt+6);
+  int num_pkts = atoi(line);
+  printf("%s\n", line);
   printf("num_pkts=%d\n", num_pkts);
 
   mov_avg = compute_exp_mov_avg(mov_avg, num_pkts);
@@ -244,7 +220,6 @@ void handle_stats_event(FILE* streamfd) {
 
 struct read_inot {
   int ifd;
-  FILE* streamfd;
 };
 
 // read_from_inotify is called whenever z->ifd becomes readable. This function
@@ -275,8 +250,6 @@ void read_from_inotify(int fd, short evnt, void *z) {
       play_guitar(&bar_b, 1);
     } else if (strcmp(event->name, "pong.log") == 0) {
       play_guitar(&bar_b, 2);
-    } else if (strcmp(event->name, "stats.txt") == 0) {
-      handle_stats_event(v->streamfd);
     } else {
       int r = rand() % 2 + 2; // play a G or a D, or a lowC
       play_guitar(&bar_b, r);
@@ -294,7 +267,6 @@ uintptr_t perform(void *p) {
 
 int main(int argc, char *argv[]) {
   int inotifyFd = parse_first_arg(argc, argv);
-  FILE* intstreamFD = open_stats_file(argc, argv);
 
   csoundInitialize(CSOUNDINIT_NO_SIGNAL_HANDLER);
   assert(signal(SIGINT, sig_handler) != SIG_ERR);
@@ -324,7 +296,6 @@ int main(int argc, char *argv[]) {
 
   read_inot notif_params = {
     ifd: inotifyFd,
-    streamfd: intstreamFD
   };
 
   struct timeval tv2;
@@ -336,6 +307,16 @@ int main(int argc, char *argv[]) {
     &notif_params
   );
   event_add(&ev2, &tv2);
+
+  struct timeval tv3;
+  struct event ev3 = *event_new(
+    EB,
+    0, // STDIN
+    EV_READ|EV_PERSIST,
+    handle_stats_event,
+    NULL
+  );
+  event_add(&ev3, &tv3);
 
   event_dispatch();
 }
