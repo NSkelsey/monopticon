@@ -91,9 +91,9 @@ Install Zeek
 Compile Monopticon
 
 ```bash
-> cd monopticon; mkdir build; cd build
-> cmake ..
-> cmake --build .
+> cd monopticon; mkdir build;
+> cmake -B build  -DBROKER_ROOT_DIR=/opt/zeek -DIMGUI_DIR=/opt/imgui
+> cmake --build build
 ```
 ## Arch Notes
 

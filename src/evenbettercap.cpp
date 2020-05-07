@@ -272,6 +272,28 @@ void Application::drawIMGuiElements() {
         }
     }
 
+    int offset = 100;
+    if (brokerCtx->peer_connected) {
+        ImGui::SameLine(offset);
+        auto green = ImVec4(0,1,0,1);
+        ImGui::TextColored(green, _chosen_iface.c_str(), ImVec2(80, 20));
+    } else {
+        for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
+            ImGui::SameLine(offset);
+            offset += 80;
+            const char *lbl = (*it).c_str();
+            if (*it == _chosen_iface) {
+                if (ImGui::Selectable(lbl, true, 0, ImVec2(60, 15))) {
+                    _chosen_iface = "";
+                }
+            } else {
+                    if (ImGui::Selectable(lbl, false, 0, ImVec2(60, 15))) {
+                    _chosen_iface = *it;
+                    }
+            }
+        }
+    }
+
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
             1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
 
