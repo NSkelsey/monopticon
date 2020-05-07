@@ -8,6 +8,7 @@
 #include <Magnum/Math/Color.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Shaders/VertexColor.h>
+#include <Magnum/Animation/Track.h>
 
 #include <Magnum/SceneGraph/Camera.h>
 #include <Magnum/SceneGraph/Drawable.h>
@@ -25,6 +26,22 @@ class SocketDrawable;
 
 std::vector<SocketDrawable*> del_queue;
 
+struct Keyframe {
+    Float time;
+    Vector2 position;
+};
+
+const Keyframe data[] {
+    {0.0f, Vector2::yAxis(0.0f)},
+    {1.0f, Vector2::yAxis(0.5f)},
+    {2.0f, Vector2::yAxis(0.75f)},
+    {3.0f, Vector2::yAxis(0.875f)},
+    {4.0f, Vector2::yAxis(0.75f)},
+    {5.0f, Vector2::yAxis(0.5f)},
+    {6.0f, Vector2::yAxis(0.0f)}
+};
+
+
 typedef Magnum::SceneGraph::Object<Magnum::SceneGraph::MatrixTransformation2D> Object2D;
 typedef Magnum::SceneGraph::Scene<Magnum::SceneGraph::MatrixTransformation2D> Scene2D;
 
@@ -38,7 +55,16 @@ class SocketDrawable: public Object2D, public SceneGraph::Drawable2D {
           _mesh{mesh}
         {
           t = 1.0;
+
+            Animation::TrackView<const Float, const Vector2> positions {
+                {data, &data[0].time, Containers::arraySize(data), sizeof(Keyframe)},
+                {data, &data[0].position, Containers::arraySize(data), sizeof(Keyframe)},
+                Math::lerp
+            };
+
+            positions.at(2.2);
         };
+
 
         void setColor(Color3 c) {
             _c = c;
@@ -49,7 +75,7 @@ class SocketDrawable: public Object2D, public SceneGraph::Drawable2D {
     private:
         void draw(const Matrix3& transformation, SceneGraph::Camera2D& camera) {
             if (t > 0) {
-                t -= 0.08;
+                t -= 0.001;
                 _c = Color3(t, _c.g(), _c.b());
             } else {
                 del_queue.push_back(this);
@@ -72,10 +98,8 @@ class Manifold: public Platform::Application {
     public:
         explicit Manifold(const Arguments& arguments);
 
-        Scene2D _scene;
-        SceneGraph::DrawableGroup2D _drawables;
-        SceneGraph::Camera2D *_camera;
-
+        Scene2D _scene; SceneGraph::DrawableGroup2D _drawables; SceneGraph::Camera2D *_camera;
+       
         std::map<int, SocketDrawable*> top_1000map;
 
         void createSocketDrawable(int port, bool ack);
@@ -88,9 +112,10 @@ class Manifold: public Platform::Application {
 };
 
 Manifold::Manifold(const Arguments& arguments):
-    Platform::Application{arguments, Configuration{}.setTitle("Animation Test")
-    .setSize(Vector2i{1400,900})
-    }
+    Platform::Application{arguments, Configuration{}
+        .setTitle("Animation Test")
+        .setSize(Vector2i{1400,900}),
+        GLConfiguration{}.setSampleCount(4)}
 {
     using namespace Math::Literals;
 
@@ -124,7 +149,9 @@ Manifold::Manifold(const Arguments& arguments):
     // NOTE slightly less than 1000
     for (int y =0; y < 95; y++) {
         for (int x = 0; x < 650; x++) {
-            createSocketDrawable(y*650 + x, true);
+            if (x%100 == 0 && y%10 == 0) {
+                createSocketDrawable(y*650 + x, false);
+            }
         }
     }
 
@@ -132,7 +159,7 @@ Manifold::Manifold(const Arguments& arguments):
 }
 
 void Manifold::createSocketDrawable(int port, bool ack) {
-    auto const scaling = Matrix3::scaling(Vector2{0.004f});
+    auto const scaling = Matrix3::scaling(Vector2{0.016f});
 
     int x = port % 650;
     int y = (port / 650);
