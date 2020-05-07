@@ -1,4 +1,4 @@
-// Like tcpdump but with music
+// Like tcpdump but with music.
 // capstats -I 1 -i wlp3s0 2>&1 | tee listen/stats.txt
 // cd listen
 // /opt/zeek/bin/zeek -i wlp3s0 -b ../sound-filters.zeek
@@ -11,7 +11,6 @@
 #include <fstream>
 #include <chrono>
 
-
 #include <assert.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -21,6 +20,9 @@
 #include <event.h>
 #include <sys/time.h>
 
+#include <Corrade/Utility/Debug.h>
+#include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Utility/Resource.h>
 
 const int tendo_pf_size = 5;
 const int guitar_pf_size = 3;
@@ -58,14 +60,15 @@ void sig_handler(int signo) {
 
 
 void usage(int e) {
-  fprintf(stderr, "Usage: listen <orchestra.csd> <log-dir>\n");
+  fprintf(stderr, "Usage: listen <log-dir>\n");
   exit(e);
 }
+
 
 // parse_first_arg uses inotify to start monitoring a directory for changes to
 // files inside. Returns a file descriptor of the notifier to the caller.
 int parse_first_arg(int argc, char *argv[]) {
-  if (argc != 3) {
+  if (argc != 2) {
     usage(1);
   }
 
@@ -76,7 +79,7 @@ int parse_first_arg(int argc, char *argv[]) {
     usage(2);
   }
 
-  int wd = inotify_add_watch(inotifyFd, argv[2], IN_MODIFY);
+  int wd = inotify_add_watch(inotifyFd, argv[1], IN_MODIFY);
   if (wd == -1) {
     printf("inotify_add_watch failed\n");
     usage(3);
@@ -86,10 +89,10 @@ int parse_first_arg(int argc, char *argv[]) {
 }
 
 
-FILE* parse_next_arg(int argc, char *argv[]) {
+FILE* open_stats_file(int argc, char *argv[]) {
   char s[255];
   // TODO deal with sprintf overflow.
-  sprintf(s, "%s/stats.txt", argv[2]);
+  sprintf(s, "%s/stats.txt", argv[1]);
 
   FILE *fd = fopen(s, "r");
   if (fd == nullptr) {
@@ -102,7 +105,7 @@ FILE* parse_next_arg(int argc, char *argv[]) {
 
 
 // configureCsound sets up and starts a threaded instance of Csound.
-void configureCsound(char c[]) {
+void configureCsound() {
   int res;
   res = csound->SetOption("-d");
   if (res != CSOUND_SUCCESS) {
@@ -115,10 +118,10 @@ void configureCsound(char c[]) {
     exit(3);
   }
 
-  std::ifstream t;
-  t.open(c);
   std::stringstream buffer;
-  buffer << t.rdbuf();
+  Corrade::Utility::Resource rs{"sounds"};
+
+  buffer << rs.get("clean/orchestra.csd");
 
   res = csound->CompileCsdText(buffer.str().c_str());
   assert(res == CSOUND_SUCCESS);
@@ -291,13 +294,13 @@ uintptr_t perform(void *p) {
 
 int main(int argc, char *argv[]) {
   int inotifyFd = parse_first_arg(argc, argv);
-  FILE* intstreamFD = parse_next_arg(argc, argv);
+  FILE* intstreamFD = open_stats_file(argc, argv);
 
   csoundInitialize(CSOUNDINIT_NO_SIGNAL_HANDLER);
   assert(signal(SIGINT, sig_handler) != SIG_ERR);
 
   csound = new Csound();
-  configureCsound(argv[1]);
+  configureCsound();
 
   threadID = csoundCreateThread(perform, csound);
 

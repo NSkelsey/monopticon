@@ -4,12 +4,18 @@ set(CMAKE_BUILD_TYPE Debug)
 
 project(auralcap)
 
-add_executable(robocond roboconductor.cpp)
+find_package(Corrade REQUIRED Utility)
+set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS OFF)
 
-target_link_libraries(robocond PRIVATE
+corrade_add_resource(Resources resources.conf)
+
+add_executable(auralcap roboconductor.cc ${Resources})
+
+target_link_libraries(auralcap PRIVATE
     csound64
     pthread
     event
+    Corrade::Utility
 )
 
-install(TARGETS robocond DESTINATION /usr/local/)
+install(TARGETS auralcap DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")
