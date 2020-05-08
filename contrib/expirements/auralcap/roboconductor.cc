@@ -18,8 +18,6 @@
 #include <event.h>
 #include <sys/time.h>
 
-#include <Corrade/Utility/Debug.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Resource.h>
 
 const int tendo_pf_size = 5;
@@ -181,22 +179,21 @@ double compute_exp_mov_avg(double last_l, int new_p) {
 }
 
 
-// TODO change stdin read to read from pipe
 // handle_stats_event reads the last line from streamfd and uses the first int
 // encountered to update the moving weighted average.
 void handle_stats_event(int fd, short evnt, void *z) {
   static const long max_len = 30;
 
   char *line = NULL;
-  size_t size;
-  getline(&line, &size, stdin); // TODO handle error
+  size_t size = 0;
+  int nread = getline(&line, &size, stdin); // TODO handle error
+  if (nread == 0) {
+    fprintf(stderr, "Failed to read line from stdin");
+    return;
+  }
 
   int num_pkts = atoi(line);
-  printf("%s\n", line);
-  printf("num_pkts=%d\n", num_pkts);
-
   mov_avg = compute_exp_mov_avg(mov_avg, num_pkts);
-  printf("moving avg: %f\n", mov_avg);
 
   int level = 1;
   bool play = true;

@@ -19,3 +19,6 @@ target_link_libraries(auralcap PRIVATE
 )
 
 install(TARGETS auralcap DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")
+
+install(PROGRAMS netplayback.sh DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME netplayback)
+install(PROGRAMS sound-filters.zeek DESTINATION ${CMAKE_INSTALL_PREFIX}/share/monopticon)
