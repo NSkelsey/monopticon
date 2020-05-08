@@ -1,7 +1,7 @@
 <CsoundSynthesizer>
 <CsOptions>
 -odac    ;;;realtime audio out
--m0 ;; uncomment to disable warnings
+-m1 ;; uncomment to disable warnings
 </CsOptions>
 <CsInstruments>
 

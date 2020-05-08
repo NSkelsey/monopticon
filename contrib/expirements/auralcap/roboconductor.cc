@@ -1,6 +1,4 @@
 // Like tcpdump but with music.
-// capstats -I 1 -i wlp3s0 2>&1 | grep --color=never -oPe ' pkts=\K\d+(?= )'
-// /opt/zeek/bin/zeek -i wlp3s0 -b ../sound-filters.zeek
 
 #include <csound/csound.hpp>
 #include <csound/csound_threaded.hpp>
@@ -18,6 +16,7 @@
 #include <event.h>
 #include <sys/time.h>
 
+#include <Corrade/Utility/Arguments.h>
 #include <Corrade/Utility/Resource.h>
 
 const int tendo_pf_size = 5;
@@ -29,6 +28,19 @@ struct bar_beats {
   bool guitar_play;
   double tendo_pfield[tendo_pf_size];  // maps to csound parameters
   double guitar_pfield[guitar_pf_size]; // idem
+};
+
+struct instrument_map {
+  std::string g_c_f;
+  std::string g_e_f;
+  std::string g_chord_dir;
+
+  bool t_active;
+};
+
+struct inot_params {
+  int ifd;
+  instrument_map i_map;
 };
 
 event_base *EB;
@@ -55,33 +67,43 @@ void sig_handler(int signo) {
 }
 
 
-void usage(int e) {
-  fprintf(stderr, "Usage: listen <log-dir>\n");
-  exit(e);
-}
-
-
-// parse_first_arg uses inotify to start monitoring a directory for changes to
+// monitor-dir uses inotify to start monitoring a directory for changes to
 // files inside. Returns a file descriptor of the notifier to the caller.
-int parse_first_arg(int argc, char *argv[]) {
-  if (argc != 2) {
-    usage(1);
-  }
+inot_params parse_arguments(int argc, char *argv[]) {
+  Corrade::Utility::Arguments args;
+  args.addBooleanOption('v', "verbose").setHelp("verbose", "log verbosely")
+      .setGlobalHelp("Read stdin to play background; Watches EVENT-DIR to play other instruments")
+      .addBooleanOption('N', "no-stdin").setHelp("no-stdin", "Disables read from stdin.")
+      .addOption("g-c-file", "ping.log").setHelp("g-c-file", "C major")
+      .addOption("g-e-file", "pong.log").setHelp("g-e-file", "E")
+      .addArgument("event-dir").setHelp("event-dir", "The directory that contains event log files.")
+      .parse(argc, argv);
+
+  inot_params inot_p = {
+    .i_map = {
+      .g_c_f = args.value<std::string>("g-c-file"),
+      .g_e_f = args.value<std::string>("g-e-file"),
+      .g_chord_dir = args.value<std::string>("event-dir"),
+      .t_active = !args.isSet("no-stdin")
+    }
+  };
 
   /* Create inotify instance */
   int inotifyFd = inotify_init();
   if (inotifyFd == -1) {
-    fprintf(stderr, "inotify_init failed\n");
-    usage(2);
+    fprintf(stderr, "inotify_init failed unexpectedly\n");
+    exit(1);
   }
+  inot_p.ifd = inotifyFd;
 
-  int wd = inotify_add_watch(inotifyFd, argv[1], IN_MODIFY);
+  std::string dir = args.value<std::string>("event-dir");
+  int wd = inotify_add_watch(inotifyFd, dir.c_str(), IN_MODIFY);
   if (wd == -1) {
-    printf("inotify_add_watch failed\n");
-    usage(3);
+    fprintf(stderr, "inotify_add_watch failed unexpectedly\n");
+    exit(2);
   }
 
-  return inotifyFd;
+  return inot_p;
 }
 
 
@@ -215,14 +237,11 @@ void handle_stats_event(int fd, short evnt, void *z) {
 }
 
 
-struct read_inot {
-  int ifd;
-};
 
 // read_from_inotify is called whenever z->ifd becomes readable. This function
 // handles the decision to add a note to the current bar_beat.
 void read_from_inotify(int fd, short evnt, void *z) {
-  read_inot *v = (read_inot *)z;
+  inot_params *v = (inot_params *)z;
   int numRead;
   char *p;
   struct inotify_event *event;
@@ -243,9 +262,9 @@ void read_from_inotify(int fd, short evnt, void *z) {
   for (p = buf; p < buf + numRead; ) {
     event = (struct inotify_event *) p;
 
-    if (strcmp(event->name, "ping.log") == 0) {
+    if (strcmp(event->name, v->i_map.g_c_f.c_str()) == 0) {
       play_guitar(&bar_b, 1);
-    } else if (strcmp(event->name, "pong.log") == 0) {
+    } else if (strcmp(event->name, v->i_map.g_e_f.c_str()) == 0) {
       play_guitar(&bar_b, 2);
     } else {
       int r = rand() % 2 + 2; // play a G or a D, or a lowC
@@ -263,7 +282,7 @@ uintptr_t perform(void *p) {
 }
 
 int main(int argc, char *argv[]) {
-  int inotifyFd = parse_first_arg(argc, argv);
+  inot_params inot_p = parse_arguments(argc, argv);
 
   csoundInitialize(CSOUNDINIT_NO_SIGNAL_HANDLER);
   assert(signal(SIGINT, sig_handler) != SIG_ERR);
@@ -290,30 +309,28 @@ int main(int argc, char *argv[]) {
   );
   event_add(&ev, &tv);
 
-
-  read_inot notif_params = {
-    ifd: inotifyFd,
-  };
-
   struct timeval tv2;
   struct event ev2 = *event_new(
     EB,
-    inotifyFd,
+    inot_p.ifd,
     EV_READ|EV_PERSIST,
     read_from_inotify,
-    &notif_params
+    &inot_p
   );
   event_add(&ev2, &tv2);
 
-  struct timeval tv3;
-  struct event ev3 = *event_new(
-    EB,
-    0, // STDIN
-    EV_READ|EV_PERSIST,
-    handle_stats_event,
-    NULL
-  );
-  event_add(&ev3, &tv3);
+
+  if (inot_p.i_map.t_active) {
+    struct timeval tv3;
+    struct event ev3 = *event_new(
+      EB,
+      0, // STDIN
+      EV_READ|EV_PERSIST,
+      handle_stats_event,
+      NULL
+    );
+    event_add(&ev3, &tv3);
+  }
 
   event_dispatch();
 }
