@@ -1,9 +1,30 @@
 TODO
 =====
-As of 29/9/19
+As of 20/05/20
+
+### Webopticon
+
+- [ ] Fix object coloring and buffer bindings using latest updates to magnum
+- [ ] Docker container in the docker cloud
+   - [ ] Q: how to include custom built packages included
+   - [ ] Connect container to travis build
+   - [ ] Connect travis build to nskelsey.com
+- [ ] Build communication tunnel
+   - [ ] Decide on Websockets or something else
+   - [ ] Implement small demo with simple backend (golang or c++)
+   - [ ] Connect simple backend to zeek broker via TBD protocol
+- [ ] Necessary MVP tweaks
+   - [ ] use vlan tags for layout groups
+   - [ ] Move right-click to space
+- [ ] Model Cyberlab Network
+   - [ ] decide how VPN access to nginx frontend will work.
+   - [ ] deploy broker + sbackend + nginx frontend
+
+
+### Backlog
+========================================
 
 ### Release v0.4.0;
-========================================
 
 - [ ] Make interactive.
     - [ ] Select and move.
@@ -21,8 +42,6 @@ As of 29/9/19
         - check once every second in epoch second
         - requires coordination of the device_map w/ zeek and monopt processes
 
-### Backlog
-========================================
 
 #### Conn-event framework
 - [ ] Arbitrary zeek: conn based event framework.
