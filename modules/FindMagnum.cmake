@@ -25,9 +25,7 @@
 #  MAGNUM_PLUGINS_DIR           - Base directory with dynamic plugins, defaults
 #   to :variable:`MAGNUM_PLUGINS_RELEASE_DIR` in release builds and
 #   multi-configuration builds or to :variable:`MAGNUM_PLUGINS_DEBUG_DIR` in
-#   debug builds. You can modify all three variables (e.g. set them to ``.``
-#   when deploying on Windows with plugins stored relatively to the
-#   executable), the following ``MAGNUM_PLUGINS_*_DIR`` variables depend on it.
+#   debug builds
 #  MAGNUM_PLUGINS_FONT[|_DEBUG|_RELEASE]_DIR - Directory with dynamic font
 #   plugins
 #  MAGNUM_PLUGINS_FONTCONVERTER[|_DEBUG|_RELEASE]_DIR - Directory with dynamic
@@ -63,13 +61,13 @@
 #  Primitives                   - Primitives library
 #  SceneGraph                   - SceneGraph library
 #  Shaders                      - Shaders library
-#  Shapes                       - Shapes library
 #  Text                         - Text library
 #  TextureTools                 - TextureTools library
 #  Trade                        - Trade library
 #  Vk                           - Vk library
+#  AndroidApplication           - Android application
+#  EmscriptenApplication        - Emscripten application
 #  GlfwApplication              - GLFW application
-#  GlutApplication              - GLUT application
 #  GlxApplication               - GLX application
 #  Sdl2Application              - SDL2 application
 #  XEglApplication              - X/EGL application
@@ -127,8 +125,6 @@
 #  MAGNUM_BUILD_DEPRECATED      - Defined if compiled with deprecated APIs
 #   included
 #  MAGNUM_BUILD_STATIC          - Defined if compiled as static libraries
-#  MAGNUM_BUILD_MULTITHREADED   - Defined if compiled in a way that allows
-#   having multiple thread-local Magnum contexts
 #  MAGNUM_TARGET_GL             - Defined if compiled with OpenGL interop
 #  MAGNUM_TARGET_GLES           - Defined if compiled for OpenGL ES
 #  MAGNUM_TARGET_GLES2          - Defined if compiled for OpenGL ES 2.0
@@ -138,6 +134,13 @@
 #  MAGNUM_TARGET_WEBGL          - Defined if compiled for WebGL
 #  MAGNUM_TARGET_HEADLESS       - Defined if compiled for headless machines
 #  MAGNUM_TARGET_VK             - Defined if compiled with Vulkan interop
+#
+# The following variables are provided for backwards compatibility purposes
+# only when MAGNUM_BUILD_DEPRECATED is enabled and will be removed in a future
+# release:
+#
+#  MAGNUM_BUILD_MULTITHREADED   - Alias to CORRADE_BUILD_MULTITHREADED. Use
+#   CORRADE_BUILD_MULTITHREADED instead.
 #
 # Additionally these variables are defined for internal usage:
 #
@@ -240,13 +243,11 @@ endif()
 
 # Read flags from configuration
 file(READ ${_MAGNUM_CONFIGURE_FILE} _magnumConfigure)
+string(REGEX REPLACE ";" "\\\\;" _magnumConfigure "${_magnumConfigure}")
+string(REGEX REPLACE "\n" ";" _magnumConfigure "${_magnumConfigure}")
 set(_magnumFlags
-    # WARNING: CAREFUL HERE, the string(FIND) succeeds even if a subset is
-    # found -- so e.g. looking for TARGET_GL will match TARGET_GLES2 as well.
-    # So far that's not a problem, but might become an issue for new flags.
     BUILD_DEPRECATED
     BUILD_STATIC
-    BUILD_MULTITHREADED
     TARGET_GL
     TARGET_GLES
     TARGET_GLES2
@@ -256,11 +257,24 @@ set(_magnumFlags
     TARGET_HEADLESS
     TARGET_VK)
 foreach(_magnumFlag ${_magnumFlags})
-    string(FIND "${_magnumConfigure}" "#define MAGNUM_${_magnumFlag}" _magnum_${_magnumFlag})
+    list(FIND _magnumConfigure "#define MAGNUM_${_magnumFlag}" _magnum_${_magnumFlag})
     if(NOT _magnum_${_magnumFlag} EQUAL -1)
         set(MAGNUM_${_magnumFlag} 1)
     endif()
 endforeach()
+
+# For compatibility only, to be removed at some point
+if(MAGNUM_BUILD_DEPRECATED AND CORRADE_BUILD_MULTITHREADED)
+    set(MAGNUM_BUILD_MULTITHREADED 1)
+endif()
+
+# OpenGL library preference. Prefer to use GLVND, since that's the better
+# approach nowadays, but allow the users to override it from outside in case
+# it is broken for some reason (Nvidia drivers in Debian's testing (Buster) --
+# reported on 2019-04-09).
+if(NOT CMAKE_VERSION VERSION_LESS 3.10 AND NOT OpenGL_GL_PREFERENCE)
+    set(OpenGL_GL_PREFERENCE GLVND)
+endif()
 
 # Base Magnum library
 if(NOT TARGET Magnum::Magnum)
@@ -332,14 +346,12 @@ endif()
 set(_MAGNUM_LIBRARY_COMPONENT_LIST
     Audio DebugTools GL MeshTools Primitives SceneGraph Shaders Text
     TextureTools Trade Vk
-    AndroidApplication GlfwApplication GlutApplication GlxApplication
+    AndroidApplication EmscriptenApplication GlfwApplication GlxApplication
     Sdl2Application XEglApplication WindowlessCglApplication
-    WindowlessEglApplication WindowlessGlxApplication WindowlessIosApplication WindowlessWglApplication WindowlessWindowsEglApplication
+    WindowlessEglApplication WindowlessGlxApplication WindowlessIosApplication
+    WindowlessWglApplication WindowlessWindowsEglApplication
     CglContext EglContext GlxContext WglContext
     OpenGLTester)
-if(MAGNUM_BUILD_DEPRECATED)
-    list(APPEND _MAGNUM_LIBRARY_COMPONENT_LIST Shapes)
-endif()
 set(_MAGNUM_PLUGIN_COMPONENT_LIST
     AnyAudioImporter AnyImageConverter AnyImageImporter AnySceneImporter
     MagnumFont MagnumFontConverter ObjImporter TgaImageConverter TgaImporter
@@ -350,28 +362,25 @@ set(_MAGNUM_EXECUTABLE_COMPONENT_LIST
 # Inter-component dependencies
 set(_MAGNUM_Audio_DEPENDENCIES )
 
-set(_MAGNUM_DebugTools_DEPENDENCIES )
+# Trade is used by CompareImage. If Trade is not enabled, CompareImage is not
+# compiled at all.
+set(_MAGNUM_DebugTools_DEPENDENCIES Trade)
+set(_MAGNUM_DebugTools_Trade_DEPENDENCY_IS_OPTIONAL ON)
+# MeshTools, Primitives, SceneGraph and Shaders are used only for GL renderers
+# in DebugTools. All of this is optional, compiled in only if the base library
+# was selected.
 if(MAGNUM_TARGET_GL)
-    # MeshTools, Primitives, SceneGraph, Shaders and Shapes are used only for
-    # GL renderers. All of this is optional, compiled in only if the base
-    # library was selected.
-    list(APPEND _MAGNUM_DebugTools_DEPENDENCIES MeshTools Primitives SceneGraph Shaders Trade GL)
+    list(APPEND _MAGNUM_DebugTools_DEPENDENCIES MeshTools Primitives SceneGraph Shaders GL)
     set(_MAGNUM_DebugTools_MeshTools_DEPENDENCY_IS_OPTIONAL ON)
     set(_MAGNUM_DebugTools_Primitives_DEPENDENCY_IS_OPTIONAL ON)
     set(_MAGNUM_DebugTools_SceneGraph_DEPENDENCY_IS_OPTIONAL ON)
     set(_MAGNUM_DebugTools_Shaders_DEPENDENCY_IS_OPTIONAL ON)
-    set(_MAGNUM_DebugTools_Trade_DEPENDENCY_IS_OPTIONAL ON)
     set(_MAGNUM_DebugTools_GL_DEPENDENCY_IS_OPTIONAL ON)
-    if(MAGNUM_BUILD_DEPRECATED)
-        list(APPEND _MAGNUM_DebugTools_DEPENDENCIES Shapes)
-        set(_MAGNUM_DebugTools_Shapes_DEPENDENCY_IS_OPTIONAL ON)
-    endif()
 endif()
 
-set(_MAGNUM_MeshTools_DEPENDENCIES )
+set(_MAGNUM_MeshTools_DEPENDENCIES Trade)
 if(MAGNUM_TARGET_GL)
-    # Trade is used only in compile(), which needs GL as well
-    list(APPEND _MAGNUM_MeshTools_DEPENDENCIES Trade GL)
+    list(APPEND _MAGNUM_MeshTools_DEPENDENCIES GL)
 endif()
 
 set(_MAGNUM_OpenGLTester_DEPENDENCIES GL)
@@ -398,9 +407,6 @@ endif()
 set(_MAGNUM_Primitives_DEPENDENCIES Trade)
 set(_MAGNUM_SceneGraph_DEPENDENCIES )
 set(_MAGNUM_Shaders_DEPENDENCIES GL)
-if(MAGNUM_BUILD_DEPRECATED)
-    set(_MAGNUM_Shapes_DEPENDENCIES SceneGraph)
-endif()
 set(_MAGNUM_Text_DEPENDENCIES TextureTools)
 if(MAGNUM_TARGET_GL)
     list(APPEND _MAGNUM_Text_DEPENDENCIES GL)
@@ -413,13 +419,16 @@ endif()
 
 set(_MAGNUM_Trade_DEPENDENCIES )
 set(_MAGNUM_AndroidApplication_DEPENDENCIES GL)
+set(_MAGNUM_EmscriptenApplication_DEPENDENCIES)
+if(MAGNUM_TARGET_GL)
+    list(APPEND _MAGNUM_EmscriptenApplication_DEPENDENCIES GL)
+endif()
 
 set(_MAGNUM_GlfwApplication_DEPENDENCIES )
 if(MAGNUM_TARGET_GL)
     list(APPEND _MAGNUM_GlfwApplication_DEPENDENCIES GL)
 endif()
 
-set(_MAGNUM_GlutApplication_DEPENDENCIES GL)
 set(_MAGNUM_GlxApplication_DEPENDENCIES GL)
 
 set(_MAGNUM_Sdl2Application_DEPENDENCIES )
@@ -554,11 +563,17 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
             set(CMAKE_FIND_LIBRARY_PREFIXES "${CMAKE_FIND_LIBRARY_PREFIXES};")
 
             # Try to find both debug and release version. Dynamic and static
-            # debug libraries are in different places.
-            find_library(MAGNUM_${_COMPONENT}_LIBRARY_DEBUG ${_component}
-                PATH_SUFFIXES magnum-d/${_MAGNUM_${_COMPONENT}_PATH_SUFFIX})
+            # debug libraries are in different places. Static debug plugins are
+            # in magnum/ with a -d suffix while dynamic debug plugins are in
+            # magnum-d/ with no suffix. Problem is that Vcpkg's library linking
+            # automagic needs the static libs to be in the root library
+            # directory along with everything else and so we need to search for
+            # the -d suffixed version *before* the unsuffixed so it doesn't
+            # pick the release library for both debug and release.
             find_library(MAGNUM_${_COMPONENT}_LIBRARY_DEBUG ${_component}-d
                 PATH_SUFFIXES magnum/${_MAGNUM_${_COMPONENT}_PATH_SUFFIX})
+            find_library(MAGNUM_${_COMPONENT}_LIBRARY_DEBUG ${_component}
+                PATH_SUFFIXES magnum-d/${_MAGNUM_${_COMPONENT}_PATH_SUFFIX})
             find_library(MAGNUM_${_COMPONENT}_LIBRARY_RELEASE ${_component}
                 PATH_SUFFIXES magnum/${_MAGNUM_${_COMPONENT}_PATH_SUFFIX})
             mark_as_advanced(MAGNUM_${_COMPONENT}_LIBRARY_DEBUG
@@ -608,6 +623,8 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
                 set_property(TARGET Magnum::${_component} APPEND PROPERTY
                     INTERFACE_LINK_LIBRARIES android EGL::EGL)
 
+            # EmscriptenApplication has no additional dependencies
+
             # GLFW application dependencies
             elseif(_component STREQUAL GlfwApplication)
                 find_package(GLFW)
@@ -630,12 +647,13 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
                 # our own EGL find module, which makes things simpler. The
                 # upstream FindOpenGL is anything but simple. Also can't use
                 # OpenGL_OpenGL_FOUND, because that one is set also if GLVND is
-                # *not* found. WTF.
+                # *not* found. WTF. Also can't just check for
+                # OPENGL_opengl_LIBRARY because that's set even if
+                # OpenGL_GL_PREFERENCE is explicitly set to LEGACY.
                 if(MAGNUM_TARGET_GL)
                     if(CORRADE_TARGET_UNIX AND NOT CORRADE_TARGET_APPLE AND (NOT MAGNUM_TARGET_GLES OR MAGNUM_TARGET_DESKTOP_GLES))
-                        set(OpenGL_GL_PREFERENCE GLVND)
                         find_package(OpenGL)
-                        if(OPENGL_opengl_LIBRARY)
+                        if(OPENGL_opengl_LIBRARY AND OpenGL_GL_PREFERENCE STREQUAL GLVND)
                             set_property(TARGET Magnum::${_component} APPEND
                             PROPERTY INTERFACE_LINK_LIBRARIES OpenGL::GLX)
                         endif()
@@ -644,26 +662,6 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
                         set_property(TARGET Magnum::${_component} APPEND
                             PROPERTY INTERFACE_LINK_LIBRARIES EGL::EGL)
                     endif()
-                endif()
-
-            # GLUT application dependencies
-            elseif(_component STREQUAL GlutApplication)
-                find_package(GLUT)
-                set_property(TARGET Magnum::${_component} APPEND PROPERTY
-                    INTERFACE_INCLUDE_DIRECTORIES ${GLUT_INCLUDE_DIR})
-                set_property(TARGET Magnum::${_component} APPEND PROPERTY
-                    INTERFACE_LINK_LIBRARIES ${GLUT_glut_LIBRARY})
-
-                # With GLVND (since CMake 3.11) we need to explicitly link to
-                # GLX because libOpenGL doesn't provide it. Also can't use
-                # OpenGL_OpenGL_FOUND, because that one is set also if GLVND is
-                # *not* found. WTF. I don't think GLUT works with EGL, so not
-                # handling that.
-                set(OpenGL_GL_PREFERENCE GLVND)
-                find_package(OpenGL)
-                if(OPENGL_opengl_LIBRARY)
-                    set_property(TARGET Magnum::${_component} APPEND PROPERTY
-                        INTERFACE_LINK_LIBRARIES OpenGL::GLX)
                 endif()
 
             # SDL2 application dependencies
@@ -688,12 +686,13 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
                 # our own EGL find module, which makes things simpler. The
                 # upstream FindOpenGL is anything but simple. Also can't use
                 # OpenGL_OpenGL_FOUND, because that one is set also if GLVND is
-                # *not* found. WTF.
+                # *not* found. WTF. Also can't just check for
+                # OPENGL_opengl_LIBRARY because that's set even if
+                # OpenGL_GL_PREFERENCE is explicitly set to LEGACY.
                 if(MAGNUM_TARGET_GL)
                     if(CORRADE_TARGET_UNIX AND NOT CORRADE_TARGET_APPLE AND (NOT MAGNUM_TARGET_GLES OR MAGNUM_TARGET_DESKTOP_GLES))
-                        set(OpenGL_GL_PREFERENCE GLVND)
                         find_package(OpenGL)
-                        if(OPENGL_opengl_LIBRARY)
+                        if(OPENGL_opengl_LIBRARY AND OpenGL_GL_PREFERENCE STREQUAL GLVND)
                             set_property(TARGET Magnum::${_component} APPEND
                             PROPERTY INTERFACE_LINK_LIBRARIES OpenGL::GLX)
                         endif()
@@ -715,10 +714,11 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
                 # With GLVND (since CMake 3.11) we need to explicitly link to
                 # GLX because libOpenGL doesn't provide it. Also can't use
                 # OpenGL_OpenGL_FOUND, because that one is set also if GLVND is
-                # *not* found. WTF.
-                set(OpenGL_GL_PREFERENCE GLVND)
+                # *not* found. WTF. Also can't just check for
+                # OPENGL_opengl_LIBRARY because that's set even if
+                # OpenGL_GL_PREFERENCE is explicitly set to LEGACY.
                 find_package(OpenGL)
-                if(OPENGL_opengl_LIBRARY)
+                if(OPENGL_opengl_LIBRARY AND OpenGL_GL_PREFERENCE STREQUAL GLVND)
                     set_property(TARGET Magnum::${_component} APPEND PROPERTY
                         INTERFACE_LINK_LIBRARIES OpenGL::GLX)
                 endif()
@@ -768,10 +768,11 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
                 # With GLVND (since CMake 3.11) we need to explicitly link to
                 # GLX because libOpenGL doesn't provide it. Also can't use
                 # OpenGL_OpenGL_FOUND, because that one is set also if GLVND is
-                # *not* found. If GLVND is not used, link to X11 instead.
-                set(OpenGL_GL_PREFERENCE GLVND)
+                # *not* found. If GLVND is not used, link to X11 instead. Also
+                # can't just check for OPENGL_opengl_LIBRARY because that's set
+                # even if OpenGL_GL_PREFERENCE is explicitly set to LEGACY.
                 find_package(OpenGL)
-                if(OPENGL_opengl_LIBRARY)
+                if(OPENGL_opengl_LIBRARY AND OpenGL_GL_PREFERENCE STREQUAL GLVND)
                     set_property(TARGET Magnum::${_component} APPEND PROPERTY
                         INTERFACE_LINK_LIBRARIES OpenGL::GLX)
                 else()
@@ -804,18 +805,16 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
 
         # GL library
         elseif(_component STREQUAL GL)
-            set_property(TARGET Magnum::${_component} APPEND PROPERTY
-                INTERFACE_INCLUDE_DIRECTORIES ${MAGNUM_INCLUDE_DIR}/MagnumExternal/OpenGL)
-
             if(NOT MAGNUM_TARGET_GLES OR MAGNUM_TARGET_DESKTOP_GLES)
                 # If the GLVND library (CMake 3.11+) was found, link to the
                 # imported target. Otherwise (and also on all systems except
                 # Linux) link to the classic libGL. Can't use
                 # OpenGL_OpenGL_FOUND, because that one is set also if GLVND is
-                # *not* found. WTF.
-                set(OpenGL_GL_PREFERENCE GLVND)
+                # *not* found. WTF. Also can't just check for
+                # OPENGL_opengl_LIBRARY because that's set even if
+                # OpenGL_GL_PREFERENCE is explicitly set to LEGACY.
                 find_package(OpenGL REQUIRED)
-                if(OPENGL_opengl_LIBRARY)
+                if(OPENGL_opengl_LIBRARY AND OpenGL_GL_PREFERENCE STREQUAL GLVND)
                     set_property(TARGET Magnum::${_component} APPEND PROPERTY
                         INTERFACE_LINK_LIBRARIES OpenGL::OpenGL)
                 else()
@@ -846,7 +845,6 @@ foreach(_component ${Magnum_FIND_COMPONENTS})
 
         # No special setup for SceneGraph library
         # No special setup for Shaders library
-        # No special setup for Shapes library
 
         # Text library
         elseif(_component STREQUAL Text)
@@ -1010,15 +1008,15 @@ if(_MAGNUM_WINDOWLESSAPPLICATION_ALIAS AND NOT TARGET Magnum::WindowlessApplicat
         add_library(Magnum::WindowlessApplication ALIAS ${_MAGNUM_WINDOWLESSAPPLICATION_ALIASED_TARGET})
     else()
         add_library(Magnum::WindowlessApplication UNKNOWN IMPORTED)
-        get_target_property(_MAGNUM_WINDOWLESSAPPLICATION_IMPORTED_CONFIGURATIONS ${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS} IMPORTED_CONFIGURATIONS)
+        foreach(property IMPORTED_CONFIGURATIONS INTERFACE_INCLUDE_DIRECTORIES INTERFACE_COMPILE_DEFINITIONS INTERFACE_COMPILE_OPTIONS INTERFACE_LINK_LIBRARIES)
+            get_target_property(_MAGNUM_WINDOWLESSAPPLICATION_${property} ${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS} ${property})
+            if(_MAGNUM_WINDOWLESSAPPLICATION_${property})
+                set_target_properties(Magnum::WindowlessApplication PROPERTIES
+                    ${property} "${_MAGNUM_WINDOWLESSAPPLICATION_${property}}")
+            endif()
+        endforeach()
         get_target_property(_MAGNUM_WINDOWLESSAPPLICATION_IMPORTED_LOCATION_RELEASE ${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS} IMPORTED_LOCATION_RELEASE)
         get_target_property(_MAGNUM_WINDOWLESSAPPLICATION_IMPORTED_LOCATION_DEBUG ${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS} IMPORTED_LOCATION_DEBUG)
-        set_target_properties(Magnum::WindowlessApplication PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES $<TARGET_PROPERTY:${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS},INTERFACE_INCLUDE_DIRECTORIES>
-            INTERFACE_COMPILE_DEFINITIONS $<TARGET_PROPERTY:${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS},INTERFACE_COMPILE_DEFINITIONS>
-            INTERFACE_COMPILE_OPTIONS $<TARGET_PROPERTY:${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS},INTERFACE_COMPILE_OPTIONS>
-            INTERFACE_LINK_LIBRARIES $<TARGET_PROPERTY:${_MAGNUM_WINDOWLESSAPPLICATION_ALIAS},INTERFACE_LINK_LIBRARIES>
-            IMPORTED_CONFIGURATIONS "${_MAGNUM_WINDOWLESSAPPLICATION_IMPORTED_CONFIGURATIONS}")
         if(_MAGNUM_WINDOWLESSAPPLICATION_IMPORTED_LOCATION_RELEASE)
             set_target_properties(Magnum::WindowlessApplication PROPERTIES
                 IMPORTED_LOCATION_RELEASE ${_MAGNUM_WINDOWLESSAPPLICATION_IMPORTED_LOCATION_RELEASE})
@@ -1037,15 +1035,16 @@ if(_MAGNUM_APPLICATION_ALIAS AND NOT TARGET Magnum::Application)
         add_library(Magnum::Application ALIAS ${_MAGNUM_APPLICATION_ALIASED_TARGET})
     else()
         add_library(Magnum::Application UNKNOWN IMPORTED)
-        get_target_property(_MAGNUM_APPLICATION_IMPORTED_CONFIGURATIONS ${_MAGNUM_APPLICATION_ALIAS} IMPORTED_CONFIGURATIONS)
+        foreach(property IMPORTED_CONFIGURATIONS INTERFACE_INCLUDE_DIRECTORIES INTERFACE_COMPILE_DEFINITIONS INTERFACE_COMPILE_OPTIONS INTERFACE_LINK_LIBRARIES)
+            get_target_property(_MAGNUM_APPLICATION_${property}
+                ${_MAGNUM_APPLICATION_ALIAS} ${property})
+            if(_MAGNUM_APPLICATION_${property})
+                set_target_properties(Magnum::Application PROPERTIES ${property}
+                    "${_MAGNUM_APPLICATION_${property}}")
+            endif()
+        endforeach()
         get_target_property(_MAGNUM_APPLICATION_IMPORTED_LOCATION_RELEASE ${_MAGNUM_APPLICATION_ALIAS} IMPORTED_LOCATION_RELEASE)
         get_target_property(_MAGNUM_APPLICATION_IMPORTED_LOCATION_DEBUG ${_MAGNUM_APPLICATION_ALIAS} IMPORTED_LOCATION_DEBUG)
-        set_target_properties(Magnum::Application PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES $<TARGET_PROPERTY:${_MAGNUM_APPLICATION_ALIAS},INTERFACE_INCLUDE_DIRECTORIES>
-            INTERFACE_COMPILE_DEFINITIONS $<TARGET_PROPERTY:${_MAGNUM_APPLICATION_ALIAS},INTERFACE_COMPILE_DEFINITIONS>
-            INTERFACE_COMPILE_OPTIONS $<TARGET_PROPERTY:${_MAGNUM_APPLICATION_ALIAS},INTERFACE_COMPILE_OPTIONS>
-            INTERFACE_LINK_LIBRARIES $<TARGET_PROPERTY:${_MAGNUM_APPLICATION_ALIAS},INTERFACE_LINK_LIBRARIES>
-            IMPORTED_CONFIGURATIONS "${_MAGNUM_APPLICATION_IMPORTED_CONFIGURATIONS}")
         if(_MAGNUM_APPLICATION_IMPORTED_LOCATION_RELEASE)
             set_target_properties(Magnum::Application PROPERTIES
                 IMPORTED_LOCATION_RELEASE ${_MAGNUM_APPLICATION_IMPORTED_LOCATION_RELEASE})
@@ -1064,15 +1063,15 @@ if(_MAGNUM_GLCONTEXT_ALIAS AND NOT TARGET Magnum::GLContext)
         add_library(Magnum::GLContext ALIAS ${_MAGNUM_GLCONTEXT_ALIASED_TARGET})
     else()
         add_library(Magnum::GLContext UNKNOWN IMPORTED)
-        get_target_property(_MAGNUM_GLCONTEXT_IMPORTED_CONFIGURATIONS ${_MAGNUM_GLCONTEXT_ALIAS} IMPORTED_CONFIGURATIONS)
+        foreach(property IMPORTED_CONFIGURATIONS INTERFACE_INCLUDE_DIRECTORIES INTERFACE_COMPILE_DEFINITIONS INTERFACE_COMPILE_OPTIONS INTERFACE_LINK_LIBRARIES)
+            get_target_property(_MAGNUM_GLCONTEXT_${property} ${_MAGNUM_GLCONTEXT_ALIAS} ${property})
+            if(_MAGNUM_GLCONTEXT_${property})
+                set_target_properties(Magnum::GLContext PROPERTIES ${property}
+                    "${_MAGNUM_GLCONTEXT_${property}}")
+            endif()
+        endforeach()
         get_target_property(_MAGNUM_GLCONTEXT_IMPORTED_LOCATION_RELEASE ${_MAGNUM_GLCONTEXT_ALIAS} IMPORTED_LOCATION_RELEASE)
         get_target_property(_MAGNUM_GLCONTEXT_IMPORTED_LOCATION_DEBUG ${_MAGNUM_GLCONTEXT_ALIAS} IMPORTED_LOCATION_DEBUG)
-        set_target_properties(Magnum::GLContext PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES $<TARGET_PROPERTY:${_MAGNUM_GLCONTEXT_ALIAS},INTERFACE_INCLUDE_DIRECTORIES>
-            INTERFACE_COMPILE_DEFINITIONS $<TARGET_PROPERTY:${_MAGNUM_GLCONTEXT_ALIAS},INTERFACE_COMPILE_DEFINITIONS>
-            INTERFACE_COMPILE_OPTIONS $<TARGET_PROPERTY:${_MAGNUM_GLCONTEXT_ALIAS},INTERFACE_COMPILE_OPTIONS>
-            INTERFACE_LINK_LIBRARIES $<TARGET_PROPERTY:${_MAGNUM_GLCONTEXT_ALIAS},INTERFACE_LINK_LIBRARIES>
-            IMPORTED_CONFIGURATIONS "${_MAGNUM_GLCONTEXT_IMPORTED_CONFIGURATIONS}")
         if(_MAGNUM_GLCONTEXT_IMPORTED_LOCATION_RELEASE)
             set_target_properties(Magnum::GLContext PROPERTIES
                 IMPORTED_LOCATION_RELEASE ${_MAGNUM_GLCONTEXT_IMPORTED_LOCATION_RELEASE})
