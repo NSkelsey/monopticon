@@ -1,3 +1,5 @@
+precision highp float;
+
 uniform lowp vec3 color;
 
 out highp vec4 fragmentColor;

@@ -1,8 +1,8 @@
 uniform highp mat4 transformationProjectionMatrix;
 uniform highp vec3 originPos;
-uniform lowp float tParam;
+uniform highp float tParam;
 
-layout(location = 0) in highp vec4 position;
+in highp vec4 position;
 
 vec3 calc_pos(vec3 a, vec3 b, float t) {
     float g = min(t, 1.0);

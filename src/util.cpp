@@ -3,6 +3,7 @@
 using namespace Monopticon;
 
 
+/*
 Util::L2Summary Util::parseL2Summary(broker::vector* l2summary) {
     Util::L2Summary sum{0, 0, 0, 0};
 
@@ -35,6 +36,7 @@ Util::L2Summary Util::parseL2Summary(broker::vector* l2summary) {
     sum.unknown_cnt = *unknown_cnt;
     return sum;
 }
+*/
 
 
 int Util::SumTotal(Util::L2Summary struct_l2) {
@@ -83,6 +85,7 @@ Vector2 Util::randOffset(float z) {
 std::string Util::exec_output(std::string cmd) {
     std::array<char, 128> buffer;
     std::string result;
+    /*
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
     if (!pipe) {
         throw std::runtime_error("popen() failed!");
@@ -91,7 +94,8 @@ std::string Util::exec_output(std::string cmd) {
         result += buffer.data();
     }
     return result;
-}
+*/ return "";
+    }
 
 
 std::vector<std::string> Util::get_iface_list() {

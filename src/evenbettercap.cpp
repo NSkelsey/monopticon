@@ -35,7 +35,7 @@ class Application: public Platform::Application {
         void prepareDrawables();
 
         void drawEvent() override;
-        void drawTextElements();
+        //void drawTextElements();
         void drawIMGuiElements();
 
         void viewportEvent(ViewportEvent& event) override;
@@ -57,7 +57,7 @@ class Application: public Platform::Application {
 
         void DeleteEverything();
 
-        Parse::BrokerCtx     *brokerCtx;
+        //Parse::BrokerCtx     *brokerCtx;
         Context::Graphic *gCtx;
         Context::Store    *sCtx;
 
@@ -97,11 +97,12 @@ class Application: public Platform::Application {
 Application::Application(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
             .setTitle("Monopticon")
-            .setWindowFlags(Configuration::WindowFlag::Borderless|Configuration::WindowFlag::Resizable)
+            .setWindowFlags(Configuration::WindowFlag::Resizable)
             .setSize(Vector2i{1400,1000}),
             GLConfiguration{}.setSampleCount(MSAA_CNT)}
 {
 
+    /*
     // Setup the SDL window icon
     Utility::Resource rs("monopticon");
     std::string s = rs.get("icon.bmp");
@@ -114,11 +115,12 @@ Application::Application(const Arguments& arguments):
     }
     SDL_Window* sdl_window = Magnum::Platform::Sdl2Application::window();
     SDL_SetWindowIcon(sdl_window, sdl_surf);
+    */
 
     uint16_t listen_port = 9999;
     std::string addr = "127.0.0.1";
 
-    brokerCtx = new Parse::BrokerCtx(addr, listen_port);
+    //brokerCtx = new Parse::BrokerCtx(addr, listen_port);
 
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
@@ -132,13 +134,13 @@ Application::Application(const Arguments& arguments):
     frame_cnt = 0;
 
     setSwapInterval(1);
-    setMinimalLoopPeriod(16);
+    //setMinimalLoopPeriod(16);
     _timeline.start();
 
-    _iface_list = Util::get_iface_list();
+    //_iface_list = Util::get_iface_list();
     _zeek_pid = "#nop";
 
-    prepareDrawables();
+    //prepareDrawables();
 }
 
 
@@ -158,6 +160,7 @@ void Application::prepareDrawables() {
 }
 
 
+/*
 void Application::drawTextElements() {
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
@@ -173,6 +176,7 @@ void Application::drawTextElements() {
 
     gCtx->_camera->draw(gCtx->_billboard_drawables);
 }
+*/
 
 
 
@@ -194,6 +198,7 @@ void Application::drawIMGuiElements() {
     auto flags = ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoScrollbar;
     ImGui::Begin("Tap Status", nullptr, flags);
 
+    /*
     if (!brokerCtx->peer_connected && _iface_list.size() > 0) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
             // If an invalid iface is selected, or an empty value is used
@@ -271,7 +276,9 @@ void Application::drawIMGuiElements() {
             DeleteEverything();
         }
     }
+    */
 
+	    /*
     int offset = 100;
     if (brokerCtx->peer_connected) {
         ImGui::SameLine(offset);
@@ -293,11 +300,12 @@ void Application::drawIMGuiElements() {
             }
         }
     }
+    */
 
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
             1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
 
-    brokerCtx->StatsGui();
+    //brokerCtx->StatsGui();
 
     ImGui::End();
 
@@ -436,7 +444,7 @@ void Application::watchSelectedDevice() {
 
 void Application::drawEvent() {
 
-    brokerCtx->processNetworkEvents(sCtx, gCtx);
+    //brokerCtx->processNetworkEvents(sCtx, gCtx);
 
     if (frame_cnt % 60 == 0) {
         _iface_list = Util::get_iface_list();
@@ -476,7 +484,7 @@ void Application::drawEvent() {
 
     gCtx->draw3DElements();
 
-    drawTextElements();
+    //drawTextElements();
 
     drawIMGuiElements();
 
@@ -515,8 +523,8 @@ void Application::DeleteEverything() {
 
     //brokerCtx->resetCtx();
 
-    brokerCtx->ifaceLongChartMgr.empty();
-    brokerCtx->ifaceChartMgr.empty();
+    //brokerCtx->ifaceLongChartMgr.empty();
+    //brokerCtx->ifaceChartMgr.empty();
 
     ring_level = 0;
     pos_in_ring = 0;

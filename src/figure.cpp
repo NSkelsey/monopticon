@@ -5,8 +5,8 @@ using namespace Monopticon::Figure;
 PhongIdShader::PhongIdShader() {
     Utility::Resource rs("monopticon");
 
-    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
-        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
+    GL::Shader vert{GL::Version::GLES300, GL::Shader::Type::Vertex},
+        frag{GL::Version::GLES300, GL::Shader::Type::Fragment};
     vert.addSource(rs.get("src/shaders/phongid.vs"));
     frag.addSource(rs.get("src/shaders/phongid.fs"));
     CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
@@ -117,7 +117,7 @@ RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::Dr
 {
     _mesh = MeshTools::compile(Primitives::circle3DWireframe(70));
     _color = color;
-    _shader = Shaders::MeshVisualizer{Shaders::MeshVisualizer::Flag::Wireframe|Shaders::MeshVisualizer::Flag::NoGeometryShader};
+    _shader = Shaders::MeshVisualizer3D{Shaders::MeshVisualizer::Flag::Wireframe|Shaders::MeshVisualizer::Flag::NoGeometryShader};
 }
 
 RingDrawable& RingDrawable::setMesh(Trade::MeshData3D mesh) {
@@ -137,8 +137,8 @@ void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
 ParaLineShader::ParaLineShader() {
     Utility::Resource rs("monopticon");
 
-    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
-        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
+    GL::Shader vert{GL::Version::GLES300, GL::Shader::Type::Vertex},
+        frag{GL::Version::GLES300, GL::Shader::Type::Fragment};
     vert.addSource(rs.get("src/shaders/packetline.vs"));
     frag.addSource(rs.get("src/shaders/packetline.fs"));
     CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
@@ -314,8 +314,8 @@ void RouteDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera
 PoolShader::PoolShader() {
     Utility::Resource rs("monopticon");
 
-    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
-        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
+    GL::Shader vert{GL::Version::GLES300, GL::Shader::Type::Vertex},
+        frag{GL::Version::GLES300, GL::Shader::Type::Fragment};
     vert.addSource(rs.get("src/shaders/pool.vs"));
     frag.addSource(rs.get("src/shaders/pool.fs"));
     CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
@@ -385,8 +385,8 @@ void MulticastDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Ca
 WorldLinkShader::WorldLinkShader() {
     Utility::Resource rs("monopticon");
 
-    GL::Shader vert{GL::Version::GL330, GL::Shader::Type::Vertex},
-        frag{GL::Version::GL330, GL::Shader::Type::Fragment};
+    GL::Shader vert{GL::Version::GLES300, GL::Shader::Type::Vertex},
+        frag{GL::Version::GLES300, GL::Shader::Type::Fragment};
     vert.addSource(rs.get("src/shaders/worldlink.vs"));
     frag.addSource(rs.get("src/shaders/worldlink.fs"));
     CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));

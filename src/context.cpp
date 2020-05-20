@@ -5,7 +5,7 @@ using namespace Monopticon::Context;
 Graphic::Graphic():
     _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
-    MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GL330);
+    MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GLES300);
 
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
@@ -24,27 +24,40 @@ Graphic::Graphic():
 
     _poolCircle = MeshTools::compile(Primitives::circle3DWireframe(20));
 
+     std::cout << "kkk" << std::endl;
     _line_shader = Figure::ParaLineShader{};
+     std::cout << "jjj" << std::endl;
     _phong_id_shader = Figure::PhongIdShader{};
+     std::cout << "iii" << std::endl;
     _pool_shader = Figure::PoolShader{};
+     std::cout << "hhh" << std::endl;
     _link_shader = Figure::WorldLinkShader{};
 
     _bbitem_shader = Shaders::Flat3D{};
     _bbitem_shader.setColor(0x00ff00_rgbf);
+     std::cout << "fff" << std::endl;
 
     {
-        Trade::MeshData3D data = Primitives::uvSphereSolid(8.0f, 30.0f);
+    	std::cout << "ggg" << std::endl;
+        Trade::MeshData data = Primitives::uvSphereSolid(8.0f, 30.0f);
 
         GL::Buffer sphereVertices, sphereIndices;
 
-        sphereVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
-        sphereIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
-        _sphere.setCount(data.indices().size())
+        sphereVertices.setData(MeshTools::interleave(data.positions3DAsArray(), data.normalsAsArray()), GL::BufferUsage::StaticDraw);
+    	std::cout << "ggg0" << std::endl;
+
+        sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
+
+    	std::cout << "gg1" << std::endl;
+        _sphere.setCount(data.indexCount())
                .setPrimitive(data.primitive())
-               .addVertexBuffer(sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
-               .setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedShort);
+               .addVertexBuffer(sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{});
+               //.setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedLong);
+
+    	std::cout << "gg2" << std::endl;
     }
     {
+    	std::cout << "xxx" << std::endl;
         Trade::MeshData3D data = Primitives::cubeSolid();
 
         GL::Buffer cubeVertices, cubeIndices;
@@ -53,13 +66,14 @@ Graphic::Graphic():
         cubeIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
         _cubeMesh.setCount(data.indices().size())
                .setPrimitive(data.primitive())
-               .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
-               .setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
+               .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{});
+               //.setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
     }
+    std::cout << "yyy" << std::endl;
 
 
-    prepare3DFont();
-
+    //prepare3DFont();
+    std::cout << "zzz" << std::endl;
     //prepareDrawables();
 }
 
@@ -186,6 +200,7 @@ Monopticon::Level3::Address* Graphic::createIPv4Address(Context::Store *sCtx, co
 
 
 Monopticon::Device::PrefixStats* Graphic::createBroadcastPool(const std::string mac_prefix, Vector3 pos) {
+    std::cout << "vvv" << std::endl;
     auto *ring = Util::createLayoutRing(_scene, _permanent_drawables, 1.0f, pos);
 
     // Add a label to the bcast ring
@@ -194,7 +209,8 @@ Monopticon::Device::PrefixStats* Graphic::createBroadcastPool(const std::string 
     obj->transform(scaling);
     obj->translate(pos);
     auto c = 0xaaaaaa_rgbf;
-    new Figure::TextDrawable(mac_prefix, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+    std::cout << "www" << std::endl;
+    //new Figure::TextDrawable(mac_prefix, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
 
     Device::PrefixStats* dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
 

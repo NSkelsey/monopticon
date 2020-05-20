@@ -15,13 +15,10 @@
 #include <stdio.h>
 #include <string>
 #include <unordered_map>
+#include <map>
 #include <unistd.h>
 
 #include <SDL.h>
-
-#include "broker/broker.hh"
-#include "broker/message.hh"
-#include "broker/zeek.hh"
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pointer.h>
@@ -129,7 +126,7 @@ namespace Util {
         int unknown_cnt;
     };
 
-    L2Summary parseL2Summary(broker::vector *l2summary);
+    //L2Summary parseL2Summary(broker::vector *l2summary);
 
     int SumTotal(L2Summary struct_l2);
 
@@ -273,9 +270,9 @@ class Address: public Device::Selectable, public Object3D, public SceneGraph::Dr
   public:
     explicit Address(UnsignedByte id, Object3D& object, Figure::PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, SceneGraph::DrawableGroup3D& drawables);
 
-    Object3D& getObj();
-    Vector3 getTranslation();
-    int rightClickActions();
+    Object3D& getObj() override;
+    Vector3 getTranslation() override;
+    int rightClickActions() override;
 
     std::string value;
 
@@ -355,7 +352,7 @@ class RingDrawable: public Object3D, public SceneGraph::Drawable3D {
         Matrix4 scaling = Matrix4::scaling(Vector3{10});
         GL::Mesh _mesh;
         Color4 _color;
-        Shaders::MeshVisualizer _shader;
+        Shaders::MeshVisualizer3D _shader;
 };
 
 class ParaLineShader: public GL::AbstractShaderProgram {
@@ -603,10 +600,10 @@ namespace Parse {
 class BrokerCtx {
     public:
         // Zeek broker components
-        broker::endpoint _ep;
+        //broker::endpoint _ep;
 
-        broker::subscriber subscriber;
-        broker::status_subscriber status_subscriber;
+        //broker::subscriber subscriber;
+        //broker::status_subscriber status_subscriber;
         bool peer_connected = false;
 
         std::chrono::duration<int64_t, std::nano> curr_pkt_lag;
@@ -623,7 +620,7 @@ class BrokerCtx {
         int epoch_packets_sum{0};
 
         BrokerCtx(std::string addr, uint16_t port);
-
+	/*
         int parse_epoch_step(Context::Store *sCtx, Context::Graphic *gCtx, broker::zeek::Event event);
         void parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *addr_map);
         void parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *arp_table);
@@ -631,6 +628,7 @@ class BrokerCtx {
         void parse_stats_update(broker::zeek::Event event);
         void parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, broker::vector *dComm, Device::Stats* tran_d_s);
         void parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
+	*/
 
         void processNetworkEvents(Context::Store *sCtx, Context::Graphic *gCtx);
 
