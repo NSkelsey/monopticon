@@ -1,11 +1,21 @@
 #include "evenbettercap.h"
 
+
 using namespace Monopticon::Context;
+
+static int load_corrade_plugins()
+{
+return 0;
+}
+
+//CORRADE_AUTOMATIC_INITIALIZER(load_corrade_plugins);
 
 Graphic::Graphic():
     _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GLES300);
+
+    //CORRADE_PLUGIN_IMPORT(FreeTypeFont);
 
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
@@ -72,7 +82,7 @@ Graphic::Graphic():
     std::cout << "yyy" << std::endl;
 
 
-    //prepare3DFont();
+    prepare3DFont();
     std::cout << "zzz" << std::endl;
     //prepareDrawables();
 }
@@ -96,6 +106,7 @@ void Graphic::destroyGLBuffers() {
 }
 
 void Graphic::prepare3DFont() {
+
     /* Load FreeTypeFont plugin */
     _font = _manager.loadAndInstantiate("FreeTypeFont");
     if(!_font) std::exit(1);

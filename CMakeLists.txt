@@ -13,8 +13,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
 set(WITH_IMGUI ON)
 
 find_package(Corrade REQUIRED PluginManager Utility Containers)
-#find_package(MagnumPlugins REQUIRED FreeTypeFont)
-find_package(MagnumPlugins)
+set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
+
+find_package(MagnumPlugins REQUIRED FreeTypeFont)
+
 find_package(MagnumIntegration REQUIRED ImGui)
 find_package(Magnum REQUIRED
                     GL
@@ -27,7 +29,6 @@ find_package(Magnum REQUIRED
                     Trade
                     )
 
-set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 corrade_add_resource(monopticon_RESOURCES resources.conf)
 
@@ -56,6 +57,7 @@ target_link_libraries(monopticon PRIVATE
     Magnum::Text
     Magnum::Trade
     MagnumIntegration::ImGui
+    MagnumPlugins::FreeTypeFont
     Magnum::Sdl2Application
 )
 
