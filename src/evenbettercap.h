@@ -352,7 +352,8 @@ class RingDrawable: public Object3D, public SceneGraph::Drawable3D {
         Matrix4 scaling = Matrix4::scaling(Vector3{10});
         GL::Mesh _mesh;
         Color4 _color;
-        Shaders::MeshVisualizer3D _shader;
+        //Shaders::MeshVisualizer3D _shader = Shaders::MeshVisualizer3D{Shaders::MeshVisualizer3D::Flag::Wireframe};
+        Shaders::Flat3D _shader = Shaders::Flat3D{};
 };
 
 class ParaLineShader: public GL::AbstractShaderProgram {

@@ -35,7 +35,7 @@ class Application: public Platform::Application {
         void prepareDrawables();
 
         void drawEvent() override;
-        //void drawTextElements();
+        void drawTextElements();
         void drawIMGuiElements();
 
         void viewportEvent(ViewportEvent& event) override;
@@ -140,7 +140,7 @@ Application::Application(const Arguments& arguments):
     //_iface_list = Util::get_iface_list();
     _zeek_pid = "#nop";
 
-    //prepareDrawables();
+    prepareDrawables();
 }
 
 
@@ -160,7 +160,6 @@ void Application::prepareDrawables() {
 }
 
 
-/*
 void Application::drawTextElements() {
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
@@ -176,7 +175,6 @@ void Application::drawTextElements() {
 
     gCtx->_camera->draw(gCtx->_billboard_drawables);
 }
-*/
 
 
 
@@ -484,7 +482,7 @@ void Application::drawEvent() {
 
     gCtx->draw3DElements();
 
-    //drawTextElements();
+    drawTextElements();
 
     drawIMGuiElements();
 

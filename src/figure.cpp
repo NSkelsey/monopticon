@@ -117,7 +117,7 @@ RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::Dr
 {
     _mesh = MeshTools::compile(Primitives::circle3DWireframe(70));
     _color = color;
-    _shader = Shaders::MeshVisualizer3D{Shaders::MeshVisualizer::Flag::Wireframe|Shaders::MeshVisualizer::Flag::NoGeometryShader};
+    //_shader = &Shaders::Flat3D{};
 }
 
 RingDrawable& RingDrawable::setMesh(Trade::MeshData3D mesh) {
@@ -128,7 +128,6 @@ RingDrawable& RingDrawable::setMesh(Trade::MeshData3D mesh) {
 
 void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     _shader.setColor(0xffffff_rgbf)
-           .setWireframeColor(_color)
            .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
     _mesh.draw(_shader);
 }

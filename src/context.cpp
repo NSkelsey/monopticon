@@ -221,7 +221,7 @@ Monopticon::Device::PrefixStats* Graphic::createBroadcastPool(const std::string 
     obj->translate(pos);
     auto c = 0xaaaaaa_rgbf;
     std::cout << "www" << std::endl;
-    //new Figure::TextDrawable(mac_prefix, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+    new Figure::TextDrawable(mac_prefix, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
 
     Device::PrefixStats* dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
 
@@ -352,6 +352,7 @@ void Graphic::createLine(Context::Store *sCtx, Vector3 a, Vector3 b, Util::L3Typ
 }
 
 void Graphic::draw3DElements() {
+    /*
     // Ensure the custom framebuffer is clear for the draw
     _objselect_framebuffer
         .clear(GL::FramebufferClear::Color)
@@ -359,6 +360,7 @@ void Graphic::draw3DElements() {
 
     // Draw selectable objects to custom framebuffer
     _camera->draw(_selectable_drawables);
+    */
 
     /* Bind the main buffer back */
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth)
