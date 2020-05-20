@@ -1,19 +1,20 @@
 project(monopticon CXX)
 cmake_minimum_required(VERSION 3.1)
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE RELEASE)
 
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -std=gnu++14")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
 
-find_package(Broker REQUIRED)
-include_directories(BEFORE ${BROKER_INCLUDE_DIR})
+#find_package(Broker REQUIRED)
+#include_directories(BEFORE ${BROKER_INCLUDE_DIR})
 
 set(WITH_IMGUI ON)
 
 find_package(Corrade REQUIRED PluginManager Utility Containers)
-find_package(MagnumPlugins REQUIRED FreeTypeFont)
+#find_package(MagnumPlugins REQUIRED FreeTypeFont)
+find_package(MagnumPlugins)
 find_package(MagnumIntegration REQUIRED ImGui)
 find_package(Magnum REQUIRED
                     GL
@@ -37,15 +38,12 @@ set(monopticon_FILES
         src/levelthree.cpp
         src/util.cpp
         src/context.cpp
-        src/input_parser.cpp
         src/evenbettercap.cpp
     )
 
 add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 
 target_link_libraries(monopticon PRIVATE
-    "${BROKER_LIBRARY}"
-    "${BROKER_ROOT_DIR}/lib/libcaf_core.so"
     Corrade::Utility
     Corrade::Containers
     Magnum::Application
@@ -69,12 +67,3 @@ set_target_properties(monopticon
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 install(TARGETS monopticon DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")
-
-install(PROGRAMS src/scripts/monopt_iface_proto.sh DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/ RENAME monopt_iface_proto)
-
-install(DIRECTORY src/scripts DESTINATION ${CMAKE_INSTALL_PREFIX}/share/monopticon  FILES_MATCHING PATTERN "*.zeek")
-
-install(FILES src/log/monopticon.log DESTINATION /var/log/monopticon/ PERMISSIONS OWNER_WRITE)
-install(FILES src/ld.so.conf DESTINATION /etc/ld.so.conf.d/ RENAME monopticon.conf)
-install(FILES src/assets/app-entry/monopticon.desktop DESTINATION /usr/share/applications/)
-install(FILES src/assets/app-entry/icon-mo-512.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/monopticon/res)
