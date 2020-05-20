@@ -563,7 +563,8 @@ namespace Context {
 
             // Graphic fields
             GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
-            Color4 _clearColor = 0x002b36_rgbf;
+            //Color4 _clearColor = 0x002b36_rgbf;
+            Color4 _clearColor = 0xffffff_rgbf;
             Color3 _pickColor = 0xffffff_rgbf;
 
             Shaders::Phong _phong_shader;

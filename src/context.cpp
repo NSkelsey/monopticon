@@ -3,19 +3,10 @@
 
 using namespace Monopticon::Context;
 
-static int load_corrade_plugins()
-{
-return 0;
-}
-
-//CORRADE_AUTOMATIC_INITIALIZER(load_corrade_plugins);
-
 Graphic::Graphic():
     _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GLES300);
-
-    //CORRADE_PLUGIN_IMPORT(FreeTypeFont);
 
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
@@ -56,13 +47,17 @@ Graphic::Graphic():
         sphereVertices.setData(MeshTools::interleave(data.positions3DAsArray(), data.normalsAsArray()), GL::BufferUsage::StaticDraw);
     	std::cout << "ggg0" << std::endl;
 
-        sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
+        //sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
+
+	_sphere = MeshTools::compile(data);
 
     	std::cout << "gg1" << std::endl;
+	/*
         _sphere.setCount(data.indexCount())
                .setPrimitive(data.primitive())
                .addVertexBuffer(sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{});
-               //.setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedLong);
+               .setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedShort);
+	*/
 
     	std::cout << "gg2" << std::endl;
     }
@@ -72,12 +67,15 @@ Graphic::Graphic():
 
         GL::Buffer cubeVertices, cubeIndices;
 
+	/*
         cubeVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
         cubeIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
         _cubeMesh.setCount(data.indices().size())
                .setPrimitive(data.primitive())
                .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{});
                //.setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
+	*/
+	_cubeMesh = MeshTools::compile(data);
     }
     std::cout << "yyy" << std::endl;
 
@@ -95,8 +93,8 @@ void Graphic::prepareGLBuffers(const Range2Di& viewport) {
 
     _objselect_framebuffer = GL::Framebuffer{viewport};
 
-    _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _objectId)
-                .mapForDraw({{Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{0}}});
+    _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _objectId);
+                //.mapForDraw({{Figure::PhongIdShader::ObjectIdOutput, GL::Framebuffer::ColorAttachment{0}}});
 
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 }

@@ -143,7 +143,16 @@ Application::Application(const Arguments& arguments):
     prepareDrawables();
 }
 
+static void gen_random(std::string *s, const int len) {
+   static const char alphanum[] =
+   "0123456789"
+   "abcdef";
 
+   for (int i = 0; i < len; ++i) {
+       s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+   }
+   //s[len] = 0;
+}
 
 
 void Application::prepareDrawables() {
@@ -157,6 +166,17 @@ void Application::prepareDrawables() {
     sCtx->_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
     sCtx->_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 
+
+    for (int i = 0; i < 58; i++) {
+	//std::string *mac_src = new std::string(17, ' ');
+	//gen_random(mac_src, 2);
+	std::string *mac_src = new std::string("0e:6f:66:05:19:" + std::to_string(i));
+
+        Device::Stats *d_s = gCtx->createSphere(sCtx, *mac_src);
+        //sCtx->_device_map.insert(std::make_pair(*mac_src, d_s));
+        gCtx->addDirectLabels(d_s);
+	gCtx->createIPv4Address(sCtx, "1.0.1.1", d_s->circPoint);
+   }
 }
 
 
