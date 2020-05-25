@@ -1,7 +1,10 @@
 Monopticon
 ==========
 
+
 This is an application that visualizes ethernet traffic in realtime. It leverages [Zeek](https://www.zeek.org/) to capture packets and broker messages and then renders traffic flow with [Magnum](https://magnum.graphics/) and OpenGL.
+
+[![Build Status](https://travis-ci.org/NSkelsey/monopticon.svg?branch=webopticon)](https://travis-ci.org/nskelsey/monopticon)
 
 The goal of the software is four fold:
 - Provide simple visual network diagnostics to resolve configuration issues.

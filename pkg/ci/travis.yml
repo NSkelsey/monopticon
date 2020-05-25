@@ -1,14 +1,31 @@
 language: cpp
+
 services:
-  - docker
+- docker
+
+addons:
+  artifacts:
+    s3_region: "us-east-1"
+    paths:
+    - $HOME/build/bin/monopticon.js
+    - $HOME/build/bin/monopticon.js.mem
+
+cache:
+  directories:
+    - $HOME/build
 
 env:
-  - IMAGE: "synnick/monopticon-empscripten"
+  global:
+  - IMAGE="synnick/monopticon-emscripten"
+  - NAME="webopt"
 
 before_install:
 - docker pull $IMAGE
-- docker run -d -v `pwd`:/home/build/monopticon $IMAGE:latest
-- docker ps -a
-- docker exec $IMAGE "mkdir monopticon/build"
-- docker exec $IMAGE "cd monopticon/build; cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/build/monopticon/toolchains/generic/Emscripten.cmake -DCMAKE_PREFIX_PATH=/usr/lib/emscripten/system -DCMAKE_INSTALL_PREFIX=/home/build/monopticon/build/ -DFREETYPE_LIBRARY=/home/build/.emscripten_cache/wasm/libfreetype.a -DImGui_INCLUDE_DIR=/opt/imgui"
-- docker exec $IMAGE "cd monopticon/build; make --build . --target install"
+- mkdir -p build
+- docker run --name=$NAME -dt -v `pwd`:/home/build/monopticon -v `pwd`/build:/home/build/out $IMAGE:latest
+
+install:
+- docker exec $NAME cmake -B out -S monopticon -DCMAKE_TOOLCHAIN_FILE=/home/build/monopticon/toolchains/generic/Emscripten.cmake -DCMAKE_PREFIX_PATH=/usr/lib/emscripten/system -DCMAKE_INSTALL_PREFIX=/home/build/out/bin/ -DFREETYPE_LIBRARY=/home/build/.emscripten_cache/wasm/libfreetype.a -DImGui_INCLUDE_DIR=/opt/imgui
+
+script:
+- docker exec $NAME cmake --build out
