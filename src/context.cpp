@@ -39,43 +39,42 @@ Graphic::Graphic():
      std::cout << "fff" << std::endl;
 
     {
-    	std::cout << "ggg" << std::endl;
+        std::cout << "ggg" << std::endl;
         Trade::MeshData data = Primitives::uvSphereSolid(8.0f, 30.0f);
 
         GL::Buffer sphereVertices, sphereIndices;
 
-        sphereVertices.setData(MeshTools::interleave(data.positions3DAsArray(), data.normalsAsArray()), GL::BufferUsage::StaticDraw);
-    	std::cout << "ggg0" << std::endl;
+        //sphereVertices.setData(MeshTools::interleave(data.positions3DAsArray(), data.normalsAsArray()), GL::BufferUsage::StaticDraw);
+        std::cout << "ggg0" << std::endl;
 
-        //sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
+        sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
 
-	_sphere = MeshTools::compile(data);
+        _sphere = MeshTools::compile(data);
 
-    	std::cout << "gg1" << std::endl;
-	/*
+        std::cout << "gg1" << std::endl;
+    /*
         _sphere.setCount(data.indexCount())
                .setPrimitive(data.primitive())
                .addVertexBuffer(sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{});
                .setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedShort);
-	*/
+    */
 
-    	std::cout << "gg2" << std::endl;
+        std::cout << "gg2" << std::endl;
     }
     {
-    	std::cout << "xxx" << std::endl;
         Trade::MeshData3D data = Primitives::cubeSolid();
 
         GL::Buffer cubeVertices, cubeIndices;
 
-	/*
+/*
         cubeVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
         cubeIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
         _cubeMesh.setCount(data.indices().size())
                .setPrimitive(data.primitive())
                .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{});
                //.setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
-	*/
-	_cubeMesh = MeshTools::compile(data);
+*/
+      cubeMesh = MeshTools::compile(data);
     }
     std::cout << "yyy" << std::endl;
 
