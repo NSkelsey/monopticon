@@ -1,14 +1,8 @@
 TODO
 =====
-As of 20/05/20
-
 ### Webopticon
 
 - [ ] Fix object coloring and buffer bindings using latest updates to magnum
-- [ ] Docker container in the docker cloud
-   - [ ] Q: how to include custom built packages included
-   - [ ] Connect container to travis build
-   - [ ] Connect travis build to nskelsey.com
 - [ ] Build communication tunnel
    - [ ] Decide on Websockets or something else
    - [ ] Implement small demo with simple backend (golang or c++)
@@ -162,6 +156,10 @@ Do Thing:
 
 DONE
 ====
+- [x] Docker container in the docker cloud
+   - [x] Q: how to include custom built packages included
+   - [x] Connect container to travis build
+   - [x] Connect travis build to nskelsey.com
 - [x] Improve layout:
     - [x] fix label overlap
     - [x] demo circle layout that expands

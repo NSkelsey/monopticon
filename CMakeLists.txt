@@ -69,3 +69,4 @@ set_target_properties(monopticon
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 install(TARGETS monopticon DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")
+install(FILES build/bin/monopticon.js.mem DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/")

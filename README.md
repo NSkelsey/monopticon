@@ -26,7 +26,12 @@ The animation below demonstrates the output of Monopticon (v0.3.0) monitoring a 
 
 ![what it looks like](https://nskelsey.com/res/span-traffic.gif)
 
-## Usage
+## In your browser without traffic
+
+### [Check it out!](https://nskelsey.com/secret-url/web-samples/bin/monopticon.html)
+
+
+## Local Usage
 
 1) Install the software following the commands documented below.
 2) Prepare a suitable interface to capture packets on.

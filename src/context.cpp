@@ -47,7 +47,7 @@ Graphic::Graphic():
         //sphereVertices.setData(MeshTools::interleave(data.positions3DAsArray(), data.normalsAsArray()), GL::BufferUsage::StaticDraw);
         std::cout << "ggg0" << std::endl;
 
-        sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
+        //sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
 
         _sphere = MeshTools::compile(data);
 
@@ -74,7 +74,7 @@ Graphic::Graphic():
                .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{});
                //.setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
 */
-      cubeMesh = MeshTools::compile(data);
+      _cubeMesh = MeshTools::compile(data);
     }
     std::cout << "yyy" << std::endl;
 
