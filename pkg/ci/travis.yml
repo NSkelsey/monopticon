@@ -7,12 +7,15 @@ addons:
   artifacts:
     s3_region: "us-east-1"
     paths:
-    - $HOME/build/bin/monopticon.js
-    - $HOME/build/bin/monopticon.js.mem
+    - $HOME/build/NSkelsey/monopticon/build/bin/monopticon.js
+    - $HOME/build/NSkelsey/monopticon/build/bin/monopticon.js.mem
+    - $HOME/build/NSkelsey/monopticon/build/CMakeCache.txt
+    - $HOME/build/NSkelsey/monopticon/build/CMakeFiles/CMakeOutput.log
+    - $HOME/build/NSkelsey/monopticon/build/CMakeFiles/CMakeError.log
 
 cache:
   directories:
-    - $HOME/build
+    - $HOME/build/
 
 env:
   global:
@@ -22,7 +25,10 @@ env:
 before_install:
 - docker pull $IMAGE
 - mkdir -p build
+- pwd
+- ls -lah build
 - docker run --name=$NAME -dt -v `pwd`:/home/build/monopticon -v `pwd`/build:/home/build/out $IMAGE:latest
+- docker exec $NAME sudo chown -R build:build /home/build/out
 
 install:
 - docker exec $NAME cmake -B out -S monopticon -DCMAKE_TOOLCHAIN_FILE=/home/build/monopticon/toolchains/generic/Emscripten.cmake -DCMAKE_PREFIX_PATH=/usr/lib/emscripten/system -DCMAKE_INSTALL_PREFIX=/home/build/out/bin/ -DFREETYPE_LIBRARY=/home/build/.emscripten_cache/wasm/libfreetype.a -DImGui_INCLUDE_DIR=/opt/imgui
