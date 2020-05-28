@@ -143,18 +143,6 @@ Application::Application(const Arguments& arguments):
     prepareDrawables();
 }
 
-static void gen_random(std::string *s, const int len) {
-   static const char alphanum[] =
-   "0123456789"
-   "abcdef";
-
-   for (int i = 0; i < len; ++i) {
-       s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-   }
-   //s[len] = 0;
-}
-
-
 void Application::prepareDrawables() {
     Device::PrefixStats *ff_bcast = gCtx->createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
     Device::PrefixStats *three_bcast = gCtx->createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
@@ -167,7 +155,7 @@ void Application::prepareDrawables() {
     sCtx->_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 
 
-    for (int i = 0; i < 58; i++) {
+    for (int i = 0; i < 25; i++) {
 	//std::string *mac_src = new std::string(17, ' ');
 	//gen_random(mac_src, 2);
 	std::string *mac_src = new std::string("0e:6f:66:05:19:" + std::to_string(i));
@@ -626,29 +614,31 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
 
 
     if(event.button() == MouseEvent::Button::Left) {
-    /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
-    gCtx->_objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
-    Image2D data = gCtx->_objselect_framebuffer.read(
-        Range2Di::fromSize({event.position().x(),
-        gCtx->_objselect_framebuffer.viewport().sizeY() - event.position().y() - 1},
-        {1, 1}),
-        {PixelFormat::R32UI});
+        /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
+        gCtx->_objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{1});
+        Image2D data = gCtx->_objselect_framebuffer.read(
+            Range2Di::fromSize({event.position().x(),
+            gCtx->_objselect_framebuffer.viewport().sizeY() - event.position().y() - 1},
+            {1, 1}),
+            {PixelFormat::R32UI});
 
-    deselectObject();
-    UnsignedByte id = Containers::arrayCast<UnsignedByte>(data.data())[0];
-    unsigned short i = static_cast<unsigned short>(id);
-    if(i > 0 && i < sCtx->_selectable_objects.size()+1) {
-        Device::Selectable *selection = sCtx->_selectable_objects.at(i-1);
+        deselectObject();
+        UnsignedByte id = Containers::arrayCast<UnsignedByte>(data.data())[0];
+        unsigned short i = static_cast<unsigned short>(id);
+        std::cout << "obj_id" << std::endl;
+        std::cout << i << std::endl;
+        if(i > 0 && i < sCtx->_selectable_objects.size()+1) {
+            Device::Selectable *selection = sCtx->_selectable_objects.at(i-1);
 
-        objectClicked(selection);
+            objectClicked(selection);
 
-        if (btn == MouseEvent::Button::Left) {
-            gCtx->_cameraRig->resetTransformation();
-            gCtx->_cameraRig->translate(selection->getTranslation());
-        } else if (btn == MouseEvent::Button::Right) {
-            _openPopup = true;
+            if (btn == MouseEvent::Button::Left) {
+                gCtx->_cameraRig->resetTransformation();
+                gCtx->_cameraRig->translate(selection->getTranslation());
+            } else if (btn == MouseEvent::Button::Right) {
+                _openPopup = true;
+            }
         }
-    }
     }
     event.setAccepted();
     redraw();

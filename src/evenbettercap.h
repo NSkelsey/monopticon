@@ -268,7 +268,7 @@ namespace Level3 {
 
 class Address: public Device::Selectable, public Object3D, public SceneGraph::Drawable3D {
   public:
-    explicit Address(UnsignedByte id, Object3D& object, Figure::PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, SceneGraph::DrawableGroup3D& drawables);
+    explicit Address(UnsignedByte id, Object3D& object, Shaders::Phong& shader, Color3 &color, GL::Mesh& mesh, SceneGraph::DrawableGroup3D& drawables);
 
     Object3D& getObj() override;
     Vector3 getTranslation() override;
@@ -281,7 +281,7 @@ class Address: public Device::Selectable, public Object3D, public SceneGraph::Dr
 
     UnsignedByte _id;
     Color3 _color;
-    Figure::PhongIdShader& _shader;
+    Shaders::Phong& _shader;
     GL::Mesh& _mesh;
 };
 
@@ -323,7 +323,7 @@ class PhongIdShader: public GL::AbstractShaderProgram {
 
 class DeviceDrawable: public Object3D, public SceneGraph::Drawable3D {
     public:
-        explicit DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
+        explicit DeviceDrawable(UnsignedByte id, Object3D& object, Shaders::Phong& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables);
 
         Device::Stats * _deviceStats;
         void resetTParam();
@@ -333,7 +333,7 @@ class DeviceDrawable: public Object3D, public SceneGraph::Drawable3D {
 
         UnsignedByte _id;
         Color3 _color;
-        PhongIdShader& _shader;
+        Shaders::Phong& _shader;
         GL::Mesh& _mesh;
         Matrix4 _primitiveTransformation;
         bool _drop;
@@ -563,8 +563,8 @@ namespace Context {
 
             // Graphic fields
             GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
-            //Color4 _clearColor = 0x002b36_rgbf;
-            Color4 _clearColor = 0xffffff_rgbf;
+            Color4 _clearColor = 0x002b36_rgbf;
+            //Color4 _clearColor = 0xffffff_rgbf;
             Color3 _pickColor = 0xffffff_rgbf;
 
             Shaders::Phong _phong_shader;

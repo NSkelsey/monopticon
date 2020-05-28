@@ -72,7 +72,7 @@ PhongIdShader& PhongIdShader::setProjectionMatrix(const Matrix4& matrix) {
 }
 
 
-DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, PhongIdShader& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables):
+DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, Shaders::Phong& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables):
     Object3D{&object},
     SceneGraph::Drawable3D{object, &drawables},
     _id{id},
@@ -102,8 +102,7 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
            .setNormalMatrix(transformation.rotationScaling())
            .setProjectionMatrix(camera.projectionMatrix())
            .setAmbientColor(_deviceStats->_selected ? _color*0.2f : Color3{})
-           .setColor(_color*(_deviceStats->_selected ? 1.5f : 0.9f))
-           .setTimeIntensity(_t)
+           .setDiffuseColor(_color*(_deviceStats->_selected ? 1.5f : 0.9f))
            /* relative to the camera */
            .setLightPosition({0.0f, 4.0f, 3.0f})
            .setObjectId(_id+1);
