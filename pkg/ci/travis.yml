@@ -8,7 +8,7 @@ addons:
     s3_region: "us-east-1"
     paths:
     - $HOME/build/NSkelsey/monopticon/build/bin/monopticon.js
-    - $HOME/build/NSkelsey/monopticon/build/bin/monopticon.js.mem
+    - $HOME/build/NSkelsey/monopticon/build/bin/monopticon.wasm
     - $HOME/build/NSkelsey/monopticon/build/CMakeCache.txt
     - $HOME/build/NSkelsey/monopticon/build/CMakeFiles/CMakeOutput.log
     - $HOME/build/NSkelsey/monopticon/build/CMakeFiles/CMakeError.log
@@ -31,7 +31,7 @@ before_install:
 - docker exec $NAME sudo chown -R build:build /home/build/out
 
 install:
-- docker exec $NAME cmake -B out -S monopticon -DCMAKE_TOOLCHAIN_FILE=/home/build/monopticon/toolchains/generic/Emscripten.cmake -DCMAKE_PREFIX_PATH=/usr/lib/emscripten/system -DCMAKE_INSTALL_PREFIX=/home/build/out/bin/ -DFREETYPE_LIBRARY=/home/build/.emscripten_cache/wasm/libfreetype.a -DImGui_INCLUDE_DIR=/opt/imgui
+- docker exec $NAME cmake -B out -S monopticon -DCMAKE_TOOLCHAIN_FILE=/home/build/monopticon/toolchains/generic/Emscripten-wasm.cmake -DCMAKE_PREFIX_PATH=/usr/lib/emscripten/system -DCMAKE_INSTALL_PREFIX=/home/build/out/bin/ -DFREETYPE_LIBRARY=/home/build/.emscripten_cache/wasm/libfreetype.a -DImGui_INCLUDE_DIR=/opt/imgui
 
 script:
 - docker exec $NAME cmake --build out
