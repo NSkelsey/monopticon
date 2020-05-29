@@ -26,9 +26,9 @@ The animation below demonstrates the output of Monopticon (v0.3.0) monitoring a 
 
 ![what it looks like](https://nskelsey.com/res/span-traffic.gif)
 
-## In your browser:
+## In a browser:
 
-[Check it out!](https://nskelsey.com/secret-url/web-samples/bin/monopticon.html)
+[Check it out](https://nskelsey.com/secret-url/web-samples/)
 
 
 ## Local Usage
