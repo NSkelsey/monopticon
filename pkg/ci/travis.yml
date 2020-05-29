@@ -15,7 +15,7 @@ addons:
 
 cache:
   directories:
-    - $HOME/build/
+    - $HOME/build/NSkelsey/monopticon/build/
 
 env:
   global:
