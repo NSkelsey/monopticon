@@ -13,10 +13,6 @@ addons:
     - $HOME/build/NSkelsey/monopticon/build/CMakeFiles/CMakeOutput.log
     - $HOME/build/NSkelsey/monopticon/build/CMakeFiles/CMakeError.log
 
-cache:
-  directories:
-    - $HOME/build/NSkelsey/monopticon/build/
-
 env:
   global:
   - IMAGE="synnick/monopticon-emscripten"
