@@ -1,3 +1,5 @@
+#include "treout/addressbook.pb.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/websocket.h>
@@ -35,10 +37,6 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
 	if (e->isText)
 	{
 		printf("text data: \"%s\"\n", e->data);
-#ifdef REPORT_RESULT
-		if (!!strcmp((const char*)e->data, "hello on the other side")) REPORT_RESULT(-1);
-		passed += 1;
-#endif
 	}
 	else
 	{
@@ -46,19 +44,12 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
 		for(int i = 0; i < e->numBytes; ++i)
 		{
 			printf(" %02X", e->data[i]);
-#ifdef REPORT_RESULT
-			if (e->data[i] != i) REPORT_RESULT(-2);
-#endif
 		}
 		printf("\n");
 		passed += 100;
 
 		emscripten_websocket_close(e->socket, 0, 0);
 		emscripten_websocket_delete(e->socket);
-#ifdef REPORT_RESULT
-		printf("%d\n", passed);
-		REPORT_RESULT(passed);
-#endif
 	}
 	return 0;
 }
@@ -74,8 +65,11 @@ int main()
 	EmscriptenWebSocketCreateAttributes attr;
 	emscripten_websocket_init_create_attributes(&attr);
 
-	const char *url = "ws://172.17.0.2:8088/";
+	const char *url = "ws://0.0.0.0:8088/";
 	attr.url = url;
+
+  tutorial::AddressBook address_book;
+  address_book.people();
 
 	EMSCRIPTEN_WEBSOCKET_T socket = emscripten_websocket_new(&attr);
 	if (socket <= 0)
