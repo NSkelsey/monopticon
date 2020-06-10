@@ -620,7 +620,7 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
             Range2Di::fromSize(fbPosition, {1, 1}),
             {PixelFormat::R32UI});
 
-        UnsignedInt id = Containers::arrayCast<UnsignedInt>(data.data())[0];
+        UnsignedInt id = data.pixels<UnsignedInt>()[0][0];
 
         if(id > 0 && id < sCtx->_selectable_objects.size()+1) {
             Device::Selectable *selection = sCtx->_selectable_objects.at(id-1);

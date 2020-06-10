@@ -176,7 +176,6 @@ Monopticon::Level3::Address *Graphic::createIPv4Address(Context::Store *sCtx, co
 
 Monopticon::Device::PrefixStats *Graphic::createBroadcastPool(const std::string mac_prefix, Vector3 pos)
 {
-    std::cout << "vvv" << std::endl;
     auto *ring = Util::createLayoutRing(_scene, _permanent_drawables, 1.0f, pos);
 
     // Add a label to the bcast ring
@@ -185,7 +184,6 @@ Monopticon::Device::PrefixStats *Graphic::createBroadcastPool(const std::string 
     obj->transform(scaling);
     obj->translate(pos);
     auto c = 0xaaaaaa_rgbf;
-    std::cout << "www" << std::endl;
     new Figure::TextDrawable(mac_prefix, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
 
     Device::PrefixStats *dp_s = new Device::PrefixStats{mac_prefix, pos, ring};
@@ -332,7 +330,6 @@ void Graphic::draw3DElements()
     // Ensure the custom framebuffer is clear for the draw
     _objselect_framebuffer
         .clear(GL::FramebufferClear::Color)
-        .clearColor(1, Vector4ui{})
         .bind();
 
     // Draw selectable objects to custom framebuffer
