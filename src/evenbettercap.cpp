@@ -615,35 +615,32 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
 
 
     if(event.button() == MouseEvent::Button::Left && !_draggedMouse) {
-        // Read object ID at given click position (framebuffer has Y up while windowing system Y down)
-        //gCtx->_objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{1});
+        deselectObject();
+
+        // First scale the position from being relative to window size to being
+        // relative to framebuffer size as those two can be different on HiDPI
+        // systems
+        const Vector2i position = event.position()*Vector2{framebufferSize()}/Vector2{windowSize()};
+        const Vector2i fbPosition{position.x(), GL::defaultFramebuffer.viewport().sizeY() - position.y() - 1};
+
+        gCtx->_objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{1});
         Image2D data = gCtx->_objselect_framebuffer.read(
-            Range2Di::fromSize({event.position().x(),
-            gCtx->_objselect_framebuffer.viewport().sizeY() - event.position().y() - 1},
-            {1, 1}),
+            Range2Di::fromSize(fbPosition, {1, 1}),
             {PixelFormat::R32UI});
 
-        deselectObject();
-        UnsignedByte id = Containers::arrayCast<UnsignedByte>(data.data())[0];
-        unsigned short i = static_cast<unsigned short>(id);
-        std::cout << "obj_id" << std::endl;
-        std::cout << i << std::endl;
-        if(i > 0 && i < sCtx->_selectable_objects.size()+1) {
-            Device::Selectable *selection = sCtx->_selectable_objects.at(i-1);
+        UnsignedInt id = Containers::arrayCast<UnsignedInt>(data.data())[0];
+
+        if(id > 0 && id < sCtx->_selectable_objects.size()+1) {
+            Device::Selectable *selection = sCtx->_selectable_objects.at(id-1);
 
             objectClicked(selection);
 
-            if (btn == MouseEvent::Button::Left) {
-                gCtx->_cameraRig->resetTransformation();
-                gCtx->_cameraRig->translate(selection->getTranslation());
-            } else if (btn == MouseEvent::Button::Right) {
-                _openPopup = true;
-            }
+            gCtx->_cameraRig->resetTransformation();
+            gCtx->_cameraRig->translate(selection->getTranslation());
         }
     }
 
     _draggedMouse = false;
-    std::cout << "accepted event" << std::endl;
     event.setAccepted();
     redraw();
 }
