@@ -119,7 +119,7 @@ RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::Dr
     //_shader = &Shaders::Flat3D{};
 }
 
-RingDrawable& RingDrawable::setMesh(Trade::MeshData3D mesh) {
+RingDrawable& RingDrawable::setMesh(Trade::MeshData mesh) {
     _mesh = MeshTools::compile(mesh);
     return *this;
 }

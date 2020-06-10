@@ -71,7 +71,7 @@
 #include <Magnum/Text/AbstractFont.h>
 #include <Magnum/Text/DistanceFieldGlyphCache.h>
 #include <Magnum/Text/Renderer.h>
-#include <Magnum/Trade/MeshData3D.h>
+#include <Magnum/Trade/MeshData.h>
 
 #include <imgui.h>
 
@@ -344,7 +344,7 @@ class RingDrawable: public Object3D, public SceneGraph::Drawable3D {
     public:
         explicit RingDrawable(Object3D& object, const Color4& color, SceneGraph::DrawableGroup3D& group);
 
-        RingDrawable& setMesh(Trade::MeshData3D mesh);
+        RingDrawable& setMesh(Trade::MeshData mesh);
 
     private:
         void draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) override;

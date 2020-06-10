@@ -24,63 +24,25 @@ Graphic::Graphic() : _glyphCache(Vector2i(2048), Vector2i(512), 22)
 
     _poolCircle = MeshTools::compile(Primitives::circle3DWireframe(20));
 
-    std::cout << "kkk" << std::endl;
     _line_shader = Figure::ParaLineShader{};
-    std::cout << "jjj" << std::endl;
     _phong_id_shader = Figure::PhongIdShader{};
     _phong_shader = Shaders::Phong{Shaders::Phong::Flag::ObjectId};
-    std::cout << "iii" << std::endl;
     _pool_shader = Figure::PoolShader{};
-    std::cout << "hhh" << std::endl;
     _link_shader = Figure::WorldLinkShader{};
 
     _bbitem_shader = Shaders::Flat3D{};
     _bbitem_shader.setColor(0x00ff00_rgbf);
-    std::cout << "fff" << std::endl;
 
     {
-        std::cout << "ggg" << std::endl;
         Trade::MeshData data = Primitives::uvSphereSolid(8.0f, 30.0f);
-
-        //GL::Buffer sphereVertices, sphereIndices;
-
-        //sphereVertices.setData(MeshTools::interleave(data.positions3DAsArray(), data.normalsAsArray()), GL::BufferUsage::StaticDraw);
-        std::cout << "ggg0" << std::endl;
-
-        //sphereIndices.setData(data.indicesAsArray(), GL::BufferUsage::StaticDraw);
-
         _sphere = MeshTools::compile(data);
-
-        std::cout << "gg1" << std::endl;
-        /*
-        _sphere.setCount(data.indexCount())
-               .setPrimitive(data.primitive())
-               .addVertexBuffer(sphereVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
-               .setIndexBuffer(sphereIndices, 0, MeshIndexType::UnsignedShort);
-        */
-        std::cout << "gg2" << std::endl;
     }
     {
-        Trade::MeshData3D data = Primitives::cubeSolid();
-
-        GL::Buffer cubeVertices, cubeIndices;
-
-        /*
-        cubeVertices.setData(MeshTools::interleave(data.positions(0), data.normals(0)), GL::BufferUsage::StaticDraw);
-        cubeIndices.setData(MeshTools::compressIndicesAs<UnsignedShort>(data.indices()), GL::BufferUsage::StaticDraw);
-        _cubeMesh.setCount(data.indices().size())
-               .setPrimitive(data.primitive())
-               .addVertexBuffer(cubeVertices, 0, Figure::PhongIdShader::Position{}, Figure::PhongIdShader::Normal{})
-               .setIndexBuffer(cubeIndices, 0, MeshIndexType::UnsignedShort);
-       */
-
+        Trade::MeshData data = Primitives::cubeSolid();
         _cubeMesh = MeshTools::compile(data);
     }
-    std::cout << "yyy" << std::endl;
 
     prepare3DFont();
-    std::cout << "zzz" << std::endl;
-    //prepareDrawables();
 }
 
 void Graphic::prepareGLBuffers(const Range2Di &viewport)
@@ -91,8 +53,6 @@ void Graphic::prepareGLBuffers(const Range2Di &viewport)
     _color.setStorage(GL::RenderbufferFormat::RGBA8, viewport.size());
     _objectId.setStorage(GL::RenderbufferFormat::R32UI, viewport.size());
 
-    std::cout << "eee" << std::endl;
-
     _objselect_framebuffer = GL::Framebuffer{viewport};
     _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _color)
                           .attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
@@ -100,7 +60,6 @@ void Graphic::prepareGLBuffers(const Range2Di &viewport)
                     {Shaders::Phong::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}
         });
  
-    std::cout << "fff" << std::endl;
 
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 }

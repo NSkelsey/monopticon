@@ -19,11 +19,6 @@ namespace Monopticon {
 
 const int MSAA_CNT = 8; // Number of subpixel samples for MultiSampling Anti-Aliasing
 
-// Layout constants
-const int num_rings = 8;
-const int elems_per_ring[8]{1, 4, 8, 16, 32, 64, 256, 10000};
-const float ring_radii[8]{0.0f, 4.0f, 8.0f, 12.0f, 16.0f, 24.0f, 32.0f, 64.0f};
-
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -117,9 +112,6 @@ Application::Application(const Arguments& arguments):
     SDL_Window* sdl_window = Magnum::Platform::Sdl2Application::window();
     SDL_SetWindowIcon(sdl_window, sdl_surf);
     */
-
-    uint16_t listen_port = 9999;
-    std::string addr = "127.0.0.1";
 
     //brokerCtx = new Parse::BrokerCtx(addr, listen_port);
 
