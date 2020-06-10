@@ -91,6 +91,7 @@ class Application: public Platform::Application {
 
         bool _orbit_toggle{false};
         bool _openPopup{false};
+        bool _draggedMouse{false};
 };
 
 
@@ -613,9 +614,9 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
     if(!(btn == MouseEvent::Button::Left || btn == MouseEvent::Button::Right)) return;
 
 
-    if(event.button() == MouseEvent::Button::Left) {
-        /* Read object ID at given click position (framebuffer has Y up while windowing system Y down) */
-        gCtx->_objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{1});
+    if(event.button() == MouseEvent::Button::Left && !_draggedMouse) {
+        // Read object ID at given click position (framebuffer has Y up while windowing system Y down)
+        //gCtx->_objselect_framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{1});
         Image2D data = gCtx->_objselect_framebuffer.read(
             Range2Di::fromSize({event.position().x(),
             gCtx->_objselect_framebuffer.viewport().sizeY() - event.position().y() - 1},
@@ -640,9 +641,11 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
             }
         }
     }
+
+    _draggedMouse = false;
+    std::cout << "accepted event" << std::endl;
     event.setAccepted();
     redraw();
-
 }
 
 
@@ -651,6 +654,7 @@ void Application::mouseMoveEvent(MouseMoveEvent& event) {
 
     if(!(event.buttons() & MouseMoveEvent::Button::Left)) return;
 
+    _draggedMouse = true;
     const Vector2 delta = 3.0f*
         Vector2{event.position() - _previousMousePosition}/
         Vector2{GL::defaultFramebuffer.viewport().size()};
