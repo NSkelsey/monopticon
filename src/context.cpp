@@ -6,11 +6,9 @@ Graphic::Graphic() : _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
     MAGNUM_ASSERT_GL_VERSION_SUPPORTED(GL::Version::GLES300);
 
-    std::cout << "ddd" << std::endl;
     auto viewport = GL::defaultFramebuffer.viewport();
     prepareGLBuffers(viewport);
 
-    std::cout << "fff" << std::endl;
     /* Camera setup */
     (*(_cameraRig = new Object3D{&_scene}))
         .rotateY(40.0_degf);
@@ -50,15 +48,11 @@ void Graphic::prepareGLBuffers(const Range2Di &viewport)
     GL::defaultFramebuffer.setViewport(viewport);
 
     // Prepare the object select buffer;
-    _color.setStorage(GL::RenderbufferFormat::RGBA8, viewport.size());
     _objectId.setStorage(GL::RenderbufferFormat::R32UI, viewport.size());
 
     _objselect_framebuffer = GL::Framebuffer{viewport};
-    _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{0}, _color)
-                          .attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
-        .mapForDraw({{Shaders::Phong::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
-                    {Shaders::Phong::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}
-        });
+    _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
+        .mapForDraw({{Shaders::Phong::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}});
  
 
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
@@ -66,7 +60,6 @@ void Graphic::prepareGLBuffers(const Range2Di &viewport)
 
 void Graphic::destroyGLBuffers()
 {
-    _objselect_framebuffer.detach(GL::Framebuffer::ColorAttachment{0});
     _objselect_framebuffer.detach(GL::Framebuffer::ColorAttachment{1});
 }
 
@@ -329,7 +322,7 @@ void Graphic::draw3DElements()
 {
     // Ensure the custom framebuffer is clear for the draw
     _objselect_framebuffer
-        .clear(GL::FramebufferClear::Color)
+        .clearColor(1, Vector4ui{})
         .bind();
 
     // Draw selectable objects to custom framebuffer
