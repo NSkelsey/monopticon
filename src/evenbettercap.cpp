@@ -643,10 +643,18 @@ void Application::mouseMoveEvent(MouseMoveEvent& event) {
 
     if(!(event.buttons() & MouseMoveEvent::Button::Left)) return;
 
-    _draggedMouse = true;
     const Vector2 delta = 3.0f*
         Vector2{event.position() - _previousMousePosition}/
         Vector2{GL::defaultFramebuffer.viewport().size()};
+
+    const Deg x_rot = Deg{-delta.x()};
+    const Deg y_rot = Deg{-delta.y()};
+
+    // Check if any single rotation was large enough to debounce _draggedMouse
+    const Deg threshold = Deg{0.005};
+    if (x_rot > threshold || y_rot > threshold) {
+        _draggedMouse = true;
+    }
 
     (*gCtx->_cameraObject)
         .rotate(Rad{-delta.y()}, gCtx->_cameraObject->transformation().right().normalized())
