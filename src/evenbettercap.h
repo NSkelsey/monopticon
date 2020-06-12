@@ -138,7 +138,6 @@ namespace Util {
 
 
     void print_peer_subs();
-    std::string exec_output(std::string cmd);
     std::vector<std::string> get_iface_list();
 
     enum L3Type {
@@ -337,7 +336,6 @@ class DeviceDrawable: public Object3D, public SceneGraph::Drawable3D {
         Shaders::Phong& _shader;
         GL::Mesh& _mesh;
         Matrix4 _primitiveTransformation;
-        bool _drop;
         float _t;
 };
 

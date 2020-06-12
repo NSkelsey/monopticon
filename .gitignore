@@ -70,3 +70,4 @@ pkg/arch/.*
 pkg/arch/pkg
 pkg/arch/monopticon
 pkg/docker/*.txt
+pkg/docket/ubuntu/tmp

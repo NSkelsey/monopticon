@@ -42,6 +42,7 @@ event icmp_echo_request(conn: connection, icmp: icmp_conn, id: count, seq: count
     Log::write(Aural::PINGLOG, tr_info);
 }
 
+
 event icmp_echo_reply(conn: connection, icmp: icmp_conn, id: count, seq: count, payload: string) {
     print "pong";
     local tr_info = [

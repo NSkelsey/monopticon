@@ -651,7 +651,7 @@ void Application::mouseMoveEvent(MouseMoveEvent& event) {
     const Deg y_rot = Deg{-delta.y()};
 
     // Check if any single rotation was large enough to debounce _draggedMouse
-    const Deg threshold = Deg{0.005};
+    const Deg threshold = Deg{0.0025};
     if (x_rot > threshold || y_rot > threshold) {
         _draggedMouse = true;
     }

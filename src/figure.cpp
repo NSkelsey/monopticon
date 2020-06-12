@@ -80,7 +80,6 @@ DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, Shaders::Phong
     _shader(shader),
     _mesh(mesh),
     _primitiveTransformation{primitiveTransformation},
-    _drop{true},
     _t{1.0f} {}
 
 
@@ -106,7 +105,7 @@ void DeviceDrawable::draw(const Matrix4& transformation, SceneGraph::Camera3D& c
            /* relative to the camera */
            .setLightPosition({0.0f, 4.0f, 3.0f})
            .setObjectId(_id+1);
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }
 
 
@@ -128,7 +127,7 @@ RingDrawable& RingDrawable::setMesh(Trade::MeshData mesh) {
 void RingDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     _shader.setColor(0xffffff_rgbf)
            .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }
 
 
@@ -214,7 +213,7 @@ void PacketLineDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::C
            .setAPos(_a)
            .setTParam(_t)
            .setColor(_c);
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }
 
 
@@ -235,7 +234,7 @@ void UnitBoardDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Ca
     auto b = camera.projectionMatrix()*sphericalBBoardMatrix;
 
     _shader.setTransformationProjectionMatrix(b);
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }
 
 
@@ -282,10 +281,8 @@ void TextDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3
            .setColor(_c)
            .setSmoothness(0.025f/0.10f); // NOTE this was uniformScaling() instead it is just the value
 
-    _textRenderer->mesh().draw(_shader);
-
     _shader.setTransformationProjectionMatrix(b);
-    _textRenderer->mesh().draw(_shader);
+    _shader.draw(_textRenderer->mesh());
 }
 
 
@@ -305,7 +302,7 @@ RouteDrawable::RouteDrawable(Object3D& object, Vector3& a, Vector3& b, Shaders::
 void RouteDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& camera) {
     _shader.setColor(0xffffff_rgbf)
            .setTransformationProjectionMatrix(camera.projectionMatrix()*transformationMatrix);
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }
 
 
@@ -376,7 +373,7 @@ void MulticastDrawable::draw(const Matrix4& transformationMatrix, SceneGraph::Ca
            .setOriginPos(_origin)
            .setColor(_c)
            .setTParam(_t);
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }
 
 
@@ -445,5 +442,5 @@ void WorldScreenLink::draw(const Matrix4& transformationMatrix, SceneGraph::Came
            .setOriginPos(_origin)
            .setScreenPos(_screenPos)
            .setColor(_c);
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }

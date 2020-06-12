@@ -45,7 +45,7 @@ int Util::SumTotal(Util::L2Summary struct_l2) {
 
 
 Vector2 Util::randCirclePoint() {
-    float r = rand() / (RAND_MAX/(2*Math::Constants<float>::pi()));
+    float r = rand() / (1e9/(2*Math::Constants<float>::pi()));
 
     float steps = 16.0f;
     float max = 2*Math::Constants<float>::pi();
@@ -82,26 +82,10 @@ Vector2 Util::randOffset(float z) {
 }
 
 
-std::string Util::exec_output(std::string cmd) {
-    std::array<char, 128> buffer;
-    std::string result;
-    /*
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
-        throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-    return result;
-*/ return "";
-    }
-
-
 std::vector<std::string> Util::get_iface_list() {
     auto v = std::vector<std::string>{};
     std::string g = "monopt_iface_proto list_ifaces";
-    std::string s = Util::exec_output(g);
+    std::string s = "";
     std::stringstream ss(s);
     std::string t;
     while (std::getline(ss,t,'\n')) {

@@ -28,7 +28,7 @@ void Address::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& ca
            .setLightPosition({0.0f, 4.0f, 3.0f})
            .setObjectId(_id+1);
 
-    _mesh.draw(_shader);
+    _shader.draw(_mesh);
 }
 
 

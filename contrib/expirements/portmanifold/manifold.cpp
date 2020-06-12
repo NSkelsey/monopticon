@@ -53,7 +53,7 @@ class SocketDrawable: public Object2D, public SceneGraph::Drawable2D {
 	    auto b = transformation*transformation.rotation(t*Rad{0.5});
             _shader.setTransformationProjectionMatrix(camera.projectionMatrix()*b);
 
-            _mesh.draw(_shader);
+            _shader.draw(_mesh);
         };
 
         Color3 _c;

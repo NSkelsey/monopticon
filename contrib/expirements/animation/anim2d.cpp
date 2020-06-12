@@ -85,7 +85,7 @@ class SocketDrawable: public Object2D, public SceneGraph::Drawable2D {
             _shader.setColor(_c)
                    .setTransformationProjectionMatrix(camera.projectionMatrix()*transformation);
 
-            _mesh.draw(_shader);
+            _shader.draw(_mesh);
         };
 
         Color3 _c;
