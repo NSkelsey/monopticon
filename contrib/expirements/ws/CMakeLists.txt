@@ -12,6 +12,8 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS OFF)
 set(websock_FILES
 	liteout/addressbook.pb.h
 	liteout/addressbook.pb.cc
+	epoch.pb.h
+	epoch.pb.cc
 	websock_proto.cpp
 )
 

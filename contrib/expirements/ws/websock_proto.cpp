@@ -1,12 +1,12 @@
-#include "treout/addressbook.pb.h"
-
 #include <streambuf>
 #include <istream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <emscripten/websocket.h>
 #include <assert.h>
 
+#include <emscripten/websocket.h>
+
+#include "epoch.pb.h"
 
 struct membuf: std::streambuf {
     membuf(uint8_t* base, size_t size) {
@@ -26,12 +26,12 @@ EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void
 {
     printf("open(eventType=%d, userData=%d)\n", eventType, (int)userData);
 
-    tutorial::Person ghostman;
-    ghostman.set_id(9000);
-    ghostman.set_email("hello@protobuffers.com");
-    int len = ghostman.ByteSizeLong();
+    epoch::L2Summary l2;
+    l2.set_mac_dst(9000);
+    l2.set_ipv4(100);
+    int len = l2.ByteSizeLong();
     char* array = new char[len];
-    ghostman.SerializeToArray(array, len);
+    l2.SerializeToArray(array, len);
 
     emscripten_websocket_send_binary(e->socket, array, len);
     return 0;
@@ -61,21 +61,19 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
     }
     else
     {
-        printf("binary data:");
+        //printf("binary data:");
         imemstream in(e->data, e->numBytes);
-        tutorial::Person p;
+        epoch::EpochStep ee;
 
-        p.ParseFromIstream(&in);
-        std::cout << "Returned " << p.email() << std::endl;
+        ee.ParseFromIstream(&in);
+        std::cout << "new l2_size: " << ee.enter_l2devices_size() << std::endl;
+        //std::cout << "device_comm: " << ee.l2_dev_comm_size() << std::endl;
 
         for(int i = 0; i < e->numBytes; ++i)
         {
-            printf(" %02X", e->data[i]);
+            //printf(" %02X", e->data[i]);
         }
-        printf("\n");
-
-        emscripten_websocket_close(e->socket, 0, 0);
-        emscripten_websocket_delete(e->socket);
+        //printf("\n");
     }
     return 0;
 }

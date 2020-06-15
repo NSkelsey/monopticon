@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package epoch;
+
+option optimize_for = LITE_RUNTIME;
+
+message L2Summary {
+    fixed64 mac_dst = 1;
+    uint32 ipv4 = 2;
+    uint32 ipv6 = 3;
+    uint32 arp = 4;
+    uint32 unknown = 5;
+};
+
+message DeviceComm {
+    fixed64 mac_src = 1;
+ 
+    repeated L2Summary tx_summary = 2;
+    
+    L2Summary bcast_33 = 3;
+    L2Summary bcast_ff = 4;
+    L2Summary bcast_01 = 5;
+    L2Summary bcast_XX = 6;
+};
+
+message AddrAssoc {
+    fixed64 mac_src = 1;
+    fixed32 ipv4 = 2;
+};
+
+message ArpAssoc {
+    fixed64 mac_src = 1;
+    repeated AddrAssoc table_row = 2;
+};
+
+message EpochStep {
+    repeated fixed64 enter_l2devices = 1;
+    repeated DeviceComm l2_dev_comm = 2;
+
+    repeated AddrAssoc enter_l2_ipv4_addr_src = 3;
+    repeated ArpAssoc enter_arp_table = 4;
+};
