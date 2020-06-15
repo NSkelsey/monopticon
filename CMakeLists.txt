@@ -33,18 +33,23 @@ find_package(Magnum REQUIRED
 corrade_add_resource(monopticon_RESOURCES resources.conf)
 
 set(monopticon_FILES
+        contrib/expirements/ws/epoch.pb.h
+        contrib/expirements/ws/epoch.pb.cc
         src/evenbettercap.h
         src/eth_device.cpp
         src/figure.cpp
         src/levelthree.cpp
         src/util.cpp
         src/context.cpp
+        src/ws_context.cpp
         src/evenbettercap.cpp
     )
 
 add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 
 target_link_libraries(monopticon PRIVATE
+    websocket
+    protobuf
     Corrade::Utility
     Corrade::Containers
     Magnum::Application

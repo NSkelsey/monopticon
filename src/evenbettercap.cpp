@@ -52,9 +52,9 @@ class Application: public Platform::Application {
 
         void DeleteEverything();
 
-        //Parse::BrokerCtx     *brokerCtx;
-        Context::Graphic *gCtx;
+        Context::Graphic  *gCtx;
         Context::Store    *sCtx;
+        Context::WsBroker *wCtx;
 
     private:
         // UI fields
@@ -117,6 +117,9 @@ Application::Application(const Arguments& arguments):
 
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
+
+    std::string uri = "ws://localhost:8088/";
+    Context::WsBroker* bCtx = new Context::WsBroker(uri, gCtx, sCtx);
 
     srand(time(nullptr));
 
@@ -446,7 +449,7 @@ void Application::drawEvent() {
     //brokerCtx->processNetworkEvents(sCtx, gCtx);
 
     if (frame_cnt % 60 == 0) {
-        _iface_list = Util::get_iface_list();
+        //_iface_list = Util::get_iface_list();
     }
 
 

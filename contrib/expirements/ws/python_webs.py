@@ -33,8 +33,8 @@ async def publish_events(websocket, path):
     await websocket.send(ee.SerializeToString())
 
     while(True):
-        time.sleep(0.005)
         ef = new_random_epoch(1)
+        time.sleep(0.02)
         await websocket.send(ef.SerializeToString())
 
     print("Sent everything")

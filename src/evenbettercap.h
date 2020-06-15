@@ -1,11 +1,13 @@
 #ifndef _INCL_ebc
 #define _INCL_ebc
 
+#include <assert.h>
 #include <array>
 #include <cstdio>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <istream>
 #include <math.h>
 #include <memory>
 #include <vector>
@@ -13,12 +15,14 @@
 #include <sstream>
 #include <stdexcept>
 #include <stdio.h>
+#include <streambuf>
 #include <string>
 #include <unordered_map>
 #include <map>
 #include <unistd.h>
 
 #include <SDL.h>
+#include <emscripten/websocket.h>
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pointer.h>
@@ -76,6 +80,9 @@
 
 #include <imgui.h>
 
+// TODO move to src
+#include "../contrib/expirements/ws/epoch.pb.h"
+
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -111,10 +118,6 @@ namespace Monopticon {
 
     class Address;
 
-  }
-
-  namespace Parse {
-      class BrokerCtx;
   }
 
 // Definitions
@@ -594,9 +597,20 @@ namespace Context {
             Shaders::DistanceFieldVector3D _text_shader;
     };
 
+
+    class WsBroker {
+        public:
+            WsBroker(std::string ws_uri, Graphic *g, Store *s);
+
+        private:
+            Graphic *gCtx;
+            Store *sCtx;
+    };
+
 }
 
 namespace Parse {
+
 
 class BrokerCtx {
     public:
