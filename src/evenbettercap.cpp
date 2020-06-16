@@ -119,7 +119,7 @@ Application::Application(const Arguments& arguments):
     sCtx = new Context::Store();
 
     std::string uri = "ws://localhost:8088/";
-    Context::WsBroker* bCtx = new Context::WsBroker(uri, gCtx, sCtx);
+    wCtx = new Context::WsBroker(uri, gCtx, sCtx);
 
     srand(time(nullptr));
 
@@ -152,14 +152,14 @@ void Application::prepareDrawables() {
 
 
     for (int i = 0; i < 40; i++) {
-	//std::string *mac_src = new std::string(17, ' ');
-	//gen_random(mac_src, 2);
-	std::string *mac_src = new std::string("0e:6f:66:05:19:" + std::to_string(i));
+        //std::string *mac_src = new std::string(17, ' ');
+        //gen_random(mac_src, 2);
+        std::string *mac_src = new std::string(std::to_string(i));
 
         Device::Stats *d_s = gCtx->createSphere(sCtx, *mac_src);
         //sCtx->_device_map.insert(std::make_pair(*mac_src, d_s));
         gCtx->addDirectLabels(d_s);
-	gCtx->createIPv4Address(sCtx, "1.0.1.1", d_s->circPoint);
+        gCtx->createIPv4Address(sCtx, "1.0.1.1", d_s->circPoint);
    }
 }
 
@@ -307,7 +307,7 @@ void Application::drawIMGuiElements() {
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
             1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
 
-    //brokerCtx->StatsGui();
+    wCtx->StatsGui();
 
     ImGui::End();
 
@@ -445,44 +445,9 @@ void Application::watchSelectedDevice() {
 
 
 void Application::drawEvent() {
+    wCtx->frameUpdate();
 
-    //brokerCtx->processNetworkEvents(sCtx, gCtx);
-
-    if (frame_cnt % 60 == 0) {
-        //_iface_list = Util::get_iface_list();
-    }
-
-
-    // Remove packet_lines that have expired from the queue
-    std::set<Figure::PacketLineDrawable *>::iterator it;
-    for (it = sCtx->_packet_line_queue.begin(); it != sCtx->_packet_line_queue.end(); ) {
-        // Note this is an O(N) operation
-        Figure::PacketLineDrawable *pl = *it;
-        if (pl->_expired) {
-            it = sCtx->_packet_line_queue.erase(it);
-            delete pl;
-        } else {
-            ++it;
-        }
-    }
-
-    // Remove mcast drawables that have expired
-    for (auto it2 = sCtx->_dst_prefix_group_map.begin(); it2 != sCtx->_dst_prefix_group_map.end(); it2++) {
-        Device::PrefixStats *dp_s = (*it2).second;
-        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
-        for (auto it3 = c.begin(); it3 != c.end(); ) {
-            auto pair = *it3;
-            if ((pair.first)->expired) {
-                it3 = c.erase(it3);
-                delete pair.first;
-                delete pair.second;
-            } else {
-                ++it3;
-            }
-        }
-        // TODO get answers from xenomit
-        dp_s->contacts = c;
-    }
+    sCtx->frameUpdate();
 
     gCtx->draw3DElements();
 

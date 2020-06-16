@@ -56,19 +56,14 @@ std::chrono::steady_clock::time_point last_msg_time;
 
 EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData)
 {
-    auto now = std::chrono::steady_clock::now();
-    std::chrono::duration<int64_t, std::nano> dur = now - last_msg_time;
-
-    !Debug{} << dur.count();
-
-    Pass *p = (Pass*)userData;
-    //!Debug{} << p;
-
     if (e->isText) {
-        printf("text data: \"%s\"\n", e->data);
+        return 0;
     }
-    else {
-        //printf("binary data:");
+    Context::WsBroker *b = (Context::WsBroker*)userData;
+
+    b->event_cnt += 1;
+
+    if (b->event_cnt % b->inv_sample_rate == 0) {
         imemstream in(e->data, e->numBytes);
         epoch::EpochStep ee;
 
@@ -81,13 +76,23 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
         Vector2 p_2 = Util::paramCirclePoint(50, rand()%50);
         Vector3 p2 = Vector3(8*p_2.x(), 0, 8*p_2.y());
 
-        p->g->createLines(p->s, p1, p2, Util::L3Type::ARP, 1);
+        b->gCtx->createLines(b->sCtx, p1, p2, Util::L3Type::ARP, 1);
+        b->epoch_packets_sum += 1;
+    } else {
+        b->tot_epoch_drop += 1;
+    }
+
+    if (b->event_cnt % 16 == 0 && b->inv_sample_rate <= 16) {
+        b->inv_sample_rate = b->inv_sample_rate*2;
     }
     return 0;
 }
 
 
-WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s) {
+WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s):
+    gCtx{g},
+    sCtx{s}
+{
     if (!emscripten_websocket_is_supported())
     {
         printf("WebSockets are not supported, cannot continue!\n");
@@ -116,10 +121,45 @@ WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s) {
     Pass *p = new Pass{s, g};
     last_msg_time = std::chrono::steady_clock::now();
 
-    emscripten_websocket_set_onopen_callback(socket, p, WebSocketOpen);
-    emscripten_websocket_set_onclose_callback(socket, p, WebSocketClose);
-    emscripten_websocket_set_onerror_callback(socket, p, WebSocketError);
-    emscripten_websocket_set_onmessage_callback(socket, p, WebSocketMessage);
+    emscripten_websocket_set_onopen_callback(socket, this, WebSocketOpen);
+    emscripten_websocket_set_onclose_callback(socket, this, WebSocketClose);
+    emscripten_websocket_set_onerror_callback(socket, this, WebSocketError);
+    emscripten_websocket_set_onmessage_callback(socket, this, WebSocketMessage);
+}
+
+void WsBroker::StatsGui() {
+    auto s = "Sample rate %.3f SPS event cnt %d";
+    if (inv_sample_rate > 1.0) {
+        ImGui::TextColored(ImVec4(1,0,0,1), s, 1.0/inv_sample_rate, event_cnt);
+    } else {
+        ImGui::Text(s, 1.0/inv_sample_rate, event_cnt);
+    }
+
+    auto r = "Pkt Lag %.1f ms; Pkt drop: %d; Epoch drop: %d";
+    double t = curr_ws_lag.count()/1000000.0;
+    if (curr_ws_lag > std::chrono::milliseconds(5)) {
+        ImGui::TextColored(ImVec4(1,0,0,1), r, t, tot_ws_drop, tot_epoch_drop);
+    } else {
+        ImGui::Text(r, t, tot_ws_drop, tot_epoch_drop);
+    }
+
+    ImGui::Separator();
+    ifaceChartMgr.draw();
+    ImGui::Separator();
+    ifaceLongChartMgr.draw();
+    ImGui::Separator();
+}
+
+void WsBroker::frameUpdate() {
+    event_cnt = 0;
+
+    if (event_cnt < 8 && inv_sample_rate > 1) {
+        inv_sample_rate = inv_sample_rate/2;
+    }
+
+    ifaceChartMgr.push(static_cast<float>(epoch_packets_sum));
+    ifaceLongChartMgr.push(static_cast<float>(epoch_packets_sum));
+    epoch_packets_sum = 0;
 }
 
 }

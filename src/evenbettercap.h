@@ -520,12 +520,25 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
 }
 
 namespace Context {
+
+    /** @file
+     * @brief Class @ref Monopticon::Context::Store
+     *
+     */
     class Store {
         public:
             Store();
 
             Vector2 nextVlanPos(const int vlan);
             UnsignedByte newObjectId();
+
+            /**
+             * @brief Clean up expired items
+             *
+             * Checks for expired packet line and mcast drawables
+             * and removes them from their respective queues.
+             */
+            void frameUpdate();
 
             // Scene objects
             std::vector<Device::Selectable*> _selectable_objects{};
@@ -595,6 +608,8 @@ namespace Context {
 
             Text::DistanceFieldGlyphCache _glyphCache;
             Shaders::DistanceFieldVector3D _text_shader;
+
+            uint64_t frameCnt{0};
     };
 
 
@@ -602,9 +617,34 @@ namespace Context {
         public:
             WsBroker(std::string ws_uri, Graphic *g, Store *s);
 
-        private:
+            void StatsGui();
+
+            /**
+             * @brief Updates counters and graphs to track packet counts
+             *
+             * Updates internal states of attached @ref Device::ChartMgr
+             *
+             */
+            void frameUpdate();
+
             Graphic *gCtx;
             Store *sCtx;
+
+            bool peer_connected = false;
+
+            std::chrono::duration<int64_t, std::nano> curr_ws_lag;
+
+            // Custom ImGui interface components
+            Device::ChartMgr ifaceChartMgr{240, 3.0f};
+            Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
+
+            uint64_t curr_frame{0};
+            int tot_ws_drop{0};
+            int tot_epoch_drop{0};
+            int event_cnt{0};
+
+            int inv_sample_rate{1};
+            int epoch_packets_sum{0};
     };
 
 }

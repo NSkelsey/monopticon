@@ -367,3 +367,37 @@ Vector2 Store::nextVlanPos(const int vlan)
 
     return 4 * Vector2(vlan_x + 1, vlan_y + 1);
 }
+
+
+void Store::frameUpdate() {
+    // Remove packet_lines that have expired from the queue
+    std::set<Figure::PacketLineDrawable *>::iterator it;
+    for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {
+        // Note this is an O(N) operation
+        Figure::PacketLineDrawable *pl = *it;
+        if (pl->_expired) {
+            it = _packet_line_queue.erase(it);
+            delete pl;
+        } else {
+            ++it;
+        }
+    }
+
+    // Remove mcast drawables that have expired
+    for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
+        Device::PrefixStats *dp_s = (*it2).second;
+        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
+        for (auto it3 = c.begin(); it3 != c.end(); ) {
+            auto pair = *it3;
+            if ((pair.first)->expired) {
+                it3 = c.erase(it3);
+                delete pair.first;
+                delete pair.second;
+            } else {
+                ++it3;
+            }
+        }
+        // TODO get answers from xenomit
+        dp_s->contacts = c;
+    }
+}
