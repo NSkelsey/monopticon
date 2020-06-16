@@ -1,6 +1,6 @@
 #include "evenbettercap.h"
 
-namespace Monopticon::Context {
+namespace Monopticon { namespace Context {
 
 struct membuf: std::streambuf {
     membuf(uint8_t* base, size_t size) {
@@ -16,50 +16,36 @@ struct imemstream: virtual membuf, std::istream {
     }
 };
 
-EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData)
+static EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData)
 {
-    //printf("open(eventType=%d, userData=%d)\n", eventType, (int)userData);
-
-    epoch::L2Summary l2;
-    l2.set_mac_dst(9000);
-    l2.set_ipv4(100);
-    int len = l2.ByteSizeLong();
-    char* array = new char[len];
-    l2.SerializeToArray(array, len);
-
-    emscripten_websocket_send_binary(e->socket, array, len);
+    Context::WsBroker *b = static_cast<Context::WsBroker*>(userData);
+    b->socket_connected = true;
+    !Debug{} << "WS open:" << eventType;
     return 0;
 }
 
-EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData)
+static EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData)
 {
-    //printf("close(eventType=%d, wasClean=%d, code=%d, reason=%s, userData=%d)\n", eventType, e->wasClean, e->code, e->reason, (int)userData);
+    Context::WsBroker *b = static_cast<Context::WsBroker*>(userData);
+    b->socket_connected = false;
+    !Debug{} << "WS closed:" << eventType << " " << e->code << " " << e->reason;
     return 0;
 }
 
-EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *userData)
+static EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *_)
 {
-    //printf("error(eventType=%d, userData=%d)\n", eventType, (int)userData);
+    !Debug{} << "WS error:" << eventType << " " << e;
     return 0;
 }
 
-static int passed = 0;
 
-struct Pass {
-    Store* s;
-    Graphic* g;
-};
-
-
-std::chrono::steady_clock::time_point last_msg_time;
-
-
-EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData)
+static EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData)
 {
     if (e->isText) {
+        !Debug{} << "WS unexpected input" << eventType;
         return 0;
     }
-    Context::WsBroker *b = (Context::WsBroker*)userData;
+    Context::WsBroker *b = static_cast<Context::WsBroker*>(userData);
 
     b->event_cnt += 1;
 
@@ -95,8 +81,8 @@ WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s):
 {
     if (!emscripten_websocket_is_supported())
     {
-        printf("WebSockets are not supported, cannot continue!\n");
-        exit(1);
+        !Debug{} << "WebSocket creation failed, error code" << socket;
+        return;
     }
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -106,11 +92,11 @@ WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s):
 
     attr.url = ws_uri.c_str();
 
-    EMSCRIPTEN_WEBSOCKET_T socket = emscripten_websocket_new(&attr);
+    socket = emscripten_websocket_new(&attr);
     if (socket <= 0)
     {
-        printf("WebSocket creation failed, error code %d!\n", (EMSCRIPTEN_RESULT)socket);
-        exit(1);
+        !Debug{} << "WebSocket creation failed, error code" << socket;
+        return;
     }
 
     int urlLength = 0;
@@ -118,16 +104,20 @@ WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s):
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);
     assert(urlLength == strlen(url));
 
-    Pass *p = new Pass{s, g};
-    last_msg_time = std::chrono::steady_clock::now();
-
     emscripten_websocket_set_onopen_callback(socket, this, WebSocketOpen);
     emscripten_websocket_set_onclose_callback(socket, this, WebSocketClose);
     emscripten_websocket_set_onerror_callback(socket, this, WebSocketError);
     emscripten_websocket_set_onmessage_callback(socket, this, WebSocketMessage);
 }
 
-void WsBroker::StatsGui() {
+void WsBroker::closeSocket() {
+    !Debug{} << "WS user close";
+    emscripten_websocket_close(socket, 0, 0);
+    emscripten_websocket_delete(socket);
+    socket_connected = false;
+}
+
+void WsBroker::statsGui() {
     auto s = "Sample rate %.3f SPS event cnt %d";
     if (inv_sample_rate > 1.0) {
         ImGui::TextColored(ImVec4(1,0,0,1), s, 1.0/inv_sample_rate, event_cnt);
@@ -162,4 +152,4 @@ void WsBroker::frameUpdate() {
     epoch_packets_sum = 0;
 }
 
-}
+}}

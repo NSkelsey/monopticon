@@ -617,7 +617,7 @@ namespace Context {
         public:
             WsBroker(std::string ws_uri, Graphic *g, Store *s);
 
-            void StatsGui();
+            void statsGui();
 
             /**
              * @brief Updates counters and graphs to track packet counts
@@ -627,10 +627,17 @@ namespace Context {
              */
             void frameUpdate();
 
+            /**
+             *  @brief Closes the underlying websocket needs hooks for state updates
+             */
+            void closeSocket();
+
             Graphic *gCtx;
             Store *sCtx;
 
-            bool peer_connected = false;
+            EMSCRIPTEN_WEBSOCKET_T socket;
+
+            bool socket_connected = false;
 
             std::chrono::duration<int64_t, std::nano> curr_ws_lag;
 

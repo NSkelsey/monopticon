@@ -130,9 +130,6 @@ Monopticon::Level3::Address *Graphic::createIPv4Address(Context::Store *sCtx, co
     Vector3 offset{0.0f, 1.0f, 0.0f};
     auto t = pos + offset;
 
-    //std::cout << ipv4_addr << std::endl;
-    //Utility::Debug{} << t;
-
     Object3D *g = new Object3D{&_scene};
     Object3D *o = new Object3D{g};
 
@@ -397,7 +394,6 @@ void Store::frameUpdate() {
                 ++it3;
             }
         }
-        // TODO get answers from xenomit
         dp_s->contacts = c;
     }
 }

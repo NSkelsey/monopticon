@@ -113,8 +113,6 @@ Application::Application(const Arguments& arguments):
     SDL_SetWindowIcon(sdl_window, sdl_surf);
     */
 
-    //brokerCtx = new Parse::BrokerCtx(addr, listen_port);
-
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
 
@@ -181,8 +179,6 @@ void Application::drawTextElements() {
 }
 
 
-
-
 void Application::drawIMGuiElements() {
     _imgui.newFrame();
 
@@ -200,114 +196,32 @@ void Application::drawIMGuiElements() {
     auto flags = ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoScrollbar;
     ImGui::Begin("Tap Status", nullptr, flags);
 
-    /*
-    if (!brokerCtx->peer_connected && _iface_list.size() > 0) {
+
+    if (!wCtx->socket_connected) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
-            // If an invalid iface is selected, or an empty value is used
-            // just use the first interface.
-            auto search = find(_iface_list.begin(), _iface_list.end(), _chosen_iface);
-            if (_chosen_iface.length() == 0 ||
-                search == _iface_list.end()) {
-                _chosen_iface = _iface_list.at(0);
-            }
 
-            std::string s, cmd;
-            if (_listeningDevice == nullptr) {
-                s = "monopt_iface_proto mac_addr ";
-                cmd = s.append(_chosen_iface);
-                std::string mac_addr = Util::exec_output(cmd);
-
-                if (mac_addr.size() > 0) {
-                    _listeningDevice = gCtx->createSphere(sCtx, mac_addr);
-                    //objectClicked(_listeningDevice);
-
-                    s = "monopt_iface_proto ipv4_addr ";
-                    cmd = s.append(_chosen_iface);
-                    std::string ipv4_addr = Util::exec_output(cmd);
-
-                    if (ipv4_addr.size() > 0) {
-                        //_listeningDevice->updateMaps(ipv4_addr, "");
-                    }
-                    gCtx->addDirectLabels(_listeningDevice);
-                    //createIPv4Address(ipv4_addr, _listeningDevice->circPoint);
-                } else {
-                    std::cerr << "Empty mac addr for net interface: " << _chosen_iface << std::endl;
-                }
-            }
-
-            s = "monopt_iface_proto gateway_ipv4_addr ";
-            cmd = s.append(_chosen_iface);
-            std::string gw_ipv4_addr = Util::exec_output(cmd);
-
-            if (_activeGateway == nullptr && gw_ipv4_addr.size() > 0) {
-                s = "monopt_iface_proto gateway_mac_addr ";
-                cmd = s.append(_chosen_iface)
-                       .append(" ")
-                       .append(gw_ipv4_addr);
-
-                std::string gw_mac_addr = Util::exec_output(cmd);
-                if (gw_mac_addr.size() > 0) {
-                    _activeGateway = gCtx->createSphere(sCtx, gw_mac_addr);
-                    //_activeGateway->updateMaps("0.0.0.0/32", "");
-                    //_activeGateway->updateMaps(gw_ipv4_addr, "");
-
-                    gCtx->addDirectLabels(_activeGateway);
-                    //createIPv4Address(gw_ipv4_addr, _activeGateway->circPoint);
-                } else {
-                    std::cerr << "Empty mac addr for gateway: " << gw_ipv4_addr << std::endl;
-                }
-            }
-
-            s = "monopt_iface_proto launch ";
-            cmd = s.append(_chosen_iface);
-            _zeek_pid = Util::exec_output(cmd);
-            std::cout << "Launched subprocess with pid: " << _zeek_pid << std::endl;
-            brokerCtx->peer_connected = true;
         }
     } else {
         if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
-            std::string s = "monopt_iface_proto sstop ";
-            auto cmd = s.append(_zeek_pid);
-            int r = std::system(cmd.c_str());
-            if (r != 0) {
-                std::cerr << "Listener shutdown failed" << std::endl;
-            }
-            std::cout << "Disconnected" << std::endl;
-            brokerCtx->peer_connected = false;
+            wCtx->closeSocket();
 
             DeleteEverything();
         }
     }
-    */
 
-	    /*
     int offset = 100;
-    if (brokerCtx->peer_connected) {
-        ImGui::SameLine(offset);
+    ImGui::SameLine(offset);
+    if (wCtx->socket_connected) {
         auto green = ImVec4(0,1,0,1);
-        ImGui::TextColored(green, _chosen_iface.c_str(), ImVec2(80, 20));
+        ImGui::TextColored(green, "localhost", ImVec2(80, 20));
     } else {
-        for (auto it = _iface_list.begin(); it != _iface_list.end(); it++) {
-            ImGui::SameLine(offset);
-            offset += 80;
-            const char *lbl = (*it).c_str();
-            if (*it == _chosen_iface) {
-                if (ImGui::Selectable(lbl, true, 0, ImVec2(60, 15))) {
-                    _chosen_iface = "";
-                }
-            } else {
-                    if (ImGui::Selectable(lbl, false, 0, ImVec2(60, 15))) {
-                    _chosen_iface = *it;
-                    }
-            }
-        }
+        ImGui::Text("localhost", ImVec2(60, 15));
     }
-    */
 
     ImGui::Text("App average %.3f ms/frame (%.1f FPS)",
             1000.0/Magnum::Double(ImGui::GetIO().Framerate), Magnum::Double(ImGui::GetIO().Framerate));
 
-    wCtx->StatsGui();
+    wCtx->statsGui();
 
     ImGui::End();
 
