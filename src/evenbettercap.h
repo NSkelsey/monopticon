@@ -133,6 +133,11 @@ namespace Util {
 
     int SumTotal(L2Summary struct_l2);
 
+    /*
+     * Converts a mac to a string
+     */
+    std::string fmtEUI48(const uint64_t & mac);
+
     Vector2 randCirclePoint();
     Vector2 paramCirclePoint(int num_elem, int pos);
     Vector2 randOffset(float z);

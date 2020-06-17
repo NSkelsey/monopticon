@@ -38,6 +38,14 @@ Util::L2Summary Util::parseL2Summary(broker::vector* l2summary) {
 }
 */
 
+std::string Util::fmtEUI48(const uint64_t & mac) {
+    const uint8_t* cmac = reinterpret_cast<const uint8_t *>(&mac);
+    char buf[20];
+    snprintf(buf, sizeof buf, "%02x:%02x:%02x:%02x:%02x:%02x",
+        *cmac, *(cmac+1), *(cmac+2), *(cmac+3), *(cmac+4), *(cmac+5));
+
+    return std::string(buf);
+}
 
 int Util::SumTotal(Util::L2Summary struct_l2) {
     return struct_l2.ipv4_cnt + struct_l2.ipv6_cnt + struct_l2.arp_cnt + struct_l2.unknown_cnt;
