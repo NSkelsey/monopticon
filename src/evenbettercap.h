@@ -583,6 +583,8 @@ namespace Context {
         public:
             WsBroker(std::string ws_uri, Graphic *g, Store *s);
 
+            void processEpochStep(epoch::EpochStep);
+
             void statsGui();
 
             /**

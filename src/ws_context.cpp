@@ -51,19 +51,10 @@ static EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageE
 
     if (b->event_cnt % b->inv_sample_rate == 0) {
         imemstream in(e->data, e->numBytes);
-        epoch::EpochStep ee;
+        epoch::EpochStep es;
 
-        ee.ParseFromIstream(&in);
-        //std::cout << "new l2_size: " << ee.enter_l2devices_size() << std::endl;
-        //std::cout << "device_comm: " << ee.l2_dev_comm_size() << std::endl;
-
-        Vector2 p_1 = Util::paramCirclePoint(50, rand()%50);
-        Vector3 p1 = Vector3(8*p_1.x(), 0, 8*p_1.y());
-        Vector2 p_2 = Util::paramCirclePoint(50, rand()%50);
-        Vector3 p2 = Vector3(8*p_2.x(), 0, 8*p_2.y());
-
-        b->gCtx->createLines(b->sCtx, p1, p2, Util::L3Type::ARP, 1);
-        b->epoch_packets_sum += 1;
+        es.ParseFromIstream(&in);
+        b->processEpochStep(es);
     } else {
         b->tot_epoch_drop += 1;
     }
@@ -72,6 +63,28 @@ static EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageE
         b->inv_sample_rate = b->inv_sample_rate*2;
     }
     return 0;
+}
+
+void WsBroker::processEpochStep(epoch::EpochStep es) {
+    // TODO do the parsing
+    //std::cout << "new l2_size: " << ee.enter_l2devices_size() << std::endl;
+
+    /*
+    Vector2 p_1 = Util::paramCirclePoint(50, rand()%50);
+    Vector3 p1 = Vector3(8*p_1.x(), 0, 8*p_1.y());
+    Vector2 p_2 = Util::paramCirclePoint(50, rand()%50);
+    Vector3 p2 = Vector3(8*p_2.x(), 0, 8*p_2.y());
+
+    gCtx->createLines(sCtx, p1, p2, Util::L3Type::ARP, 1);
+    */
+
+    for (int i =0; i < es.l2_dev_comm_size(); i++) {
+        const epoch::DeviceComm devComm = es.l2_dev_comm(i);
+        uint64_t mac = devComm.mac_src();
+        std::string str = Util::fmtEUI48(mac);
+    }
+
+    epoch_packets_sum += es.l2_dev_comm_size();
 }
 
 

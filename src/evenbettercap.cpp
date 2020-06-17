@@ -378,7 +378,6 @@ void Application::DeleteEverything() {
     {
         for (auto it = sCtx->_selectable_objects.begin(); it != sCtx->_selectable_objects.end(); it++) {
             Device::Selectable *obj = *it;
-            !Debug{} << obj;
             delete obj;
         }
 
@@ -389,7 +388,6 @@ void Application::DeleteEverything() {
     {
         for (auto it = sCtx->_packet_line_queue.begin(); it != sCtx->_packet_line_queue.end(); it++) {
             Figure::PacketLineDrawable *obj = *it;
-            !Debug{} << obj;
             delete obj;
         }
 
@@ -398,7 +396,6 @@ void Application::DeleteEverything() {
     {
         for (auto it = sCtx->_dst_prefix_group_map.begin(); it != sCtx->_dst_prefix_group_map.end(); it++) {
             Device::PrefixStats *obj = it->second;
-            !Debug{} << obj;
             delete obj;
         }
 
@@ -407,7 +404,6 @@ void Application::DeleteEverything() {
     {
         for (auto it = sCtx->_prefix_group_map.begin(); it != sCtx->_prefix_group_map.end(); it++) {
             Device::PrefixStats *obj = it->second;
-            !Debug{} << obj;
             delete obj;
         }
 
