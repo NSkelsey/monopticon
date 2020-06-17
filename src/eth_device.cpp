@@ -1,11 +1,9 @@
 #include "evenbettercap.h"
 
-using namespace Monopticon::Device;
-
+namespace Monopticon { namespace Device {
 
 Selectable::~Selectable() {
-    std::cerr << "Virtual destruct called!" << std::endl;
-    exit(1);
+    !Error{} << "Virtual destruct called!";
     deleteHighlight();
 }
 
@@ -141,7 +139,6 @@ int Stats::rightClickActions() {
 
 
 Stats::~Stats() {
-    delete _mac_label;
     delete _drawable;
     delete _ip_label;
     delete _mac_label;
@@ -158,6 +155,20 @@ PrefixStats::PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawabl
     ring{ring}
 {}
 
+
+PrefixStats::~PrefixStats() {
+    delete ring;
+    {
+        !Debug{} << "start ring delete";
+        for (auto it = contacts.begin(); it != contacts.end(); it++) {
+            !Debug{} << "running";
+            auto t = it;
+            it = contacts.erase(it);
+            delete t->first;
+            delete t->second;
+        }
+    }
+}
 
 WindowMgr::WindowMgr(Stats *d_s):
     _lineDrawable{nullptr}
@@ -286,3 +297,5 @@ void ChartMgr::empty() {
         vec.assign(i, 0.0f);
     }
 }
+
+}}

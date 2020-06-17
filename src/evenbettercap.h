@@ -212,6 +212,7 @@ class Stats: public Selectable {
 class PrefixStats {
   public:
     PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawable* ring);
+    ~PrefixStats();
 
     std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> contacts;
 
@@ -537,14 +538,14 @@ namespace Context {
              *
              * Checks for expired packet line and mcast drawables
              * and removes them from their respective queues.
-             */
+             **/
             void frameUpdate();
 
             // Scene objects
-            std::vector<Device::Selectable*> _selectable_objects{};
+            std::vector<Device::Selectable*>      _selectable_objects{};
             std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
 
-            std::map<std::string, Device::Stats*> _device_map{};
+            std::map<std::string, Device::Stats*>       _device_map{};
             std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
             std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
 
@@ -626,6 +627,11 @@ namespace Context {
              *
              */
             void frameUpdate();
+
+            /**
+             *  @brief Opens the websocket connection specified by url
+             */
+            void openSocket(std::string url);
 
             /**
              *  @brief Closes the underlying websocket needs hooks for state updates

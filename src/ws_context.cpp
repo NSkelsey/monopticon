@@ -81,16 +81,20 @@ WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s):
 {
     if (!emscripten_websocket_is_supported())
     {
-        !Debug{} << "WebSocket creation failed, error code" << socket;
+        !Debug{} << "Will not be able to create web sockets";
         return;
     }
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
+    openSocket(ws_uri);
+}
+
+void WsBroker::openSocket(std::string url) {
     EmscriptenWebSocketCreateAttributes attr;
     emscripten_websocket_init_create_attributes(&attr);
 
-    attr.url = ws_uri.c_str();
+    attr.url = url.c_str();
 
     socket = emscripten_websocket_new(&attr);
     if (socket <= 0)

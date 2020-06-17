@@ -22,6 +22,7 @@ const int MSAA_CNT = 8; // Number of subpixel samples for MultiSampling Anti-Ali
 using namespace Magnum;
 using namespace Math::Literals;
 
+std::string ws_uri = "ws://localhost:8088/";
 
 class Application: public Platform::Application {
     public:
@@ -115,9 +116,7 @@ Application::Application(const Arguments& arguments):
 
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
-
-    std::string uri = "ws://localhost:8088/";
-    wCtx = new Context::WsBroker(uri, gCtx, sCtx);
+    wCtx = new Context::WsBroker(ws_uri, gCtx, sCtx);
 
     srand(time(nullptr));
 
@@ -148,8 +147,7 @@ void Application::prepareDrawables() {
     sCtx->_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
     sCtx->_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 
-
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 20; i++) {
         //std::string *mac_src = new std::string(17, ' ');
         //gen_random(mac_src, 2);
         std::string *mac_src = new std::string(std::to_string(i));
@@ -199,12 +197,12 @@ void Application::drawIMGuiElements() {
 
     if (!wCtx->socket_connected) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
-
+            wCtx->openSocket(ws_uri);
+            prepareDrawables();
         }
     } else {
         if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
             wCtx->closeSocket();
-
             DeleteEverything();
         }
     }
@@ -226,6 +224,7 @@ void Application::drawIMGuiElements() {
     ImGui::End();
 
     ImGui::SetNextWindowSize(ImVec2(315, 215), ImGuiCond_Once);
+    ImGui::SetNextWindowPos(ImVec2(360, 0), ImGuiCond_Once);
     ImGui::Begin("Heads Up Display", nullptr, flags);
 
     if (ImGui::Button("Watch", ImVec2(80,20))) {
@@ -376,43 +375,54 @@ void Application::drawEvent() {
 }
 
 void Application::DeleteEverything() {
-    // Delete this stuff. . . .
-    /*
-    for (int i = 0; i < _drawables.size(); ) {
-        auto *o = _drawables[i];
-        _drawables.remove(i);
-        delete o;
+    {
+        for (auto it = sCtx->_selectable_objects.begin(); it != sCtx->_selectable_objects.end(); it++) {
+            Device::Selectable *obj = *it;
+            !Debug{} << obj;
+            delete obj;
+        }
 
-    }*/
-    //delete _selectable_drawables;
-    //delete _billboard_drawables;
-    //delete _text_drawables;
+        // All the Stats ptrs in device_map are included in _selectable_objects
+        sCtx->_selectable_objects.clear();
+        sCtx->_device_map.clear();
+    }
+    {
+        for (auto it = sCtx->_packet_line_queue.begin(); it != sCtx->_packet_line_queue.end(); it++) {
+            Figure::PacketLineDrawable *obj = *it;
+            !Debug{} << obj;
+            delete obj;
+        }
 
-    sCtx->_selectable_objects.clear();
-    sCtx->_packet_line_queue.clear();
-    sCtx->_device_map.clear();
-    sCtx->_prefix_group_map.clear();
+        sCtx->_packet_line_queue.clear();
+    }
+    {
+        for (auto it = sCtx->_dst_prefix_group_map.begin(); it != sCtx->_dst_prefix_group_map.end(); it++) {
+            Device::PrefixStats *obj = it->second;
+            !Debug{} << obj;
+            delete obj;
+        }
+
+        sCtx->_dst_prefix_group_map.clear();
+    }
+    {
+        for (auto it = sCtx->_prefix_group_map.begin(); it != sCtx->_prefix_group_map.end(); it++) {
+            Device::PrefixStats *obj = it->second;
+            !Debug{} << obj;
+            delete obj;
+        }
+
+        sCtx->_prefix_group_map.clear();
+    }
 
     _inspected_device_window_list.clear();
-
-    //_dst_prefix_group_map.clear();
 
     // re-initialize application state;
     _selectedObject = nullptr;
     _listeningDevice = nullptr;
     _activeGateway = nullptr;
 
-    //brokerCtx->resetCtx();
-
-    //brokerCtx->ifaceLongChartMgr.empty();
-    //brokerCtx->ifaceChartMgr.empty();
-
-    ring_level = 0;
-    pos_in_ring = 0;
-
     _orbit_toggle = false;
 
-    // TODO the objects under these values are not destroyed.
     // Reset scene state
     gCtx->_drawables = SceneGraph::DrawableGroup3D{};
     gCtx->_selectable_drawables = SceneGraph::DrawableGroup3D{};
