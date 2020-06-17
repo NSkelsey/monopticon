@@ -23,7 +23,6 @@ Graphic::Graphic() : _glyphCache(Vector2i(2048), Vector2i(512), 22)
     _poolCircle = MeshTools::compile(Primitives::circle3DWireframe(20));
 
     _line_shader = Figure::ParaLineShader{};
-    _phong_id_shader = Figure::PhongIdShader{};
     _phong_shader = Shaders::Phong{Shaders::Phong::Flag::ObjectId};
     _pool_shader = Figure::PoolShader{};
     _link_shader = Figure::WorldLinkShader{};

@@ -95,7 +95,6 @@ namespace Monopticon {
   namespace Figure {
 
     class DeviceDrawable;
-    class PhongIdShader;
     class UnitBoardDrawable;
     class TextDrawable;
     class RouteDrawable;
@@ -292,38 +291,6 @@ class Address: public Device::Selectable, public Object3D, public SceneGraph::Dr
 }
 
 namespace Figure {
-
-class PhongIdShader: public GL::AbstractShaderProgram {
-    public:
-        typedef GL::Attribute<0, Vector3> Position;
-        typedef GL::Attribute<1, Vector3> Normal;
-
-        enum: UnsignedInt {
-            ColorOutput = 0,
-            ObjectIdOutput = 1
-        };
-
-        explicit PhongIdShader();
-
-        PhongIdShader& setObjectId(UnsignedInt id);
-        PhongIdShader& setLightPosition(const Vector3& position);
-        PhongIdShader& setAmbientColor(const Color3& color);
-        PhongIdShader& setColor(const Color3& color);
-        PhongIdShader& setTimeIntensity(const float t);
-        PhongIdShader& setTransformationMatrix(const Matrix4& matrix);
-        PhongIdShader& setNormalMatrix(const Matrix3x3& matrix);
-        PhongIdShader& setProjectionMatrix(const Matrix4& matrix);
-
-    private:
-        Int _objectIdUniform,
-        _lightPositionUniform,
-        _ambientColorUniform,
-        _colorUniform,
-        _timeIntensityUniform,
-        _transformationMatrixUniform,
-        _normalMatrixUniform,
-        _projectionMatrixUniform;
-};
 
 class DeviceDrawable: public Object3D, public SceneGraph::Drawable3D {
     public:
@@ -580,11 +547,9 @@ namespace Context {
             // Graphic fields
             GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
             Color4 _clearColor = 0x002b36_rgbf;
-            //Color4 _clearColor = 0xffffff_rgbf;
             Color3 _pickColor = 0xffffff_rgbf;
 
             Shaders::Phong _phong_shader;
-            Figure::PhongIdShader _phong_id_shader;
             Figure::ParaLineShader _line_shader;
             Figure::PoolShader _pool_shader;
             Figure::WorldLinkShader _link_shader;
@@ -662,33 +627,14 @@ namespace Context {
 
 }
 
+/*
 namespace Parse {
+
 
 
 class BrokerCtx {
     public:
-        // Zeek broker components
-        //broker::endpoint _ep;
-
-        //broker::subscriber subscriber;
-        //broker::status_subscriber status_subscriber;
-        bool peer_connected = false;
-
-        std::chrono::duration<int64_t, std::nano> curr_pkt_lag;
-
-        // Custom ImGui interface components
-        Device::ChartMgr ifaceChartMgr{240, 3.0f};
-        Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
-
-        int tot_pkt_drop{0};
-        int tot_epoch_drop{0};
-        int event_cnt{0};
-
-        int inv_sample_rate{1};
-        int epoch_packets_sum{0};
-
         BrokerCtx(std::string addr, uint16_t port);
-	/*
         int parse_epoch_step(Context::Store *sCtx, Context::Graphic *gCtx, broker::zeek::Event event);
         void parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *addr_map);
         void parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *arp_table);
@@ -696,13 +642,9 @@ class BrokerCtx {
         void parse_stats_update(broker::zeek::Event event);
         void parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, broker::vector *dComm, Device::Stats* tran_d_s);
         void parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
-	*/
-
-        void processNetworkEvents(Context::Store *sCtx, Context::Graphic *gCtx);
-
-        void StatsGui();
     };
 }
+*/
 
 }
 

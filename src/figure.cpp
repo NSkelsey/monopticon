@@ -2,75 +2,6 @@
 
 using namespace Monopticon::Figure;
 
-PhongIdShader::PhongIdShader() {
-    Utility::Resource rs("monopticon");
-
-    GL::Shader vert{GL::Version::GLES300, GL::Shader::Type::Vertex},
-        frag{GL::Version::GLES300, GL::Shader::Type::Fragment};
-    vert.addSource(rs.get("src/shaders/phongid.vs"));
-    frag.addSource(rs.get("src/shaders/phongid.fs"));
-    CORRADE_INTERNAL_ASSERT(GL::Shader::compile({vert, frag}));
-    attachShaders({vert, frag});
-    CORRADE_INTERNAL_ASSERT(link());
-
-    _objectIdUniform = uniformLocation("objectId");
-    _lightPositionUniform = uniformLocation("light");
-    _ambientColorUniform = uniformLocation("ambientColor");
-    _colorUniform = uniformLocation("color");
-    _timeIntensityUniform = uniformLocation("timeIntensity");
-    _transformationMatrixUniform = uniformLocation("transformationMatrix");
-    _projectionMatrixUniform = uniformLocation("projectionMatrix");
-    _normalMatrixUniform = uniformLocation("normalMatrix");
-}
-
-
-PhongIdShader& PhongIdShader::setObjectId(UnsignedInt id) {
-    setUniform(_objectIdUniform, id);
-    return *this;
-}
-
-
-PhongIdShader& PhongIdShader::setLightPosition(const Vector3& position) {
-    setUniform(_lightPositionUniform, position);
-    return *this;
-}
-
-
-PhongIdShader& PhongIdShader::setAmbientColor(const Color3& color) {
-    setUniform(_ambientColorUniform, color);
-    return *this;
-}
-
-
-PhongIdShader& PhongIdShader::setColor(const Color3& color) {
-    setUniform(_colorUniform, color);
-    return *this;
-}
-
-
-PhongIdShader& PhongIdShader::setTimeIntensity(const float t) {
-    setUniform(_timeIntensityUniform, t);
-    return *this;
-}
-
-
-PhongIdShader& PhongIdShader::setTransformationMatrix(const Matrix4& matrix) {
-    setUniform(_transformationMatrixUniform, matrix);
-    return *this;
-}
-
-
-PhongIdShader& PhongIdShader::setNormalMatrix(const Matrix3x3& matrix) {
-    setUniform(_normalMatrixUniform, matrix);
-    return *this;
-}
-
-
-PhongIdShader& PhongIdShader::setProjectionMatrix(const Matrix4& matrix) {
-    setUniform(_projectionMatrixUniform, matrix);
-    return *this;
-}
-
 
 DeviceDrawable::DeviceDrawable(UnsignedByte id, Object3D& object, Shaders::Phong& shader, Color3 &color, GL::Mesh& mesh, const Matrix4& primitiveTransformation, SceneGraph::DrawableGroup3D& drawables):
     Object3D{&object},
@@ -115,7 +46,6 @@ RingDrawable::RingDrawable(Object3D& object, const Color4& color, SceneGraph::Dr
 {
     _mesh = MeshTools::compile(Primitives::circle3DWireframe(70));
     _color = color;
-    //_shader = &Shaders::Flat3D{};
 }
 
 RingDrawable& RingDrawable::setMesh(Trade::MeshData mesh) {
