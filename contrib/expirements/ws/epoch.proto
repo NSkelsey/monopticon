@@ -20,7 +20,7 @@ message DeviceComm {
     L2Summary bcast_33 = 3;
     L2Summary bcast_ff = 4;
     L2Summary bcast_01 = 5;
-    L2Summary bcast_XX = 6;
+    L2Summary bcast_xx = 6;
 };
 
 message AddrAssoc {

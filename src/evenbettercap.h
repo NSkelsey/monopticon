@@ -121,17 +121,7 @@ namespace Monopticon {
 
 // Definitions
 namespace Util {
-
-    struct L2Summary {
-        int ipv4_cnt;
-        int ipv6_cnt;
-        int arp_cnt;
-        int unknown_cnt;
-    };
-
-    //L2Summary parseL2Summary(broker::vector *l2summary);
-
-    int SumTotal(L2Summary struct_l2);
+    int SumTotal(epoch::L2Summary struct_l2);
 
     /*
      * Converts a mac to a string
@@ -537,7 +527,7 @@ namespace Context {
             Device::Stats* createSphere(Store *sCtx, const std::string mac);
             Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
 
-            void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum);
+            void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
             void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
             Level3::Address* createIPv4Address(Store *sCtx, const std::string ipv4_addr, Vector3 pos);
 
@@ -610,6 +600,9 @@ namespace Context {
              */
             void closeSocket();
 
+            void parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, epoch::DeviceComm dComm, Device::Stats* tran_d_s);
+            void parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, std::string v, epoch::L2Summary l2sum, Device::Stats* tran_d_s);
+
             Graphic *gCtx;
             Store *sCtx;
 
@@ -647,8 +640,6 @@ class BrokerCtx {
         void parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *arp_table);
 
         void parse_stats_update(broker::zeek::Event event);
-        void parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, broker::vector *dComm, Device::Stats* tran_d_s);
-        void parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, int pos, std::string v, broker::vector *dComm, Device::Stats* tran_d_s);
     };
 }
 */

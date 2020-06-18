@@ -23,19 +23,24 @@ def new_random_epoch(mac_src):
     comm.mac_src = mac_src
 
     tx = comm.tx_summary.add()
-    tx.mac_dst = 2
-    tx.ipv4 = 10
+    tx.mac_dst = 1
+    tx.ipv4 = 1
 
     return epoch_evnt
 
 async def publish_events(websocket, path):
-    ee = add_devices([1, 2])
+    ee = add_devices(range(0, 20))
     await websocket.send(ee.SerializeToString())
 
+    i = 0
     while(True):
-        ef = new_random_epoch(1)
+        ef = new_random_epoch(i)
         time.sleep(0.014)
+        #time.sleep(0.5)
         await websocket.send(ef.SerializeToString())
+        i += 1
+        if (i == 19):
+          i = 0
 
     print("Sent everything")
 

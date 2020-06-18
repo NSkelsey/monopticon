@@ -66,25 +66,83 @@ static EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageE
 }
 
 void WsBroker::processEpochStep(epoch::EpochStep es) {
-    // TODO do the parsing
-    //std::cout << "new l2_size: " << ee.enter_l2devices_size() << std::endl;
+    for (int j = 0; j < es.enter_l2devices_size(); j++) {
+         const uint64_t enter_mac  = es.enter_l2devices(j);
+         std::string mac_src = Util::fmtEUI48(enter_mac);
 
-    /*
-    Vector2 p_1 = Util::paramCirclePoint(50, rand()%50);
-    Vector3 p1 = Vector3(8*p_1.x(), 0, 8*p_1.y());
-    Vector2 p_2 = Util::paramCirclePoint(50, rand()%50);
-    Vector3 p2 = Vector3(8*p_2.x(), 0, 8*p_2.y());
-
-    gCtx->createLines(sCtx, p1, p2, Util::L3Type::ARP, 1);
-    */
-
-    for (int i =0; i < es.l2_dev_comm_size(); i++) {
-        const epoch::DeviceComm devComm = es.l2_dev_comm(i);
-        uint64_t mac = devComm.mac_src();
-        std::string str = Util::fmtEUI48(mac);
+         // If the mac_src is not already in the _device_map create a new device.
+         // This means that a frame with a never before seen source MAC creates a new Device.
+         auto search = sCtx->_device_map.find(mac_src);
+         if (search == sCtx->_device_map.end()) {
+             Device::Stats *d_s = gCtx->createSphere(sCtx, mac_src);
+             sCtx->_device_map.insert(std::make_pair(mac_src, d_s));
+             gCtx->addDirectLabels(d_s);
+         }
     }
 
+    int pkt_tot = 0;
+
+    for (int i = 0; i < es.l2_dev_comm_size(); i++) {
+        const epoch::DeviceComm devComm = es.l2_dev_comm(i);
+        uint64_t mac = devComm.mac_src();
+        std::string mac_src = Util::fmtEUI48(mac);
+
+        Device::Stats *tran_d_s;
+        auto search = sCtx->_device_map.find(mac_src);
+        if (search != sCtx->_device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "tran_d_s not found! " << mac_src << std::endl;
+            continue;
+        }
+
+        parse_bcast_summaries(sCtx, gCtx, devComm, tran_d_s);
+
+        for (int k = 0; k < devComm.tx_summary_size(); k++) {
+            epoch::L2Summary l2sum = devComm.tx_summary(k);
+            std::string mac_dst = Util::fmtEUI48(l2sum.mac_dst());
+
+            Device::Stats *recv_d_s;
+            auto search = sCtx->_device_map.find(mac_dst);
+            if (search != sCtx->_device_map.end()) {
+                recv_d_s = search->second;
+            } else {
+                std::cerr << "recv_d_s not found! " << mac_dst << std::endl;
+                continue;
+            }
+
+            Vector3 p1 = tran_d_s->circPoint;
+            Vector3 p2 = recv_d_s->circPoint;
+
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::IPV4, l2sum.ipv4());
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::IPV6, l2sum.ipv6());
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::ARP, l2sum.arp());
+            gCtx->createLines(sCtx, p1, p2, Util::L3Type::UNKNOWN, l2sum.unknown());
+            int dev_tot = Util::SumTotal(l2sum);
+            tran_d_s->num_pkts_sent += dev_tot;
+            recv_d_s->num_pkts_recv += dev_tot;
+
+            pkt_tot += dev_tot;
+        }
+    }
+
+    // TODO add arp and addr processing.
+
     epoch_packets_sum += es.l2_dev_comm_size();
+}
+
+
+void WsBroker::parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, epoch::DeviceComm dComm, Device::Stats* tran_d_s) {
+    parse_single_mcast(sCtx, gCtx, "33", dComm.bcast_33(), tran_d_s);
+    parse_single_mcast(sCtx, gCtx, "ff", dComm.bcast_ff(), tran_d_s);
+    parse_single_mcast(sCtx, gCtx, "01", dComm.bcast_01(), tran_d_s);
+    parse_single_mcast(sCtx, gCtx, "odd", dComm.bcast_xx(), tran_d_s);
+}
+
+
+void WsBroker::parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, std::string v, epoch::L2Summary l2sum, Device::Stats* tran_d_s) {
+    Device::PrefixStats* dp_s = sCtx->_dst_prefix_group_map.at(v);
+    gCtx->createPoolHits(sCtx, tran_d_s, dp_s, l2sum);
 }
 
 

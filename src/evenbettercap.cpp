@@ -147,7 +147,7 @@ void Application::prepareDrawables() {
     sCtx->_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
     sCtx->_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 2; i++) {
         //std::string *mac_src = new std::string(17, ' ');
         //gen_random(mac_src, 2);
         std::string *mac_src = new std::string(std::to_string(i));

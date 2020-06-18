@@ -180,26 +180,26 @@ Monopticon::Device::PrefixStats *Graphic::createBroadcastPool(const std::string 
     return dp_s;
 }
 
-void Graphic::createPoolHits(Context::Store *sCtx, Device::Stats *tran_d_s, Device::PrefixStats *dp_s, Util::L2Summary sum)
+void Graphic::createPoolHits(Context::Store *sCtx, Device::Stats *tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum)
 {
     using namespace Monopticon::Util;
 
-    if (sum.ipv4_cnt > 0)
+    if (sum.ipv4() > 0)
     {
         createPoolHit(dp_s, typeColor(L3Type::IPV4));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::IPV4);
     }
-    if (sum.ipv6_cnt > 0)
+    if (sum.ipv6() > 0)
     {
         createPoolHit(dp_s, typeColor(L3Type::IPV6));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::IPV6);
     }
-    if (sum.arp_cnt > 0)
+    if (sum.arp() > 0)
     {
         createPoolHit(dp_s, typeColor(L3Type::ARP));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::ARP);
     }
-    if (sum.unknown_cnt > 0)
+    if (sum.unknown() > 0)
     {
         createPoolHit(dp_s, typeColor(L3Type::UNKNOWN));
         createLine(sCtx, tran_d_s->circPoint, dp_s->_position, L3Type::UNKNOWN);
