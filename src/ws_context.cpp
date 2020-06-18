@@ -126,7 +126,13 @@ void WsBroker::processEpochStep(epoch::EpochStep es) {
         }
     }
 
-    // TODO add arp and addr processing.
+    for (int m = 0; m < es.enter_l2_ipv4_addr_src_size(); m++) {
+        parse_enter_l3_addr(sCtx, gCtx, es.enter_l2_ipv4_addr_src(m));
+    }
+
+    for (int p = 0; p < es.enter_arp_table_size(); p++) {
+        parse_arp_table(sCtx, gCtx, es.enter_arp_table(p));
+    }
 
     epoch_packets_sum += es.l2_dev_comm_size();
 }
@@ -143,6 +149,60 @@ void WsBroker::parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCt
 void WsBroker::parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, std::string v, epoch::L2Summary l2sum, Device::Stats* tran_d_s) {
     Device::PrefixStats* dp_s = sCtx->_dst_prefix_group_map.at(v);
     gCtx->createPoolHits(sCtx, tran_d_s, dp_s, l2sum);
+}
+
+
+void WsBroker::parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx, epoch::AddrAssoc addr_map) {
+        std::string mac_src = Util::fmtEUI48(addr_map.mac_src());
+
+        Device::Stats *tran_d_s;
+        auto search = sCtx->_device_map.find(mac_src);
+        if (search != sCtx->_device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "tran_d_s l2_ipv4_addr not found! " << mac_src << std::endl;
+            return;
+        }
+
+        // TODO convert addr_map.ipv4() to str
+        std::string s = "1.0.0.1";
+
+        gCtx->createIPv4Address(sCtx, s, tran_d_s->circPoint);
+}
+
+
+void WsBroker::parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, epoch::ArpAssoc arp_table) {
+        std::string mac_src = Util::fmtEUI48(arp_table.mac_src());
+
+        Device::Stats *tran_d_s;
+        auto search = sCtx->_device_map.find(mac_src);
+        if (search != sCtx->_device_map.end()) {
+            tran_d_s = search->second;
+        } else {
+            std::cerr << "mac_src arp_table not found! " << mac_src << std::endl;
+            return;
+        }
+
+        for (int j = 0; j < arp_table.table_row_size(); j++) {
+            epoch::AddrAssoc row = arp_table.table_row(j);
+            std::string mac_dst = Util::fmtEUI48(row.mac_src());
+
+            Device::Stats *recv_d_s;
+            auto search2 = sCtx->_device_map.find(mac_dst);
+            if (search2 != sCtx->_device_map.end()) {
+                recv_d_s = search2->second;
+            } else {
+                std::cerr << "mac_dst arp_table not found! " << mac_dst << std::endl;
+                return;
+            }
+
+            // TODO validate ipv4 dest lookup against sCtx
+            int32_t ip_addr_dst = row.ipv4();
+
+            const Vector3 offset{0.0f, 1.0f, 0.0f};
+            gCtx->addL2ConnectL3(tran_d_s->circPoint, recv_d_s->circPoint+offset);
+            gCtx->addL2ConnectL3(recv_d_s->circPoint+offset, tran_d_s->circPoint);
+        }
 }
 
 

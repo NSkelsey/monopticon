@@ -260,7 +260,7 @@ class RouteMgr {
         Figure::RouteDrawable *path;
 };
 
-}
+} // Device
 
 namespace Level3 {
 
@@ -283,7 +283,7 @@ class Address: public Device::Selectable, public Object3D, public SceneGraph::Dr
     GL::Mesh& _mesh;
 };
 
-}
+} // Level3
 
 namespace Figure {
 
@@ -480,170 +480,155 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
         GL::Mesh _mesh;
 };
 
-}
+} // Figure
 
 namespace Context {
 
-    /** @file
-     * @brief Class @ref Monopticon::Context::Store
-     *
-     */
-    class Store {
-        public:
-            Store();
-
-            Vector2 nextVlanPos(const int vlan);
-            UnsignedByte newObjectId();
-
-            /**
-             * @brief Clean up expired items
-             *
-             * Checks for expired packet line and mcast drawables
-             * and removes them from their respective queues.
-             **/
-            void frameUpdate();
-
-            // Scene objects
-            std::vector<Device::Selectable*>      _selectable_objects{};
-            std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
-
-            std::map<std::string, Device::Stats*>       _device_map{};
-            std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
-            std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
-
-            int ring_level{0};
-            int pos_in_ring{0};
-    };
-
-    class Graphic {
-        public:
-            Graphic();
-
-            void prepare3DFont();
-            void prepareGLBuffers(const Range2Di& viewport);
-
-            void draw3DElements();
-
-            Device::Stats* createSphere(Store *sCtx, const std::string mac);
-            Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
-
-            void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
-            void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
-            Level3::Address* createIPv4Address(Store *sCtx, const std::string ipv4_addr, Vector3 pos);
-
-            void createLines(Store *sCtx, Vector3, Vector3, Util::L3Type, int num);
-            void createLine(Store *sCtx, Vector3, Vector3, Util::L3Type);
-
-            void addDirectLabels(Device::Stats *d_s);
-            void addL2ConnectL3(Vector3 a, Vector3 b);
-
-            void destroyGLBuffers();
-
-            // Graphic fields
-            GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
-            Color4 _clearColor = 0x002b36_rgbf;
-            Color3 _pickColor = 0xffffff_rgbf;
-
-            Shaders::Phong _phong_shader;
-            Figure::ParaLineShader _line_shader;
-            Figure::PoolShader _pool_shader;
-            Figure::WorldLinkShader _link_shader;
-            Shaders::Flat3D _bbitem_shader;
-
-            Scene3D _scene;
-            SceneGraph::Camera3D* _camera;
-            SceneGraph::DrawableGroup3D _drawables;
-            SceneGraph::DrawableGroup3D _permanent_drawables;
-            SceneGraph::DrawableGroup3D _selectable_drawables;
-            SceneGraph::DrawableGroup3D _billboard_drawables;
-            SceneGraph::DrawableGroup3D _text_drawables;
-
-            Object3D *_cameraRig, *_cameraObject;
-
-            GL::Framebuffer _objselect_framebuffer{NoCreate};
-            GL::Renderbuffer _color, _objectId, _depth;
-
-            // Font graphics fields
-            PluginManager::Manager<Text::AbstractFont> _manager;
-            Containers::Pointer<Text::AbstractFont> _font;
-
-            Text::DistanceFieldGlyphCache _glyphCache;
-            Shaders::DistanceFieldVector3D _text_shader;
-
-            uint64_t frameCnt{0};
-    };
-
-
-    class WsBroker {
-        public:
-            WsBroker(std::string ws_uri, Graphic *g, Store *s);
-
-            void processEpochStep(epoch::EpochStep);
-
-            void statsGui();
-
-            /**
-             * @brief Updates counters and graphs to track packet counts
-             *
-             * Updates internal states of attached @ref Device::ChartMgr
-             *
-             */
-            void frameUpdate();
-
-            /**
-             *  @brief Opens the websocket connection specified by url
-             */
-            void openSocket(std::string url);
-
-            /**
-             *  @brief Closes the underlying websocket needs hooks for state updates
-             */
-            void closeSocket();
-
-            void parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, epoch::DeviceComm dComm, Device::Stats* tran_d_s);
-            void parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, std::string v, epoch::L2Summary l2sum, Device::Stats* tran_d_s);
-
-            Graphic *gCtx;
-            Store *sCtx;
-
-            EMSCRIPTEN_WEBSOCKET_T socket;
-
-            bool socket_connected = false;
-
-            std::chrono::duration<int64_t, std::nano> curr_ws_lag;
-
-            // Custom ImGui interface components
-            Device::ChartMgr ifaceChartMgr{240, 3.0f};
-            Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
-
-            uint64_t curr_frame{0};
-            int tot_ws_drop{0};
-            int tot_epoch_drop{0};
-            int event_cnt{0};
-
-            int inv_sample_rate{1};
-            int epoch_packets_sum{0};
-    };
-
-}
-
-/*
-namespace Parse {
-
-
-
-class BrokerCtx {
+/** @file
+ * @brief Class @ref Monopticon::Context::Store
+ *
+ */
+class Store {
     public:
-        BrokerCtx(std::string addr, uint16_t port);
-        int parse_epoch_step(Context::Store *sCtx, Context::Graphic *gCtx, broker::zeek::Event event);
-        void parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *addr_map);
-        void parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, std::map<broker::data, broker::data> *arp_table);
+        Store();
 
-        void parse_stats_update(broker::zeek::Event event);
-    };
-}
-*/
+        Vector2 nextVlanPos(const int vlan);
+        UnsignedByte newObjectId();
 
-}
+        /**
+         * @brief Clean up expired items
+         *
+         * Checks for expired packet line and mcast drawables
+         * and removes them from their respective queues.
+         **/
+        void frameUpdate();
+
+        // Scene objects
+        std::vector<Device::Selectable*>      _selectable_objects{};
+        std::set<Figure::PacketLineDrawable*> _packet_line_queue{};
+
+        std::map<std::string, Device::Stats*>       _device_map{};
+        std::map<std::string, Device::PrefixStats*> _dst_prefix_group_map{};
+        std::map<std::string, Device::PrefixStats*> _prefix_group_map{};
+
+        int ring_level{0};
+        int pos_in_ring{0};
+};
+
+class Graphic {
+    public:
+        Graphic();
+
+        void prepare3DFont();
+        void prepareGLBuffers(const Range2Di& viewport);
+
+        void draw3DElements();
+
+        Device::Stats* createSphere(Store *sCtx, const std::string mac);
+        Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
+
+        void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
+        void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
+        Level3::Address* createIPv4Address(Store *sCtx, const std::string ipv4_addr, Vector3 pos);
+
+        void createLines(Store *sCtx, Vector3, Vector3, Util::L3Type, int num);
+        void createLine(Store *sCtx, Vector3, Vector3, Util::L3Type);
+
+        void addDirectLabels(Device::Stats *d_s);
+        void addL2ConnectL3(Vector3 a, Vector3 b);
+
+        void destroyGLBuffers();
+
+        // Graphic fields
+        GL::Mesh _sphere{}, _poolCircle{NoCreate}, _cubeMesh{};
+        Color4 _clearColor = 0x002b36_rgbf;
+        Color3 _pickColor = 0xffffff_rgbf;
+
+        Shaders::Phong _phong_shader;
+        Figure::ParaLineShader _line_shader;
+        Figure::PoolShader _pool_shader;
+        Figure::WorldLinkShader _link_shader;
+        Shaders::Flat3D _bbitem_shader;
+
+        Scene3D _scene;
+        SceneGraph::Camera3D* _camera;
+        SceneGraph::DrawableGroup3D _drawables;
+        SceneGraph::DrawableGroup3D _permanent_drawables;
+        SceneGraph::DrawableGroup3D _selectable_drawables;
+        SceneGraph::DrawableGroup3D _billboard_drawables;
+        SceneGraph::DrawableGroup3D _text_drawables;
+
+        Object3D *_cameraRig, *_cameraObject;
+
+        GL::Framebuffer _objselect_framebuffer{NoCreate};
+        GL::Renderbuffer _color, _objectId, _depth;
+
+        // Font graphics fields
+        PluginManager::Manager<Text::AbstractFont> _manager;
+        Containers::Pointer<Text::AbstractFont> _font;
+
+        Text::DistanceFieldGlyphCache _glyphCache;
+        Shaders::DistanceFieldVector3D _text_shader;
+
+        uint64_t frameCnt{0};
+};
+
+
+class WsBroker {
+    public:
+        WsBroker(std::string ws_uri, Graphic *g, Store *s);
+
+        void processEpochStep(epoch::EpochStep);
+
+        void statsGui();
+
+        /**
+         * @brief Updates counters and graphs to track packet counts
+         *
+         * Updates internal states of attached @ref Device::ChartMgr
+         *
+         */
+        void frameUpdate();
+
+        /**
+         *  @brief Opens the websocket connection specified by url
+         */
+        void openSocket(std::string url);
+
+        /**
+         *  @brief Closes the underlying websocket needs hooks for state updates
+         */
+        void closeSocket();
+
+        void parse_bcast_summaries(Context::Store *sCtx, Context::Graphic *gCtx, epoch::DeviceComm dComm, Device::Stats* tran_d_s);
+        void parse_single_mcast(Context::Store *sCtx, Context::Graphic *gCtx, std::string v, epoch::L2Summary l2sum, Device::Stats* tran_d_s);
+        void parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx, epoch::AddrAssoc addr_map);
+        void parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, epoch::ArpAssoc arp_table);
+
+        Graphic *gCtx;
+        Store *sCtx;
+
+        EMSCRIPTEN_WEBSOCKET_T socket;
+
+        bool socket_connected = false;
+
+        std::chrono::duration<int64_t, std::nano> curr_ws_lag;
+
+        // Custom ImGui interface components
+        Device::ChartMgr ifaceChartMgr{240, 3.0f};
+        Device::ChartMgr ifaceLongChartMgr{300, 3.0f};
+
+        uint64_t curr_frame{0};
+        int tot_ws_drop{0};
+        int tot_epoch_drop{0};
+        int event_cnt{0};
+
+        int inv_sample_rate{1};
+        int epoch_packets_sum{0};
+};
+
+} // Context
+
+} // Monopticon
 
 #endif

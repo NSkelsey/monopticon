@@ -24,6 +24,7 @@ message DeviceComm {
 };
 
 message AddrAssoc {
+    // TODO rename mac_src to mac. The src prefix is inaccurate
     fixed64 mac_src = 1;
     fixed32 ipv4 = 2;
 };
