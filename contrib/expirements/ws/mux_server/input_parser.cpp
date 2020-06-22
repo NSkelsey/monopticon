@@ -20,14 +20,24 @@ uint64_t string_to_mac(std::string const& s) {
         return 0;
     }
     return
-        uint64_t(a[0]) << 40 |
-        uint64_t(a[1]) << 32 | (
+        uint64_t(a[5]) << 40 |
+        uint64_t(a[4]) << 32 | (
             // 32-bit instructions take fewer bytes on x86, so use them as much as possible.
-            uint32_t(a[2]) << 24 |
-            uint32_t(a[3]) << 16 |
-            uint32_t(a[4]) << 8 |
-            uint32_t(a[5])
+            uint32_t(a[3]) << 24 |
+            uint32_t(a[2]) << 16 |
+            uint32_t(a[1]) << 8 |
+            uint32_t(a[0])
         );
+}
+
+uint32_t addr_to_ip(caf::ipv6_address::array_type addr) {
+    uint32_t ip = (
+    addr.at(15) << 24 |
+    addr.at(14) << 16 |
+    addr.at(13) << 8 |
+    addr.at(12)
+    );
+    return ip;
 }
 
 class BrokerCtx {
@@ -44,8 +54,12 @@ class BrokerCtx {
         BrokerCtx() {};
 
         epoch::EpochStep parse_epoch_step(broker::zeek::Event event);
-        void parse_enter_l3_addr(std::map<broker::data, broker::data> *addr_map);
-        void parse_arp_table(std::map<broker::data, broker::data> *arp_table);
+
+        int parse_l2_summary(epoch::L2Summary* es_l2sum, broker::vector* l2summary);
+        void parse_single_mcast(epoch::DeviceComm* dev_comm, int pos, std::string v, broker::vector *dComm);
+        void parse_bcast_summaries(epoch::DeviceComm* dev_comm, broker::vector *dComm);
+        void parse_enter_l3_addr(epoch::EpochStep* step, std::map<broker::data, broker::data> *addr_map);
+        void parse_arp_table(epoch::EpochStep* step, std::map<broker::data, broker::data> *arp_table);
 
         void parse_stats_update(broker::zeek::Event event);
 };
@@ -75,8 +89,6 @@ epoch::EpochStep BrokerCtx::parse_epoch_step(broker::zeek::Event event) {
         }
 
         step.add_enter_l2devices(string_to_mac(*mac_src));
-
-        // TODO found mac_src
     }
 
     std::map<broker::data, broker::data> *l2_dev_comm = broker::get_if<broker::table>(wrapper->at(1));
@@ -95,8 +107,6 @@ epoch::EpochStep BrokerCtx::parse_epoch_step(broker::zeek::Event event) {
             std::cerr << "mac_src e_l2_dev" << std::endl;
             continue;
         }
-
-        // TODO handle l2_dev_comm
 
         auto *dComm = broker::get_if<broker::vector>(pair.second);
         if (dComm == nullptr) {
@@ -130,11 +140,12 @@ epoch::EpochStep BrokerCtx::parse_epoch_step(broker::zeek::Event event) {
                 continue;
             }
 
-            // TODO
-            tx_summary->set_ipv4(1);
+            int sum = parse_l2_summary(tx_summary, l2summary);
 
-            pkt_tot += 1;
+            pkt_tot += sum;
         }
+
+        parse_bcast_summaries(dev_comm, dComm);
     }
 
     std::map<broker::data, broker::data> *enter_l2_ipv4_addr_src = broker::get_if<broker::table>(wrapper->at(2));
@@ -142,21 +153,83 @@ epoch::EpochStep BrokerCtx::parse_epoch_step(broker::zeek::Event event) {
         std::cerr << "l2_ipv4_addr_src" << std::endl;
         return step;
     }
-    parse_enter_l3_addr(enter_l2_ipv4_addr_src);
+
+    parse_enter_l3_addr(&step, enter_l2_ipv4_addr_src);
 
     std::map<broker::data, broker::data> *enter_arp_table = broker::get_if<broker::table>(wrapper->at(3));
     if (enter_l2_ipv4_addr_src == nullptr) {
         std::cerr << "enter_arp_table" << std::endl;
         return step;
     }
-    parse_arp_table(enter_arp_table);
-
+    parse_arp_table(&step, enter_arp_table);
 
     return step;
 }
 
 
-void BrokerCtx::parse_enter_l3_addr(std::map<broker::data, broker::data> *addr_map) {
+void BrokerCtx::parse_single_mcast(epoch::DeviceComm* dev_comm, int pos, std::string v, broker::vector *dComm) {
+    auto *bcast_val = broker::get_if<broker::vector>(dComm->at(pos));
+    if (bcast_val == nullptr) {
+        return;
+    }
+
+    // TODO use Utils::enum
+    if (v == "ff") {
+        parse_l2_summary(dev_comm->mutable_bcast_ff(), bcast_val);
+    } else if (v == "33") {
+        parse_l2_summary(dev_comm->mutable_bcast_33(), bcast_val);
+    } else if (v == "01") {
+        parse_l2_summary(dev_comm->mutable_bcast_01(), bcast_val);
+    } else if (v == "odd") {
+        parse_l2_summary(dev_comm->mutable_bcast_xx(), bcast_val);
+    } else {}
+    return;
+}
+
+void BrokerCtx::parse_bcast_summaries(epoch::DeviceComm* dev_comm, broker::vector *dComm) {
+   parse_single_mcast(dev_comm, 2, "ff", dComm);
+   parse_single_mcast(dev_comm, 3, "33", dComm);
+   parse_single_mcast(dev_comm, 4, "01", dComm);
+   parse_single_mcast(dev_comm, 5, "odd", dComm);
+}
+
+
+int BrokerCtx::parse_l2_summary(epoch::L2Summary* es_l2sum, broker::vector* l2summary) {
+    int sum = 0;
+    auto *ipv4_cnt = broker::get_if<broker::count>(l2summary->at(0));
+    if (ipv4_cnt == nullptr) {
+        std::cerr << "ipv4_cnt" << std::endl;
+        return 0;
+    }
+    es_l2sum->set_ipv4(*ipv4_cnt);
+
+    auto *ipv6_cnt = broker::get_if<broker::count>(l2summary->at(1));
+    if (ipv6_cnt == nullptr) {
+        std::cerr << "ipv6_cnt" << std::endl;
+        return 0;
+    }
+    es_l2sum->set_ipv6(*ipv6_cnt);
+
+    auto *arp_cnt = broker::get_if<broker::count>(l2summary->at(2));
+    if (arp_cnt == nullptr) {
+        std::cerr << "arp_cnt" << std::endl;
+        return 0;
+    }
+    es_l2sum->set_arp(*arp_cnt);
+
+    auto *unknown_cnt = broker::get_if<broker::count>(l2summary->at(3));
+    if (unknown_cnt == nullptr) {
+        std::cerr << "unknown_cnt" << std::endl;
+        return 0;
+    }
+    es_l2sum->set_unknown(*unknown_cnt);
+
+    sum = *ipv4_cnt + *ipv6_cnt + *arp_cnt + *unknown_cnt;
+    return sum;
+}
+
+
+void BrokerCtx::parse_enter_l3_addr(epoch::EpochStep *step, std::map<broker::data, broker::data> *addr_map) {
      for (auto it = addr_map->begin(); it != addr_map->end(); it++) {
         auto pair = *it;
         auto *mac_src = broker::get_if<std::string>(pair.first);
@@ -165,7 +238,8 @@ void BrokerCtx::parse_enter_l3_addr(std::map<broker::data, broker::data> *addr_m
             continue;
         }
 
-        // TODO add enter l3_addr
+        epoch::AddrAssoc *addr_assoc = step->add_enter_l2_ipv4_addr_src();
+        addr_assoc->set_mac_src(string_to_mac(*mac_src));
 
         auto *ip_addr_src = broker::get_if<broker::address>(pair.second);
         if (ip_addr_src == nullptr) {
@@ -173,13 +247,13 @@ void BrokerCtx::parse_enter_l3_addr(std::map<broker::data, broker::data> *addr_m
             continue;
         }
 
-        std::string s = to_string(*ip_addr_src);
-
-        std::cout << "New IP!" << s << std::endl;
+        uint32_t ipv4 = addr_to_ip(ip_addr_src->bytes());
+        addr_assoc->set_ipv4(ipv4);
     }
 }
 
-void BrokerCtx::parse_arp_table(std::map<broker::data, broker::data> *arp_table) {
+
+void BrokerCtx::parse_arp_table(epoch::EpochStep *step, std::map<broker::data, broker::data> *arp_table) {
     for (auto it = arp_table->begin(); it != arp_table->end(); it++) {
         auto pair = *it;
         auto *mac_src = broker::get_if<std::string>(pair.first);
@@ -193,6 +267,9 @@ void BrokerCtx::parse_arp_table(std::map<broker::data, broker::data> *arp_table)
             std::cerr << "src_table arp_table:" << *mac_src << std::endl;
             continue;
         }
+
+        epoch::ArpAssoc *arp_assoc = step->add_enter_arp_table();
+        arp_assoc->set_mac_src(string_to_mac(*mac_src));
 
         for (auto it2 = src_table->begin(); it2 != src_table->end(); it2++) {
             auto pair2 = *it2;
@@ -208,7 +285,9 @@ void BrokerCtx::parse_arp_table(std::map<broker::data, broker::data> *arp_table)
                 continue;
             }
 
-            // TODO handle ip_addr_dst
+            epoch::AddrAssoc *addr_assoc = arp_assoc->add_table_row();
+            addr_assoc->set_ipv4(addr_to_ip(ip_addr_dst->bytes()));
+            addr_assoc->set_mac_src(string_to_mac(*mac_dst));
         }
     }
 }

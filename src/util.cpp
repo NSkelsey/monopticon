@@ -16,11 +16,11 @@ int Util::SumTotal(epoch::L2Summary struct_l2) {
 }
 
 
-std::string Util::uint_to_ipv4addr(uint32_t ipv4) {
-    char* b[INET_ADDRSTRLEN] = {};
+std::string Util::uint_to_ipv4addr(const uint32_t ipv4) {
+    char b[INET_ADDRSTRLEN] = {0};
     char* t = reinterpret_cast<char *>(b);
-    inet_ntop(AF_INET, reinterpret_cast<char *>(ipv4), t, INET_ADDRSTRLEN);
-    return std::string(t);
+    inet_ntop(AF_INET, reinterpret_cast<const char *>(&ipv4), t, INET_ADDRSTRLEN);
+    return std::string(b);
 }
 
 

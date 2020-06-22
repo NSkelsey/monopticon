@@ -133,7 +133,7 @@ namespace Util {
     /*
      * Converts a uint32 probably from a protobuf to an ipv4 address string.
      */
-    std::string uint_to_ipv4addr(uint32_t ipv4);
+    std::string uint_to_ipv4addr(const uint32_t ipv4);
 
     Vector2 randCirclePoint();
     Vector2 paramCirclePoint(int num_elem, int pos);
