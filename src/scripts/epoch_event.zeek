@@ -92,7 +92,7 @@ export {
   global PrefixVec: vector of table[string] of L2Device;
 
   #global tick_resolution = 250usec;
-  global tick_resolution = 15msec;
+  global tick_resolution = 150msec;
 
   # Internal state refreshed every Epoch:
   # mac_src key
@@ -360,7 +360,7 @@ event zeek_init()
 
   local copt: table[string] of L2Device = table(["00:04:13"] = cop);
   local t = table();
-  PrefixVec = [t, t, t, t, t, t, t, copt];
+  PrefixVec = [t, t, t, t, t, t, t, t];
 
   print "Trying to add peer";
   Broker::peer("127.0.0.1", 9999/tcp, 0sec);

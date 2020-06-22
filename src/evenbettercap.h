@@ -21,6 +21,8 @@
 #include <map>
 #include <unistd.h>
 
+#include <arpa/inet.h>
+
 #include <SDL.h>
 #include <emscripten/websocket.h>
 
@@ -127,6 +129,11 @@ namespace Util {
      * Converts a mac to a string
      */
     std::string fmtEUI48(const uint64_t & mac);
+
+    /*
+     * Converts a uint32 probably from a protobuf to an ipv4 address string.
+     */
+    std::string uint_to_ipv4addr(uint32_t ipv4);
 
     Vector2 randCirclePoint();
     Vector2 paramCirclePoint(int num_elem, int pos);

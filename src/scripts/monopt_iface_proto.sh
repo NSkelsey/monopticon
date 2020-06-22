@@ -78,7 +78,7 @@ launch() {
     # Check if ZEEK_ROOT is set, otherwise use the default package install path
     if [ -z ${ZEEK_ROOT+x} ];
     then
-        ZEEK_ROOT=/opt/zeek
+        ZEEK_ROOT=/usr/
     fi
     zeek_bin_path="${ZEEK_ROOT}/bin/zeek"
     zeek_script_path="${ZEEK_ROOT}/share/zeek"

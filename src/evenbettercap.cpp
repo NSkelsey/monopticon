@@ -22,7 +22,7 @@ const int MSAA_CNT = 8; // Number of subpixel samples for MultiSampling Anti-Ali
 using namespace Magnum;
 using namespace Math::Literals;
 
-std::string ws_uri = "ws://localhost:8088/";
+std::string ws_uri = "ws://localhost:9002/";
 
 class Application: public Platform::Application {
     public:
@@ -305,7 +305,6 @@ void Application::deselectObject() {
 }
 
 
-
 void Application::selectableMenuActions(Device::Selectable *selection) {
     int res = selection->rightClickActions();
     if (res == 0) {
@@ -331,9 +330,6 @@ void Application::objectClicked(Device::Selectable *selection) {
     //Level3::Address *a = dynamic_cast<Level3::Address*>(selection);
     selection->addHighlight(gCtx->_bbitem_shader, gCtx->_billboard_drawables);
 }
-
-
-
 
 
 void Application::watchSelectedDevice() {
@@ -373,6 +369,7 @@ void Application::drawEvent() {
     _timeline.nextFrame();
     redraw();
 }
+
 
 void Application::DeleteEverything() {
     {

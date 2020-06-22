@@ -164,9 +164,7 @@ void WsBroker::parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx,
             return;
         }
 
-        // TODO convert addr_map.ipv4() to str
-        std::string s = "1.0.0.1";
-
+        std::string s = Util::uint_to_ipv4addr(addr_map.ipv4());
         gCtx->createIPv4Address(sCtx, s, tran_d_s->circPoint);
 }
 
@@ -197,7 +195,7 @@ void WsBroker::parse_arp_table(Context::Store *sCtx, Context::Graphic *gCtx, epo
             }
 
             // TODO validate ipv4 dest lookup against sCtx
-            int32_t ip_addr_dst = row.ipv4();
+            // int32_t ip_addr_dst = row.ipv4();
 
             const Vector3 offset{0.0f, 1.0f, 0.0f};
             gCtx->addL2ConnectL3(tran_d_s->circPoint, recv_d_s->circPoint+offset);

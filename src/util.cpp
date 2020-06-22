@@ -16,6 +16,14 @@ int Util::SumTotal(epoch::L2Summary struct_l2) {
 }
 
 
+std::string Util::uint_to_ipv4addr(uint32_t ipv4) {
+    char* b[INET_ADDRSTRLEN] = {};
+    char* t = reinterpret_cast<char *>(b);
+    inet_ntop(AF_INET, reinterpret_cast<char *>(ipv4), t, INET_ADDRSTRLEN);
+    return std::string(t);
+}
+
+
 Vector2 Util::randCirclePoint() {
     float r = rand() / (1e9/(2*Math::Constants<float>::pi()));
 

@@ -35,8 +35,8 @@ async def publish_events(websocket, path):
     i = 0
     while(True):
         ef = new_random_epoch(i)
-        time.sleep(0.014)
-        #time.sleep(0.5)
+        #time.sleep(0.014)
+        time.sleep(0.5)
         await websocket.send(ef.SerializeToString())
         i += 1
         if (i == 19):
@@ -45,7 +45,7 @@ async def publish_events(websocket, path):
     print("Sent everything")
 
 
-start_server = websockets.serve(publish_events, "127.0.0.1", 8088)
+start_server = websockets.serve(publish_events, "localhost", 8088)
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
