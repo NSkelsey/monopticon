@@ -23,7 +23,6 @@
 
 #include <arpa/inet.h>
 
-#include <SDL.h>
 #include <emscripten/websocket.h>
 
 #include <Corrade/Containers/Optional.h>
@@ -57,7 +56,7 @@
 #include <Magnum/MeshTools/CompressIndices.h>
 #include <Magnum/MeshTools/Interleave.h>
 #include <Magnum/PixelFormat.h>
-#include <Magnum/Platform/Sdl2Application.h>
+#include <Magnum/Platform/EmscriptenApplication.h>
 #include <Magnum/Primitives/Axis.h>
 #include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Circle.h>
@@ -83,7 +82,7 @@
 #include <imgui.h>
 
 // TODO move to src
-#include "../contrib/expirements/ws/epoch.pb.h"
+#include "../contrib/expirements/ws/newproto/epoch.pb.h"
 
 using namespace Magnum;
 using namespace Math::Literals;

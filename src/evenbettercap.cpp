@@ -126,7 +126,7 @@ Application::Application(const Arguments& arguments):
     run_sum = 0;
     frame_cnt = 0;
 
-    setSwapInterval(1);
+    //setSwapInterval(1);
     _timeline.start();
 
     //_iface_list = Util::get_iface_list();

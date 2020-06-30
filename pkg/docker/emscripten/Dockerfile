@@ -51,16 +51,17 @@ ENV MAGNUM_PLUGINS_WASM emscripten-magnum-plugins-dev.wasm.webgl2-1-any.pkg.tar.
 ENV INT_MONOPTICON_WASM monopticon-magnum-integration-2019.10.r48.gcc90f56-1-x86_64.pkg.tar.xz
 
 # corrade + magnum built normally & for emscripten-wasm-webgl2
-COPY corrade/package/archlinux/${CORRADE} local-pkgs
-COPY corrade/package/archlinux/${CORRADE_WASM} local-pkgs
+COPY ${CORRADE} local-pkgs
 
-COPY magnum/package/archlinux/${MAGNUM}  local-pkgs
-COPY magnum/package/archlinux/${MAGNUM_WASM}  local-pkgs
+COPY ${CORRADE_WASM} local-pkgs
+
+COPY ${MAGNUM}  local-pkgs
+COPY ${MAGNUM_WASM}  local-pkgs
 
 # magnum integration & plugins
-COPY magnum-plugins-git/${MAGNUM_PLUGINS_WASM} local-pkgs
+COPY ${MAGNUM_PLUGINS_WASM} local-pkgs
 
-COPY monopticon-magnum-integration/${INT_MONOPTICON_WASM} local-pkgs
+COPY ${INT_MONOPTICON_WASM} local-pkgs
 
 # Install all local packages
 RUN yes | sudo pacman -U local-pkgs/${CORRADE}
@@ -70,7 +71,43 @@ RUN yes | sudo pacman -U local-pkgs/${MAGNUM_WASM}
 RUN yes | sudo pacman -U local-pkgs/${MAGNUM_PLUGINS_WASM}
 RUN yes | sudo pacman -U local-pkgs/${INT_MONOPTICON_WASM}
 
+RUN yes | sudo pacman -Syyu
+
 # Setup emscripten environment
-RUN emcc --clear-config
+RUN emcc --version
+
+ENV EM_CONFIG $HOME/.emscripten
+COPY ./emscripten-conf $HOME/.emscripten
+
 # Download and build freetype emscripten port.
 RUN emcc -s USE_FREETYPE=1 /usr/lib/emscripten/tests/freetype_test.c
+
+ARG PROTOBUF_VERSION="3.9.0"
+
+# Build specific version of protobuf
+RUN cd $HOME && \
+    curl https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOBUF_VERSION/protobuf-cpp-$PROTOBUF_VERSION.tar.gz -L > protobuf-cpp-$PROTOBUF_VERSION.tar.gz && \
+    tar xvzf ./protobuf-cpp-$PROTOBUF_VERSION.tar.gz
+
+WORKDIR "${HOME}/protobuf-$PROTOBUF_VERSION"
+RUN ./configure && make
+RUN sudo make install && sudo ldconfig
+
+WORKDIR $HOME
+
+ENV PROTOBUF_PATCH 0001-patch-apply-kwonji.patch
+COPY ${PROTOBUF_PATCH} local-pkgs
+
+RUN mkdir protobuf && tar xvzf protobuf-cpp-$PROTOBUF_VERSION.tar.gz -C protobuf --strip-components 1 && \
+    cd $HOME/protobuf && patch -p1 < ~/local-pkgs/${PROTOBUF_PATCH}
+
+RUN cd $HOME/protobuf && \
+    sh autogen.sh && \
+    emconfigure ./configure --prefix=/usr/lib/emscripten/system/ && \
+    emmake make && \
+    sudo make install
+
+# Rename the compiled wasm (shared object) archives to the expected extension
+RUN cd $HOME/protobuf && \
+   sudo cp src/.libs/libprotobuf.a /usr/lib/emscripten/system/lib/protobuf.bc && \
+   sudo cp src/.libs/libprotobuf-lite.a /usr/lib/emscripten/system/lib/protobuf-lite.bc

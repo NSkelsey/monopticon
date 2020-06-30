@@ -6,7 +6,7 @@
 
 #include <emscripten/websocket.h>
 
-#include "epoch.pb.h"
+#include "newproto/epoch.pb.h"
 
 struct membuf: std::streambuf {
     membuf(uint8_t* base, size_t size) {
