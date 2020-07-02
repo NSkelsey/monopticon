@@ -635,6 +635,73 @@ class WsBroker {
 
 } // Context
 
+namespace Layout {
+
+class Router {
+  public:
+    Router(int level, std::string label, std::vector<std::string> ifaces);
+
+
+    /*
+     * The position in routing hierarchy
+     */
+    int level;
+
+    /*
+     * The routers interfaces - identified by their macs
+     */
+    std::vector<Figure::DeviceDrawable*> interfaces;
+    Vector2d position;
+
+    /*
+     * The devices name to display
+     */
+    std::string label;
+
+    /*
+     * Maps a specific vlan tag to the interface attached to it.
+     */
+    std::map<uint32_t, Figure::DeviceDrawable*> attached_vlans;
+};
+
+class Vlan {
+  public:
+    uint32_t tag;
+
+    int expected_size;
+    Vector2d position;
+
+    /*
+     * The border of the vlan demarked via a wireframe object
+     */
+    Figure::RingDrawable bounding_grid;
+
+    /*
+     * The name to display
+     */
+    std::string label;
+
+    std::vector<Figure::DeviceDrawable*> connected_endpoints;
+
+  private:
+    Figure::TextDrawable _txt_label;
+
+    std::string makeLabel();
+};
+
+class EmplacedDevice {
+  public:
+    Vlan *vlan;
+    Router *router;
+
+    Figure::DeviceDrawable device;
+
+    std::string label;
+};
+
+} // Layout
+
+
 } // Monopticon
 
 #endif

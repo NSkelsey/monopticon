@@ -42,6 +42,7 @@ set(monopticon_FILES
         src/util.cpp
         src/context.cpp
         src/ws_context.cpp
+        src/layout.cpp
         src/evenbettercap.cpp
     )
 
