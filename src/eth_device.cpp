@@ -38,20 +38,22 @@ Object3D& Stats::getObj() {
 }
 
 
-Stats::Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev):
-         mac_addr{macAddr},
-         _drawable{dev},
-         _ip_label{nullptr},
-         _mac_label{nullptr},
-         _windowMgr{nullptr},
-         _selected{false},
-         _emitted_src_ips{},
-         _dst_arp_map{},
-         circPoint{pos},
+Stats::Stats(std::string macAddr, Object3D* root_obj, Figure::DeviceDrawable *dev):
+        mac_addr{macAddr},
+        _drawable{dev},
+        _ip_label{nullptr},
+        _mac_label{nullptr},
+        _windowMgr{nullptr},
+        _selected{false},
+        _emitted_src_ips{},
+        _dst_arp_map{},
+        _root_obj{root_obj},
         num_pkts_sent{0},
         num_pkts_recv{0},
         health{60*30}
-{}
+{
+   circPoint =  root_obj->transformationMatrix().translation();
+}
 
 
 Vector3 Stats::getTranslation() {

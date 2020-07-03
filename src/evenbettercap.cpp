@@ -29,6 +29,7 @@ class Application: public Platform::Application {
         explicit Application(const Arguments& arguments);
 
         void prepareDrawables();
+        void createLayout(std::string choice);
 
         void drawEvent() override;
         void drawTextElements();
@@ -133,6 +134,9 @@ Application::Application(const Arguments& arguments):
     _zeek_pid = "#nop";
 
     prepareDrawables();
+
+    // TODO add imgui element to choose and for enable/disable of this interface.
+    createLayout("cyberlab");
 }
 
 void Application::prepareDrawables() {
@@ -145,6 +149,26 @@ void Application::prepareDrawables() {
     sCtx->_dst_prefix_group_map.insert(std::make_pair("33", three_bcast));
     sCtx->_dst_prefix_group_map.insert(std::make_pair("01", one_bcast));
     sCtx->_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
+}
+
+void Application::createLayout(std::string choice) {
+    if (choice == "cyberlab") {
+
+        auto world_ifaces = std::vector<std::string>{};
+        world_ifaces.push_back("de:ad:be:ef:ca:ca");
+        Layout::Router *fw1 = gCtx->createRouter(sCtx, 1, "fwWorld", world_ifaces);
+
+        auto corp_ifaces = std::vector<std::string>{};
+        corp_ifaces.push_back("aa:aa:aa:fe:fe:fe");
+        corp_ifaces.push_back("bb:bb:bb:fe:fe:fe");
+        corp_ifaces.push_back("cc:cc:ca:fe:fe:fe");
+        corp_ifaces.push_back("dd:dd:dd:dd:dd:dd");
+        Layout::Router *fw2 = gCtx->createRouter(sCtx, 2, "fwCorp", corp_ifaces);
+
+        Layout::Scenario scenario = Layout::Scenario("cyberlab");
+
+        scenario.add(fw1, 1).add(fw2, 1);
+    }
 }
 
 

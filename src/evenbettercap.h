@@ -178,7 +178,7 @@ class Selectable {
 
 class Stats: public Selectable {
   public:
-    Stats(std::string macAddr, Vector3 pos, Figure::DeviceDrawable *dev);
+    Stats(std::string macAddr, Object3D *root_obj, Figure::DeviceDrawable *dev);
     ~Stats();
 
     std::string create_device_string();
@@ -203,6 +203,7 @@ class Stats: public Selectable {
     std::vector<std::string>              _emitted_src_ips;
     std::map<std::string, RouteMgr*>       _dst_arp_map;
 
+    Object3D *_root_obj;
     Vector3 circPoint;
     int num_pkts_sent;
     int num_pkts_recv;
@@ -488,6 +489,85 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
 
 } // Figure
 
+namespace Layout {
+
+class Router {
+  public:
+    Router(int level, int size, Object3D *root);
+
+    Object3D* root;
+
+    /*
+     * The position in routing hierarchy
+     */
+    int level;
+
+    /*
+     * The routers interfaces - identified by their macs
+     */
+    std::vector<Device::Stats*> _interfaces{};
+    Vector2d position;
+
+    /*
+     * The devices name to display
+     */
+    std::string label;
+
+    /*
+     * Maps a specific vlan tag to the interface attached to it.
+     */
+    std::map<uint32_t, Device::Stats*> _attached_vlans{};
+
+    void plugIface(Device::Stats *d_s, uint32_t vlan);
+};
+
+class Vlan {
+  public:
+    uint32_t tag;
+
+    int expected_size;
+    Vector2d position;
+
+    /*
+     * The border of the vlan demarked via a wireframe object
+     */
+    Figure::RingDrawable bounding_grid;
+
+    /*
+     * The name to display
+     */
+    std::string label;
+
+    std::vector<Figure::DeviceDrawable*> connected_endpoints;
+
+  private:
+    Figure::TextDrawable _txt_label;
+
+    std::string makeLabel();
+};
+
+class EmplacedDevice {
+  public:
+    Vlan *vlan;
+    Router *router;
+
+    Figure::DeviceDrawable device;
+
+    std::string label;
+};
+
+class Scenario {
+  public:
+    Scenario(std::string label);
+
+    std::vector<std::vector<Router*>> router_levels;
+
+    Scenario& add(Router* r, int level);
+
+};
+
+} // Layout
+
 namespace Context {
 
 /** @file
@@ -531,7 +611,12 @@ class Graphic {
         void draw3DElements();
 
         Device::Stats* createSphere(Store *sCtx, const std::string mac);
+
+        Device::Stats* createSphere(Store *sCtx, const std::string mac, Object3D *parent, Vector3 relPos);
+
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
+
+        Layout::Router* createRouter(Store *sCtx, int level, std::string label, std::vector<std::string> ifaces);
 
         void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
@@ -634,73 +719,6 @@ class WsBroker {
 };
 
 } // Context
-
-namespace Layout {
-
-class Router {
-  public:
-    Router(int level, std::string label, std::vector<std::string> ifaces);
-
-
-    /*
-     * The position in routing hierarchy
-     */
-    int level;
-
-    /*
-     * The routers interfaces - identified by their macs
-     */
-    std::vector<Figure::DeviceDrawable*> interfaces;
-    Vector2d position;
-
-    /*
-     * The devices name to display
-     */
-    std::string label;
-
-    /*
-     * Maps a specific vlan tag to the interface attached to it.
-     */
-    std::map<uint32_t, Figure::DeviceDrawable*> attached_vlans;
-};
-
-class Vlan {
-  public:
-    uint32_t tag;
-
-    int expected_size;
-    Vector2d position;
-
-    /*
-     * The border of the vlan demarked via a wireframe object
-     */
-    Figure::RingDrawable bounding_grid;
-
-    /*
-     * The name to display
-     */
-    std::string label;
-
-    std::vector<Figure::DeviceDrawable*> connected_endpoints;
-
-  private:
-    Figure::TextDrawable _txt_label;
-
-    std::string makeLabel();
-};
-
-class EmplacedDevice {
-  public:
-    Vlan *vlan;
-    Router *router;
-
-    Figure::DeviceDrawable device;
-
-    std::string label;
-};
-
-} // Layout
-
 
 } // Monopticon
 

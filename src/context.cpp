@@ -1,6 +1,6 @@
 #include "evenbettercap.h"
 
-using namespace Monopticon::Context;
+namespace Monopticon { namespace Context {
 
 Graphic::Graphic() : _glyphCache(Vector2i(2048), Vector2i(512), 22)
 {
@@ -52,7 +52,7 @@ void Graphic::prepareGLBuffers(const Range2Di &viewport)
     _objselect_framebuffer = GL::Framebuffer{viewport};
     _objselect_framebuffer.attachRenderbuffer(GL::Framebuffer::ColorAttachment{1}, _objectId)
         .mapForDraw({{Shaders::Phong::ObjectIdOutput, GL::Framebuffer::ColorAttachment{1}}});
- 
+
 
     CORRADE_INTERNAL_ASSERT(_objselect_framebuffer.checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
 }
@@ -87,35 +87,40 @@ void Graphic::prepare3DFont()
         .setOutlineRange(0.45f, 0.445f);
 }
 
-Monopticon::Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac)
+Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac)
 {
-    Object3D *o = new Object3D{&_scene};
 
     int num_objs = sCtx->_device_map.size();
     int vlan = num_objs % 3;
     Vector2 v = sCtx->nextVlanPos(vlan);
     Vector3 w = Vector3{v.x(), 0.0f, v.y()};
 
-    o->transform(Matrix4::scaling(Vector3{0.25f}));
-    o->translate(w);
-    o->rotateY(120.0_degf * static_cast<float>(vlan));
-    //o->rotateY(120.0_degf*(float)vlan);
+    return createSphere(sCtx, mac, &_scene, w);
+}
+
+Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac, Object3D *parent, Vector3 relPos)
+{
+    Object3D *o = new Object3D{parent};
+    Object3D *sphere_obj = new Object3D{o};
+    o->translate(relPos);
+    sphere_obj->transform(Matrix4::scaling(Vector3{0.25f}));
+
+    //o->rotateY(120.0_degf * static_cast<float>(vlan));
 
     UnsignedByte id = sCtx->newObjectId();
 
     Color3 c = 0xa5c9ea_rgbf;
     Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{
         id,
-        *o,
+        *sphere_obj,
         _phong_shader,
         c,
         _sphere,
         Matrix4{},
         _selectable_drawables};
 
-    auto tmp = o->transformationMatrix().translation();
 
-    Device::Stats *d_s = new Device::Stats{mac, tmp, dev};
+    Device::Stats *d_s = new Device::Stats{mac, o, dev};
     dev->_deviceStats = d_s;
 
     sCtx->_selectable_objects.push_back(d_s);
@@ -235,6 +240,48 @@ void Graphic::createPoolHit(Device::PrefixStats *dp_s, Color3 c)
     dp_s->contacts.push_back(pair);
 }
 
+
+Layout::Router* Graphic::createRouter(Store *sCtx, int level, std::string label, std::vector<std::string> ifaces)
+{
+    Object3D *root = new Object3D{&_scene};
+
+    Vector3 pos = Vector3(3.0f*(float)level, 0.0f, 3.0f*(float)level);
+    //root->rotateX(90.0_degf);
+    root->translate(pos);
+
+    Layout::Router* router = new Layout::Router(level, ifaces.size(), root);
+    auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
+
+    for (int i = 0; i < ifaces.size(); i++) {
+        std::string iface_mac = ifaces.at(i);
+
+        // Grid coordinates
+        float x_step = 2.00f;
+        float y_step = 2.00f;
+
+        float x = x_step * (float)(i/2);
+        float y = 0.0f;
+        if (i % 2 == 0) {
+            y = y_step;
+        }
+
+        // place it on a square of a determined size
+        Vector3 relPos = Vector3(x, 0.0f, y);
+        !Debug{} << relPos;
+
+        // Create Device Stats
+        Device::Stats* d_s = createSphere(sCtx, iface_mac, root, relPos);
+        addDirectLabels(d_s);
+
+        // TODO temp uses `i` instead of vlan tag
+        router->plugIface(d_s, (uint32_t)i);
+    }
+
+
+    return router;
+}
+
+
 void Graphic::addDirectLabels(Device::Stats *d_s)
 {
     auto scaling = Matrix4::scaling(Vector3{0.10f});
@@ -260,11 +307,11 @@ void Graphic::addDirectLabels(Device::Stats *d_s)
 
     if (d_s->_mac_label == nullptr)
     {
-        Object3D *obj = new Object3D{&_scene};
+        Object3D *obj = new Object3D{d_s->_root_obj};
         obj->transform(scaling);
-        obj->translate(t + Vector3(0.0f, -0.7f, 0.0f));
+        obj->translate(Vector3(0.0f, -0.7f, 0.0f));
 
-        auto c = 0xaaaaaa_rgbf;
+        Color3 c = 0xaaaaaa_rgbf;
         d_s->_mac_label = new Figure::TextDrawable(d_s->mac_addr, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
     }
 }
@@ -396,3 +443,6 @@ void Store::frameUpdate() {
         dp_s->contacts = c;
     }
 }
+
+} // Context
+} // Monopticon
