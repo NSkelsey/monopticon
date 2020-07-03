@@ -491,6 +491,13 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
 
 namespace Layout {
 
+struct RInput {
+    std::string label;
+    Vector2 pos;
+    std::string mac;
+    uint32_t vlan;
+};
+
 class Router {
   public:
     Router(int level, int size, Object3D *root);
@@ -519,6 +526,12 @@ class Router {
     std::map<uint32_t, Device::Stats*> _attached_vlans{};
 
     void plugIface(Device::Stats *d_s, uint32_t vlan);
+};
+
+struct VInput {
+    std::string label;
+    Vector2 pos;
+    uint32_t tag;
 };
 
 class Vlan {
@@ -616,7 +629,7 @@ class Graphic {
 
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
 
-        Layout::Router* createRouter(Store *sCtx, int level, std::string label, std::vector<std::string> ifaces);
+        Layout::Router* createRouter(Store *sCtx, Vector3 pos, std::string label, std::vector<Layout::RInput*> ifaces);
 
         void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);

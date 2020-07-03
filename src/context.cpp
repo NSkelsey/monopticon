@@ -241,39 +241,27 @@ void Graphic::createPoolHit(Device::PrefixStats *dp_s, Color3 c)
 }
 
 
-Layout::Router* Graphic::createRouter(Store *sCtx, int level, std::string label, std::vector<std::string> ifaces)
+Layout::Router* Graphic::createRouter(Store *sCtx, Vector3 pos, std::string label, std::vector<Layout::RInput*> ifaces)
 {
     Object3D *root = new Object3D{&_scene};
-
-    Vector3 pos = Vector3(3.0f*(float)level, 0.0f, 3.0f*(float)level);
-    //root->rotateX(90.0_degf);
     root->translate(pos);
 
-    Layout::Router* router = new Layout::Router(level, ifaces.size(), root);
+    Layout::Router* router = new Layout::Router(0, ifaces.size(), root);
     auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
 
+    // TODO store min and max x and y and generate connecting rectangle of that size.
     for (int i = 0; i < ifaces.size(); i++) {
-        std::string iface_mac = ifaces.at(i);
+        Layout::RInput* params = ifaces.at(i);
 
-        // Grid coordinates
-        float x_step = 2.00f;
-        float y_step = 2.00f;
-
-        float x = x_step * (float)(i/2);
-        float y = 0.0f;
-        if (i % 2 == 0) {
-            y = y_step;
-        }
-
-        // place it on a square of a determined size
-        Vector3 relPos = Vector3(x, 0.0f, y);
-        !Debug{} << relPos;
+        Vector3 relPos = Vector3(params->pos.x(), 0.0f, params->pos.y());
 
         // Create Device Stats
-        Device::Stats* d_s = createSphere(sCtx, iface_mac, root, relPos);
+        Device::Stats* d_s = createSphere(sCtx, params->mac, root, relPos);
         addDirectLabels(d_s);
 
-        // TODO temp uses `i` instead of vlan tag
+        // TODO project relPos from 0,0 with a ray to choose a good spot to place the vlan bcast pool
+
+        // TODO uses `i` instead of vlan tag
         router->plugIface(d_s, (uint32_t)i);
     }
 

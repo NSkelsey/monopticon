@@ -151,23 +151,48 @@ void Application::prepareDrawables() {
     sCtx->_dst_prefix_group_map.insert(std::make_pair("odd", odd_bcast));
 }
 
+
+
 void Application::createLayout(std::string choice) {
     if (choice == "cyberlab") {
 
-        auto world_ifaces = std::vector<std::string>{};
-        world_ifaces.push_back("de:ad:be:ef:ca:ca");
-        Layout::Router *fw1 = gCtx->createRouter(sCtx, 1, "fwWorld", world_ifaces);
+        auto world_ifaces = std::vector<Layout::RInput*>{};
+        world_ifaces.push_back(new Layout::RInput{"blueisp", Vector2(0.0, 0.0), "", 4});
+        world_ifaces.push_back(new Layout::RInput{"wan", Vector2(1.0, 4.0), "", 1});
+        world_ifaces.push_back(new Layout::RInput{"red", Vector2(2.0, 2.0), "", 2});
+        world_ifaces.push_back(new Layout::RInput{"service", Vector2(2.0, 0.0), "", 3});
 
-        auto corp_ifaces = std::vector<std::string>{};
-        corp_ifaces.push_back("aa:aa:aa:fe:fe:fe");
-        corp_ifaces.push_back("bb:bb:bb:fe:fe:fe");
-        corp_ifaces.push_back("cc:cc:ca:fe:fe:fe");
-        corp_ifaces.push_back("dd:dd:dd:dd:dd:dd");
-        Layout::Router *fw2 = gCtx->createRouter(sCtx, 2, "fwCorp", corp_ifaces);
+        Layout::Router *fw1 = gCtx->createRouter(sCtx, Vector3(-7.0, 0.0, -7.0), "fwWorld", world_ifaces);
+
+        auto corp_ifaces = std::vector<Layout::RInput*>{};
+        corp_ifaces.push_back(new Layout::RInput{"blueisp", Vector2(0.0, 0.0), "", 4});
+        corp_ifaces.push_back(new Layout::RInput{"dmz", Vector2(2.0, 3.0), "", 5});
+        corp_ifaces.push_back(new Layout::RInput{"lansrv", Vector2(2.0, 1.0), "", 6});
+        corp_ifaces.push_back(new Layout::RInput{"lansoc", Vector2(2.0, -1.0), "", 7});
+        corp_ifaces.push_back(new Layout::RInput{"lanws", Vector2(2.0, -3.0), "", 8});
+
+        Layout::Router *fw2 = gCtx->createRouter(sCtx, Vector3(7.0, 0.0, 7.0), "fwCorp", corp_ifaces);
+
+        auto scenar_vlans = std::vector<Layout::VInput*>{};
+        scenar_vlans.push_back(new Layout::VInput{"blue_isp", Vector2(0.0, 0.0), 4});
+        scenar_vlans.push_back(new Layout::VInput{"red", Vector2(6.0, 6.0), 2});
+        scenar_vlans.push_back(new Layout::VInput{"service", Vector2(6.0, 0.0), 3});
+
+        scenar_vlans.push_back(new Layout::VInput{"dmz", Vector2(8.0, 12.0), 5});
+        scenar_vlans.push_back(new Layout::VInput{"lansrv", Vector2(8.0, 4.0), 6});
+        scenar_vlans.push_back(new Layout::VInput{"lansoc", Vector2(8.0, -8.0), 7});
+        scenar_vlans.push_back(new Layout::VInput{"lanws", Vector2(8.0, -12.0), 8});
+
+        for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
+            // TODO these need to be relative to the router
+            Layout::VInput* vinp = *it;
+            Vector3 twod = Vector3(vinp->pos.x(), -1.0, vinp->pos.y());
+            Util::createLayoutRing(gCtx->_scene, gCtx->_permanent_drawables, 1.0f, twod);
+        }
 
         Layout::Scenario scenario = Layout::Scenario("cyberlab");
 
-        scenario.add(fw1, 1).add(fw2, 1);
+        scenario.add(fw1, 1);
     }
 }
 
