@@ -504,7 +504,7 @@ struct RouterParam {
     std::string label;
     Vector3 pos;
     std::vector<RIface*> ifaces;
-}
+};
 
 class Router {
   public:
@@ -637,7 +637,7 @@ class Graphic {
 
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
 
-        Layout::Router* createRouter(Store *sCtx, RouterParam *param);
+        Layout::Router* createRouter(Store *sCtx, Layout::RouterParam *param);
 
         void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);

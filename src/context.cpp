@@ -251,12 +251,12 @@ Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
 
     // TODO store min and max x and y and generate connecting rectangle of that size.
     for (int i = 0; i < param->ifaces.size(); i++) {
-        Layout::RInput* input_params = param->ifaces.at(i);
+        Layout::RIface* iface_params = param->ifaces.at(i);
 
-        Vector3 relPos = Vector3(input_params->pos.x(), 0.0f, input_params->pos.y());
+        Vector3 relPos = Vector3(iface_params->pos.x(), 0.0f, iface_params->pos.y());
 
         // Create Device Stats
-        Device::Stats* d_s = createSphere(sCtx, input_params->mac, root, relPos);
+        Device::Stats* d_s = createSphere(sCtx, iface_params->mac, root, relPos);
         addDirectLabels(d_s);
 
         // TODO project relPos from 0,0 with a ray to choose a good spot to place the vlan bcast pool

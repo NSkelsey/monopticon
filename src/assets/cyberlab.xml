@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2020-07-05T13:10:04.233Z" agent="5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.122 Safari/537.36" etag="ShH42UHdCjojHXg9lGpj" compressed="true" version="13.3.8" type="browser">
+  <diagram id="jqfGGf_7ZzLIy3FHOFG0" name="Page-1">
+    <mxGraphModel dx="682" dy="450" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <object label="(0,0)" class="center" id="HuDwKePgMMkB4XPKHNRV-101">
+          <mxCell style="whiteSpace=wrap;html=1;aspect=fixed;dashed=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+            <mxGeometry width="32" height="32" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="R_lO7g0ntE3RoQr6fGAW-14" value="" style="group" parent="1" vertex="1" connectable="0">
+          <mxGeometry x="150" y="30" width="100" height="100" as="geometry" />
+        </mxCell>
+        <object label="" class="bcast" id="HuDwKePgMMkB4XPKHNRV-59">
+          <mxCell style="group" parent="R_lO7g0ntE3RoQr6fGAW-14" vertex="1" connectable="0">
+            <mxGeometry x="30" y="30" width="40" height="40" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="HuDwKePgMMkB4XPKHNRV-60" value="" style="group" parent="HuDwKePgMMkB4XPKHNRV-59" vertex="1" connectable="0">
+          <mxGeometry width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="HuDwKePgMMkB4XPKHNRV-61" value="wan" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;strokeColor=#d6b656;dashed=1;fillColor=#FFFAE8;" parent="HuDwKePgMMkB4XPKHNRV-60" vertex="1">
+          <mxGeometry width="40" height="40" as="geometry" />
+        </mxCell>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-1">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="R_lO7g0ntE3RoQr6fGAW-14" vertex="1">
+            <mxGeometry y="80" width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-2">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="R_lO7g0ntE3RoQr6fGAW-14" vertex="1">
+            <mxGeometry x="80" y="80" width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-3">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="R_lO7g0ntE3RoQr6fGAW-14" vertex="1">
+            <mxGeometry width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-11">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="R_lO7g0ntE3RoQr6fGAW-14" vertex="1">
+            <mxGeometry x="80" width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="switch" id="coFcF6SQwalx10ZarlYS-3">
+          <mxCell style="group" vertex="1" connectable="0" parent="1">
+            <mxGeometry x="20" y="100" width="100" height="130" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="fwWorld" class="switch-rect" id="HuDwKePgMMkB4XPKHNRV-7">
+          <mxCell style="rounded=0;whiteSpace=wrap;html=1;" parent="coFcF6SQwalx10ZarlYS-3" vertex="1">
+            <mxGeometry x="10" width="80" height="120" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-15">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="coFcF6SQwalx10ZarlYS-3" vertex="1">
+            <mxGeometry x="80" y="30" width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-16">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="coFcF6SQwalx10ZarlYS-3" vertex="1">
+            <mxGeometry x="80" y="70" width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-17">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="coFcF6SQwalx10ZarlYS-3" vertex="1">
+            <mxGeometry x="40" y="110" width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+        <object label="" class="device" id="R_lO7g0ntE3RoQr6fGAW-24">
+          <mxCell style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="coFcF6SQwalx10ZarlYS-3" vertex="1">
+            <mxGeometry x="0" y="30" width="20" height="20" as="geometry" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

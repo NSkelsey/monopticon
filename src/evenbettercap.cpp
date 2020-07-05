@@ -211,21 +211,66 @@ struct simple_walker: pugi::xml_tree_walker
     }
 };
 
+/*
+ * Extracts the x & y position from an XML <object> that contains the nested mxGeometry element.
+ */
+Vector2 get_object_geom(pugi::xml_node obj_node) {
+    std::string x_str = obj_node.child("mxCell").child("mxGeometry").attribute("x").value();
+    std::string y_str = obj_node.child("mxCell").child("mxGeometry").attribute("y").value();
 
-Layout::RouterParam* extractRouterParam(pugi::xml_node swtch) {
-    Layout::RouterParam* param = new Layout::LayoutParam{};
+    if (x_str.size() == 0 ) {
+        x_str = "0";
+    }
+
+    if (y_str.size() == 0 ) {
+        y_str = "0";
+    }
+
+    // TODO NOTE float division! TODO TODO
+    Vector2 position = Vector2{stof(x_str)/10.0f, stof(y_str)/10.0f};
+    return position;
+}
+
+
+Layout::RouterParam* extractRouterParam(pugi::xpath_node router, pugi::xml_document *doc) {
+    Layout::RouterParam* param = new Layout::RouterParam{};
 
     // Extract root Id
+    std::string id = router.node().attribute("id").value();
+    std::cout << "Extracted id: " << id << std::endl;
 
-    // Get the root position
+    // Get and set the root position
+    Vector2 root_pos = get_object_geom(router.node());
+    param->pos = Vector3(root_pos.x(), 0.0, root_pos.y());
+
+    std::string xpath = "//object[@class='switch-rect']/mxCell[@parent='" + id + "']";
+    pugi::xpath_node sub_rect = doc->select_node(xpath.c_str());
+    if (!sub_rect) {
+        std::cerr << "Couldn't find subrect: " << xpath << std::endl;
+        return param;
+    }
+    // Get the label of the router
+    pugi::xml_node sub_rect_obj = sub_rect.node().parent();
+    param->label = sub_rect_obj.attribute("label").value();
 
     // Get the sub rectangles geometry
-
-    // Get the label of the switch
+    Vector2 sub_pos = get_object_geom(sub_rect_obj);
 
     // Generate a selector for devices from the switches id
+    xpath = "//object[@class='device']/mxCell[@parent='" + id + "']";
 
-    // Extract each attached devices geometry and label
+    // Extract each attached device's geometry and label
+    pugi::xpath_node_set devices = doc->select_nodes(xpath.c_str());
+    for (auto it = devices.begin(); it != devices.end(); it++) {
+        pugi::xpath_node d_xpath = *it;
+
+        pugi::xml_node dev_obj = d_xpath.node().parent();
+        Vector2 dev_pos = get_object_geom(dev_obj);
+        std::string dev_lbl = dev_obj.attribute("label").value();
+
+        Layout::RIface *iface = new Layout::RIface{dev_lbl, dev_pos, dev_lbl, 100};
+        param->ifaces.push_back(iface);
+    }
 
 
     return param;
@@ -245,23 +290,15 @@ void Application::createLayout(std::string choice) {
 
         pugi::xml_parse_result result = doc.load_buffer(&content.front(), content.size());
 
-
-        // TODO perform 1st pass for parent child ids
-        simple_walker walker;
-        doc.traverse(walker);
-
-        // Second pass extracts geom and creates 3D objects.
-
-        pugi::xpath_node_set switches = doc.select_node("//object[@class='switch']");
-        //pugi::xpath_node swtch = doc.select_node("//object");
-        switches.
-        for (pugi::xml_node swtch = switches.first_child(); swtch; swtch = swtch.next_sibling()
+        pugi::xpath_node_set routers = doc.select_nodes("//object[@class='switch']");
+        for (auto it = routers.begin(); it != routers.end(); it++) {
+            pugi::xpath_node swtch = *it;
             std::cout << "swtch x: " << swtch.node().name() << std::endl;
             std::cout << swtch.node().child("mxCell") << std::endl;
             std::cout << swtch.node().child("mxCell").child("mxGeometry").attribute("x").value() << std::endl;
-            auto rparam = extractRouterParam(swtch);
+            auto rparam = extractRouterParam(swtch, &doc);
             Layout::Router *fw = gCtx->createRouter(sCtx, rparam);
-            scenario.add(fw);
+            scenario.add(fw, 1);
         }
 
         // Classes:
@@ -273,13 +310,13 @@ void Application::createLayout(std::string choice) {
         //   switch-rect - the geometry of the switch
         // device - a simple device
 
-        auto world_ifaces = std::vector<Layout::RIface:*>{};
+        auto world_ifaces = std::vector<Layout::RIface*>{};
         world_ifaces.push_back(new Layout::RIface{"blueisp", Vector2(0.0, 0.0), "", 4});
         world_ifaces.push_back(new Layout::RIface{"wan", Vector2(1.0, 4.0), "", 1});
         world_ifaces.push_back(new Layout::RIface{"red", Vector2(2.0, 2.0), "", 2});
-        world_ifaces.push_back(new Layout::RIace{"service", Vector2(2.0, 0.0), "", 3});
+        world_ifaces.push_back(new Layout::RIface{"service", Vector2(2.0, 0.0), "", 3});
 
-        Layout::Router *fw1 = gCtx->createRouter(sCtx, Vector3(-7.0, 0.0, -7.0), "fwWorld", world_ifaces);
+        //Layout::Router *fw1 = gCtx->createRouter(sCtx, Vector3(-7.0, 0.0, -7.0), "fwWorld", world_ifaces);
 
         /*
         auto corp_ifaces = std::vector<Layout::RInput*>{};
