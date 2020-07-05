@@ -241,22 +241,22 @@ void Graphic::createPoolHit(Device::PrefixStats *dp_s, Color3 c)
 }
 
 
-Layout::Router* Graphic::createRouter(Store *sCtx, Vector3 pos, std::string label, std::vector<Layout::RInput*> ifaces)
+Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
 {
     Object3D *root = new Object3D{&_scene};
-    root->translate(pos);
+    root->translate(param->pos);
 
-    Layout::Router* router = new Layout::Router(0, ifaces.size(), root);
+    Layout::Router* router = new Layout::Router(0, param->ifaces.size(), root);
     auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
 
     // TODO store min and max x and y and generate connecting rectangle of that size.
-    for (int i = 0; i < ifaces.size(); i++) {
-        Layout::RInput* params = ifaces.at(i);
+    for (int i = 0; i < param->ifaces.size(); i++) {
+        Layout::RInput* input_params = param->ifaces.at(i);
 
-        Vector3 relPos = Vector3(params->pos.x(), 0.0f, params->pos.y());
+        Vector3 relPos = Vector3(input_params->pos.x(), 0.0f, input_params->pos.y());
 
         // Create Device Stats
-        Device::Stats* d_s = createSphere(sCtx, params->mac, root, relPos);
+        Device::Stats* d_s = createSphere(sCtx, input_params->mac, root, relPos);
         addDirectLabels(d_s);
 
         // TODO project relPos from 0,0 with a ray to choose a good spot to place the vlan bcast pool

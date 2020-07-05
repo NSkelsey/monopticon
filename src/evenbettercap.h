@@ -25,6 +25,7 @@
 
 #include <emscripten/websocket.h>
 
+#include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Containers/Reference.h>
@@ -80,6 +81,7 @@
 #include <Magnum/Trade/MeshData.h>
 
 #include <imgui.h>
+#include <pugixml.hpp>
 
 // TODO move to src
 #include "../contrib/expirements/ws/newproto/epoch.pb.h"
@@ -491,12 +493,18 @@ class WorldScreenLink: public SceneGraph::Drawable3D {
 
 namespace Layout {
 
-struct RInput {
+struct RIface {
     std::string label;
     Vector2 pos;
     std::string mac;
     uint32_t vlan;
 };
+
+struct RouterParam {
+    std::string label;
+    Vector3 pos;
+    std::vector<RIface*> ifaces;
+}
 
 class Router {
   public:
@@ -629,7 +637,7 @@ class Graphic {
 
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
 
-        Layout::Router* createRouter(Store *sCtx, Vector3 pos, std::string label, std::vector<Layout::RInput*> ifaces);
+        Layout::Router* createRouter(Store *sCtx, RouterParam *param);
 
         void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);

@@ -152,18 +152,136 @@ void Application::prepareDrawables() {
 }
 
 
+const char* node_types[] =
+{
+    "null", "document", "element", "pcdata", "cdata", "comment", "pi", "declaration"
+};
+
+struct simple_walker: pugi::xml_tree_walker
+{
+    std::map<std::string, std::vector<pugi::xml_node*>> object_hierarchy;
+
+
+    void save(std::string key, pugi::xml_node *n) {
+
+        auto tup = object_hierarchy.find(key);
+        if (tup != object_hierarchy.end()) {
+            std::vector<pugi::xml_node*> list = tup->second;
+            list.push_back(n);
+        } else {
+            object_hierarchy.emplace(key, std::vector<pugi::xml_node*>{n});
+        }
+
+        // TODO convert to some other object here.
+    }
+
+    virtual bool for_each(pugi::xml_node& node)
+    {
+        for (int i = 0; i < depth(); ++i) std::cout << "  "; // indentation
+
+        std::string name = node.name();
+        std::cout << node_types[node.type()] << ": name='" << name << "', value='" << node.value() << "'\n";
+
+        std::string parent = node.attribute("parent").value();
+
+        if (name == "object") {
+            std::string val = node.attribute("class").value();
+
+            save(parent, &node);
+        }
+
+        if (name == "mxCell") {
+            if (parent == "") {
+                std::cout << "found root" << std::endl;
+            }
+            if (parent == "1") {
+                save(parent, &node);
+            }
+        }
+
+        if (name == "mxGeometry") {
+            auto parent_node = node.parent();
+            // MXcell points to parent object while node.parent().parent() is cur id.
+
+            //convert_geometry(node);
+        }
+        //node.child().child()
+
+        return true; // continue traversal
+    }
+};
+
+
+Layout::RouterParam* extractRouterParam(pugi::xml_node swtch) {
+    Layout::RouterParam* param = new Layout::LayoutParam{};
+
+    // Extract root Id
+
+    // Get the root position
+
+    // Get the sub rectangles geometry
+
+    // Get the label of the switch
+
+    // Generate a selector for devices from the switches id
+
+    // Extract each attached devices geometry and label
+
+
+    return param;
+}
+
 
 void Application::createLayout(std::string choice) {
+    Layout::Scenario scenario = Layout::Scenario(choice);
+
     if (choice == "cyberlab") {
 
-        auto world_ifaces = std::vector<Layout::RInput*>{};
-        world_ifaces.push_back(new Layout::RInput{"blueisp", Vector2(0.0, 0.0), "", 4});
-        world_ifaces.push_back(new Layout::RInput{"wan", Vector2(1.0, 4.0), "", 1});
-        world_ifaces.push_back(new Layout::RInput{"red", Vector2(2.0, 2.0), "", 2});
-        world_ifaces.push_back(new Layout::RInput{"service", Vector2(2.0, 0.0), "", 3});
+        pugi::xml_document doc;
+
+        Utility::Resource rs("monopticon");
+        std::string fname = "src/assets/cyberlab.xml";
+        Containers::ArrayView<const char> content = rs.getRaw(fname);
+
+        pugi::xml_parse_result result = doc.load_buffer(&content.front(), content.size());
+
+
+        // TODO perform 1st pass for parent child ids
+        simple_walker walker;
+        doc.traverse(walker);
+
+        // Second pass extracts geom and creates 3D objects.
+
+        pugi::xpath_node_set switches = doc.select_node("//object[@class='switch']");
+        //pugi::xpath_node swtch = doc.select_node("//object");
+        switches.
+        for (pugi::xml_node swtch = switches.first_child(); swtch; swtch = swtch.next_sibling()
+            std::cout << "swtch x: " << swtch.node().name() << std::endl;
+            std::cout << swtch.node().child("mxCell") << std::endl;
+            std::cout << swtch.node().child("mxCell").child("mxGeometry").attribute("x").value() << std::endl;
+            auto rparam = extractRouterParam(swtch);
+            Layout::Router *fw = gCtx->createRouter(sCtx, rparam);
+            scenario.add(fw);
+        }
+
+        // Classes:
+        // center - where the scene should be centered
+        // bcast  - the broadcast pool center for a vlan
+        //   device - an ellipse positioned on the switch
+        // switch - a <g> that contains a switch rect and devices
+        //   device - an ellipse positioned on the switch
+        //   switch-rect - the geometry of the switch
+        // device - a simple device
+
+        auto world_ifaces = std::vector<Layout::RIface:*>{};
+        world_ifaces.push_back(new Layout::RIface{"blueisp", Vector2(0.0, 0.0), "", 4});
+        world_ifaces.push_back(new Layout::RIface{"wan", Vector2(1.0, 4.0), "", 1});
+        world_ifaces.push_back(new Layout::RIface{"red", Vector2(2.0, 2.0), "", 2});
+        world_ifaces.push_back(new Layout::RIace{"service", Vector2(2.0, 0.0), "", 3});
 
         Layout::Router *fw1 = gCtx->createRouter(sCtx, Vector3(-7.0, 0.0, -7.0), "fwWorld", world_ifaces);
 
+        /*
         auto corp_ifaces = std::vector<Layout::RInput*>{};
         corp_ifaces.push_back(new Layout::RInput{"blueisp", Vector2(0.0, 0.0), "", 4});
         corp_ifaces.push_back(new Layout::RInput{"dmz", Vector2(2.0, 3.0), "", 5});
@@ -172,7 +290,10 @@ void Application::createLayout(std::string choice) {
         corp_ifaces.push_back(new Layout::RInput{"lanws", Vector2(2.0, -3.0), "", 8});
 
         Layout::Router *fw2 = gCtx->createRouter(sCtx, Vector3(7.0, 0.0, 7.0), "fwCorp", corp_ifaces);
+        */
 
+        // TODO TODO TODO
+        // TODO fix the positioning TODO use an angle then use the vlan positioner to add elements
         auto scenar_vlans = std::vector<Layout::VInput*>{};
         scenar_vlans.push_back(new Layout::VInput{"blue_isp", Vector2(0.0, 0.0), 4});
         scenar_vlans.push_back(new Layout::VInput{"red", Vector2(6.0, 6.0), 2});
@@ -190,9 +311,6 @@ void Application::createLayout(std::string choice) {
             Util::createLayoutRing(gCtx->_scene, gCtx->_permanent_drawables, 1.0f, twod);
         }
 
-        Layout::Scenario scenario = Layout::Scenario("cyberlab");
-
-        scenario.add(fw1, 1);
     }
 }
 

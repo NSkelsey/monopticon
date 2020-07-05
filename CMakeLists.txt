@@ -9,6 +9,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
 
 
 find_package(Protobuf)
+find_package(pugixml)
 
 set(WITH_IMGUI ON)
 
@@ -50,6 +51,7 @@ add_executable(monopticon ${monopticon_FILES} ${monopticon_RESOURCES})
 
 
 target_link_libraries(monopticon PRIVATE
+    pugixml
     websocket
     protobuf::libprotobuf-lite
     Corrade::Utility
