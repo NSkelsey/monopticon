@@ -96,7 +96,7 @@ Application::Application(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
             .setTitle("Monopticon")
             .setWindowFlags(Configuration::WindowFlag::Resizable)
-            .setSize(Vector2i{1400,1000}),
+            .setSize(Vector2i{1950, 1450}),
             GLConfiguration{}.setSampleCount(MSAA_CNT)}
 {
 
@@ -152,89 +152,22 @@ void Application::prepareDrawables() {
 }
 
 
-const char* node_types[] =
-{
-    "null", "document", "element", "pcdata", "cdata", "comment", "pi", "declaration"
-};
-
-struct simple_walker: pugi::xml_tree_walker
-{
-    std::map<std::string, std::vector<pugi::xml_node*>> object_hierarchy;
-
-
-    void save(std::string key, pugi::xml_node *n) {
-
-        auto tup = object_hierarchy.find(key);
-        if (tup != object_hierarchy.end()) {
-            std::vector<pugi::xml_node*> list = tup->second;
-            list.push_back(n);
-        } else {
-            object_hierarchy.emplace(key, std::vector<pugi::xml_node*>{n});
-        }
-
-        // TODO convert to some other object here.
-    }
-
-    virtual bool for_each(pugi::xml_node& node)
-    {
-        for (int i = 0; i < depth(); ++i) std::cout << "  "; // indentation
-
-        std::string name = node.name();
-        std::cout << node_types[node.type()] << ": name='" << name << "', value='" << node.value() << "'\n";
-
-        std::string parent = node.attribute("parent").value();
-
-        if (name == "object") {
-            std::string val = node.attribute("class").value();
-
-            save(parent, &node);
-        }
-
-        if (name == "mxCell") {
-            if (parent == "") {
-                std::cout << "found root" << std::endl;
-            }
-            if (parent == "1") {
-                save(parent, &node);
-            }
-        }
-
-        if (name == "mxGeometry") {
-            auto parent_node = node.parent();
-            // MXcell points to parent object while node.parent().parent() is cur id.
-
-            //convert_geometry(node);
-        }
-        //node.child().child()
-
-        return true; // continue traversal
-    }
-};
-
 /*
  * Extracts the x & y position from an XML <object> that contains the nested mxGeometry element.
  */
 Vector2 get_object_geom(pugi::xml_node obj_node) {
-    std::string x_str = obj_node.child("mxCell").child("mxGeometry").attribute("x").value();
-    std::string y_str = obj_node.child("mxCell").child("mxGeometry").attribute("y").value();
-
-    if (x_str.size() == 0 ) {
-        x_str = "0";
-    }
-
-    if (y_str.size() == 0 ) {
-        y_str = "0";
-    }
+    float x = obj_node.child("mxCell").child("mxGeometry").attribute("x").as_float();
+    float y = obj_node.child("mxCell").child("mxGeometry").attribute("y").as_float();
 
     float scale_factor = 20.0f;
-    Vector2 position = Vector2{stof(x_str)/scale_factor, stof(y_str)/scale_factor};
+    Vector2 position = Vector2{x/scale_factor, y/scale_factor};
     return position;
 }
 
 
 uint32_t get_device_vlan(pugi::xml_node dev_obj) {
-    std::string lbl = dev_obj.attribute("label").value();
-    return std::stoi(lbl);
+    int lbl = dev_obj.attribute("label").as_int();
+    return lbl;
 }
 
 
@@ -281,6 +214,7 @@ Layout::RouterParam* extractRouterParam(pugi::xpath_node router, pugi::xml_docum
     return param;
 }
 
+
 pugi::xml_document get_xml_doc(std::string fname) {
     pugi::xml_document doc;
 
@@ -295,6 +229,7 @@ pugi::xml_document get_xml_doc(std::string fname) {
     return doc;
 }
 
+
 void annotateRouterParam(Layout::RouterParam *rparam, pugi::xml_document *scenario_doc) {
     std::string xpath = "/root/" + rparam->label;
     pugi::xpath_node x = scenario_doc->select_node(xpath.c_str());
@@ -304,7 +239,7 @@ void annotateRouterParam(Layout::RouterParam *rparam, pugi::xml_document *scenar
     }
 
     pugi::xml_node router = x.node();
-    rparam->vmid = router.child("vmid").value();
+    rparam->vmid = router.child("vm_id").value();
 
     for (pugi::xml_node net = router.child("network"); net != nullptr; net = net.next_sibling("network")) {
         std::string mac = net.child("mac").text().as_string();
@@ -331,15 +266,42 @@ void annotateRouterParam(Layout::RouterParam *rparam, pugi::xml_document *scenar
 }
 
 
+void annontateVlanDev(Layout::VlanDevice *vdev, pugi::xml_node named_node) {
+    vdev->vmid = named_node.child("vm_id").text().as_string();
+
+    for (auto net = named_node.child("network"); net != nullptr; net.next_sibling("network")) {
+        int tag = net.child("tag").text().as_int();
+
+        // Each named node has atleast 1 mgmt interface attached with a tag of -1
+        if (tag < 0) {
+            continue;
+        }
+
+        vdev->tag = tag;
+        vdev->mac = net.child("mac").text().as_string();
+        vdev->ip_addr = net.child("ip").text().as_string();
+
+        break;
+    }
+}
+
+
 void Application::createLayout(std::string choice) {
     Layout::Scenario scenario = Layout::Scenario(choice);
 
     if (choice == "cyberlab") {
-
        pugi::xml_document doc = get_xml_doc("src/assets/cyberlab.xml");
        pugi::xml_document scenario_doc = get_xml_doc("src/assets/alb-cyberlab.xml");
 
-        // TODO get root offset.
+        // Find the center of the scenario.
+        pugi::xpath_node center = doc.select_node("//object[@class='center']");
+        if (!center) {
+            std::cerr << "Could not find scenario center!" << std::endl;
+            return;
+        }
+
+        Vector2 center_pos = get_object_geom(center.node());
+        gCtx->center = Vector3(center_pos.x(), 0.0, center_pos.y());
 
         pugi::xpath_node_set routers = doc.select_nodes("//object[@class='switch']");
         for (auto it = routers.begin(); it != routers.end(); it++) {
@@ -354,6 +316,33 @@ void Application::createLayout(std::string choice) {
             scenario.add(fw, 1);
         }
 
+        std::string ungrouped_devices = "//root/object[@class='device']/mxCell[@parent='1']";
+        pugi::xpath_node_set devices = doc.select_nodes(ungrouped_devices.c_str());
+        for (auto it = devices.begin(); it != devices.end(); it++) {
+            pugi::xpath_node mxcell = *it;
+
+            // The parent of the mxCell is an object that we can use to get the geometry
+            pugi::xml_node device_node = mxcell.node().parent();
+            Vector2 pos = get_object_geom(device_node);
+
+            std::string lbl = device_node.attribute("label").value();
+
+            Layout::VlanDevice *vdev = new Layout::VlanDevice{lbl, pos};
+
+            std::string scenario_xpath = "/root/" + lbl;
+            pugi::xpath_node xnode = scenario_doc.select_node(scenario_xpath.c_str());
+            if (!xnode) {
+                std::cerr << "Couldn't find dev: " << scenario_xpath << std::endl;
+                continue;
+            }
+
+            pugi::xml_node scen_dev_node = xnode.node();
+            annontateVlanDev(vdev, scen_dev_node);
+
+            gCtx->createDevice(sCtx, vdev);
+        }
+ 
+
         // Classes:
         // center - where the scene should be centered
         // bcast  - the broadcast pool center for a vlan
@@ -363,19 +352,11 @@ void Application::createLayout(std::string choice) {
         //   switch-rect - the geometry of the switch
         // device - a simple device
 
-        // TODO TODO TODO
-        // TODO fix the positioning TODO use an angle then use the vlan positioner to add elements
+
         /*
         auto scenar_vlans = std::vector<Layout::VInput*>{};
         scenar_vlans.push_back(new Layout::VInput{"blue_isp", Vector2(0.0, 0.0), 4});
-        scenar_vlans.push_back(new Layout::VInput{"red", Vector2(6.0, 6.0), 2});
-        scenar_vlans.push_back(new Layout::VInput{"service", Vector2(6.0, 0.0), 3});
-
-        scenar_vlans.push_back(new Layout::VInput{"dmz", Vector2(8.0, 12.0), 5});
-        scenar_vlans.push_back(new Layout::VInput{"lansrv", Vector2(8.0, 4.0), 6});
-        scenar_vlans.push_back(new Layout::VInput{"lansoc", Vector2(8.0, -8.0), 7});
-        scenar_vlans.push_back(new Layout::VInput{"lanws", Vector2(8.0, -12.0), 8});
-
+        for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
         for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
             // TODO these need to be relative to the router
             Layout::VInput* vinp = *it;
@@ -383,7 +364,6 @@ void Application::createLayout(std::string choice) {
             Util::createLayoutRing(gCtx->_scene, gCtx->_permanent_drawables, 1.0f, twod);
         }
         */
-
     }
 }
 

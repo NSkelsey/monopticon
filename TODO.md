@@ -2,17 +2,13 @@ TODO
 =====
 ### Webopticon
 
-- [ ] Fix object coloring and buffer bindings using latest updates to magnum
-- [ ] Build communication tunnel
-   - [ ] Decide on Websockets or something else
-   - [ ] Implement small demo with simple backend (golang or c++)
-   - [ ] Connect simple backend to zeek broker via TBD protocol
 - [ ] Necessary MVP tweaks
-   - [ ] use vlan tags for layout groups
+   - [N] use vlan tags for layout groups
    - [ ] Move right-click to space
 - [ ] Model Cyberlab Network
    - [ ] decide how VPN access to nginx frontend will work.
    - [ ] deploy broker + sbackend + nginx frontend
+   - [ ] Integrate scenario data into scene
 
 
 ### Backlog
@@ -156,6 +152,11 @@ Do Thing:
 
 DONE
 ====
+- [x] Fix object coloring and buffer bindings using latest updates to magnum
+- [x] Build communication tunnel
+   - [x] Decide on Websockets or something else
+   - [x] Implement small demo with simple backend (golang or c++)
+   - [x] Connect simple backend to zeek broker via TBD protocol
 - [x] Docker container in the docker cloud
    - [x] Q: how to include custom built packages included
    - [x] Connect container to travis build

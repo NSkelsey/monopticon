@@ -244,7 +244,7 @@ void Graphic::createPoolHit(Device::PrefixStats *dp_s, Color3 c)
 Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
 {
     Object3D *root = new Object3D{&_scene};
-    root->translate(param->pos);
+    root->translate(param->pos - center);
 
     Layout::Router* router = new Layout::Router(0, param->vlan_iface_map.size(), root);
     auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
@@ -259,7 +259,7 @@ Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
         Device::Stats* d_s = createSphere(sCtx, iface_params->mac, root, relPos);
         addDirectLabels(d_s);
         // TODO deal with relative offset here.
-        createIPv4Address(sCtx, iface_params->ip_addr, relPos+param->pos);
+        createIPv4Address(sCtx, iface_params->ip_addr, relPos+param->pos - center);
 
         // TODO project relPos from 0,0 with a ray to choose a good spot to place the vlan bcast pool
 
@@ -269,6 +269,22 @@ Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
 
 
     return router;
+}
+
+
+void Graphic::createDevice(Store *sCtx, Layout::VlanDevice *vlan_dev) {
+    Vector3 relPos = Vector3(vlan_dev->pos.x(), 0.0, vlan_dev->pos.y()) - center;
+
+    // Create Device Stats
+    Device::Stats* d_s = createSphere(sCtx, vlan_dev->mac, &_scene, relPos);
+    addDirectLabels(d_s);
+
+
+
+    // TODO deal with relative offset here.
+    if (vlan_dev->ip_addr.size() > 0) {
+        createIPv4Address(sCtx, vlan_dev->ip_addr, relPos);
+    }
 }
 
 

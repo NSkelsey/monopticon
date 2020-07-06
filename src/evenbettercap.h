@@ -538,6 +538,16 @@ class Router {
     void plugIface(Device::Stats *d_s, uint32_t vlan);
 };
 
+
+struct VlanDevice {
+    std::string label;
+    Vector2 pos;
+    uint32_t tag;
+    std::string mac;
+    std::string ip_addr;
+    std::string vmid;
+};
+
 struct VInput {
     std::string label;
     Vector2 pos;
@@ -640,6 +650,7 @@ class Graphic {
         Device::PrefixStats* createBroadcastPool(const std::string, Vector3);
 
         Layout::Router* createRouter(Store *sCtx, Layout::RouterParam *param);
+        void createDevice(Store *sCtx, Layout::VlanDevice *vlan_dev);
 
         void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
@@ -663,6 +674,8 @@ class Graphic {
         Figure::PoolShader _pool_shader;
         Figure::WorldLinkShader _link_shader;
         Shaders::Flat3D _bbitem_shader;
+
+        Vector3 center;
 
         Scene3D _scene;
         SceneGraph::Camera3D* _camera;
