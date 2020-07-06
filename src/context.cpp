@@ -246,23 +246,25 @@ Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
     Object3D *root = new Object3D{&_scene};
     root->translate(param->pos);
 
-    Layout::Router* router = new Layout::Router(0, param->ifaces.size(), root);
+    Layout::Router* router = new Layout::Router(0, param->vlan_iface_map.size(), root);
     auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
 
     // TODO store min and max x and y and generate connecting rectangle of that size.
-    for (int i = 0; i < param->ifaces.size(); i++) {
-        Layout::RIface* iface_params = param->ifaces.at(i);
+    for (auto it = param->vlan_iface_map.begin(); it != param->vlan_iface_map.end(); it++) {
+        Layout::RIface* iface_params = it->second;
 
         Vector3 relPos = Vector3(iface_params->pos.x(), 0.0f, iface_params->pos.y());
 
         // Create Device Stats
         Device::Stats* d_s = createSphere(sCtx, iface_params->mac, root, relPos);
         addDirectLabels(d_s);
+        // TODO deal with relative offset here.
+        createIPv4Address(sCtx, iface_params->ip_addr, relPos+param->pos);
 
         // TODO project relPos from 0,0 with a ray to choose a good spot to place the vlan bcast pool
 
         // TODO uses `i` instead of vlan tag
-        router->plugIface(d_s, (uint32_t)i);
+        router->plugIface(d_s, iface_params->vlan);
     }
 
 

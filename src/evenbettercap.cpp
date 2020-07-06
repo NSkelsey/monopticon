@@ -226,9 +226,15 @@ Vector2 get_object_geom(pugi::xml_node obj_node) {
         y_str = "0";
     }
 
-    // TODO NOTE float division! TODO TODO
-    Vector2 position = Vector2{stof(x_str)/10.0f, stof(y_str)/10.0f};
+    float scale_factor = 20.0f;
+    Vector2 position = Vector2{stof(x_str)/scale_factor, stof(y_str)/scale_factor};
     return position;
+}
+
+
+uint32_t get_device_vlan(pugi::xml_node dev_obj) {
+    std::string lbl = dev_obj.attribute("label").value();
+    return std::stoi(lbl);
 }
 
 
@@ -247,7 +253,7 @@ Layout::RouterParam* extractRouterParam(pugi::xpath_node router, pugi::xml_docum
     pugi::xpath_node sub_rect = doc->select_node(xpath.c_str());
     if (!sub_rect) {
         std::cerr << "Couldn't find subrect: " << xpath << std::endl;
-        return param;
+        return nullptr;
     }
     // Get the label of the router
     pugi::xml_node sub_rect_obj = sub_rect.node().parent();
@@ -266,14 +272,62 @@ Layout::RouterParam* extractRouterParam(pugi::xpath_node router, pugi::xml_docum
 
         pugi::xml_node dev_obj = d_xpath.node().parent();
         Vector2 dev_pos = get_object_geom(dev_obj);
-        std::string dev_lbl = dev_obj.attribute("label").value();
+        uint32_t dev_vlan = get_device_vlan(dev_obj);
 
-        Layout::RIface *iface = new Layout::RIface{dev_lbl, dev_pos, dev_lbl, 100};
-        param->ifaces.push_back(iface);
+        Layout::RIface *iface = new Layout::RIface{"", dev_pos, "", dev_vlan, ""};
+        param->vlan_iface_map.emplace(dev_vlan, iface);
     }
 
-
     return param;
+}
+
+pugi::xml_document get_xml_doc(std::string fname) {
+    pugi::xml_document doc;
+
+    Utility::Resource rs("monopticon");
+    Containers::ArrayView<const char> content = rs.getRaw(fname);
+
+    pugi::xml_parse_result result = doc.load_buffer(&content.front(), content.size());
+    if (!result) {
+        std::cerr << "Failed to load xml doc: " << fname << std::endl;
+    }
+
+    return doc;
+}
+
+void annotateRouterParam(Layout::RouterParam *rparam, pugi::xml_document *scenario_doc) {
+    std::string xpath = "/root/" + rparam->label;
+    pugi::xpath_node x = scenario_doc->select_node(xpath.c_str());
+    if (!x) {
+        std::cerr << "Failed to find xpath: " << xpath << std::endl;
+        return;
+    }
+
+    pugi::xml_node router = x.node();
+    rparam->vmid = router.child("vmid").value();
+
+    for (pugi::xml_node net = router.child("network"); net != nullptr; net = net.next_sibling("network")) {
+        std::string mac = net.child("mac").text().as_string();
+        std::string ip = net.child("ip").text().as_string();
+        int tag = net.child("tag").text().as_int();
+        // TODO Skip mgmt iface
+        if (tag < 0) {
+            continue;
+        }
+        std::string bridge = net.child("bridge").text().as_string();
+
+        auto search = rparam->vlan_iface_map.find(tag);
+        if (search == rparam->vlan_iface_map.end()) {
+            std::cerr << "Couldn't find vlan: " << tag << " in: " << xpath << std::endl;
+            continue;
+        }
+        Layout::RIface* iface = search->second;
+
+        iface->label = bridge;
+        iface->mac = mac;
+        iface->ip_addr = ip;
+        iface->vlan = tag;
+    }
 }
 
 
@@ -282,21 +336,20 @@ void Application::createLayout(std::string choice) {
 
     if (choice == "cyberlab") {
 
-        pugi::xml_document doc;
+       pugi::xml_document doc = get_xml_doc("src/assets/cyberlab.xml");
+       pugi::xml_document scenario_doc = get_xml_doc("src/assets/alb-cyberlab.xml");
 
-        Utility::Resource rs("monopticon");
-        std::string fname = "src/assets/cyberlab.xml";
-        Containers::ArrayView<const char> content = rs.getRaw(fname);
-
-        pugi::xml_parse_result result = doc.load_buffer(&content.front(), content.size());
+        // TODO get root offset.
 
         pugi::xpath_node_set routers = doc.select_nodes("//object[@class='switch']");
         for (auto it = routers.begin(); it != routers.end(); it++) {
-            pugi::xpath_node swtch = *it;
-            std::cout << "swtch x: " << swtch.node().name() << std::endl;
-            std::cout << swtch.node().child("mxCell") << std::endl;
-            std::cout << swtch.node().child("mxCell").child("mxGeometry").attribute("x").value() << std::endl;
-            auto rparam = extractRouterParam(swtch, &doc);
+            pugi::xpath_node router = *it;
+            auto rparam = extractRouterParam(router, &doc);
+            if (rparam == nullptr) {
+                continue;
+            }
+            annotateRouterParam(rparam, &scenario_doc);
+
             Layout::Router *fw = gCtx->createRouter(sCtx, rparam);
             scenario.add(fw, 1);
         }
@@ -310,27 +363,9 @@ void Application::createLayout(std::string choice) {
         //   switch-rect - the geometry of the switch
         // device - a simple device
 
-        auto world_ifaces = std::vector<Layout::RIface*>{};
-        world_ifaces.push_back(new Layout::RIface{"blueisp", Vector2(0.0, 0.0), "", 4});
-        world_ifaces.push_back(new Layout::RIface{"wan", Vector2(1.0, 4.0), "", 1});
-        world_ifaces.push_back(new Layout::RIface{"red", Vector2(2.0, 2.0), "", 2});
-        world_ifaces.push_back(new Layout::RIface{"service", Vector2(2.0, 0.0), "", 3});
-
-        //Layout::Router *fw1 = gCtx->createRouter(sCtx, Vector3(-7.0, 0.0, -7.0), "fwWorld", world_ifaces);
-
-        /*
-        auto corp_ifaces = std::vector<Layout::RInput*>{};
-        corp_ifaces.push_back(new Layout::RInput{"blueisp", Vector2(0.0, 0.0), "", 4});
-        corp_ifaces.push_back(new Layout::RInput{"dmz", Vector2(2.0, 3.0), "", 5});
-        corp_ifaces.push_back(new Layout::RInput{"lansrv", Vector2(2.0, 1.0), "", 6});
-        corp_ifaces.push_back(new Layout::RInput{"lansoc", Vector2(2.0, -1.0), "", 7});
-        corp_ifaces.push_back(new Layout::RInput{"lanws", Vector2(2.0, -3.0), "", 8});
-
-        Layout::Router *fw2 = gCtx->createRouter(sCtx, Vector3(7.0, 0.0, 7.0), "fwCorp", corp_ifaces);
-        */
-
         // TODO TODO TODO
         // TODO fix the positioning TODO use an angle then use the vlan positioner to add elements
+        /*
         auto scenar_vlans = std::vector<Layout::VInput*>{};
         scenar_vlans.push_back(new Layout::VInput{"blue_isp", Vector2(0.0, 0.0), 4});
         scenar_vlans.push_back(new Layout::VInput{"red", Vector2(6.0, 6.0), 2});
@@ -347,6 +382,7 @@ void Application::createLayout(std::string choice) {
             Vector3 twod = Vector3(vinp->pos.x(), -1.0, vinp->pos.y());
             Util::createLayoutRing(gCtx->_scene, gCtx->_permanent_drawables, 1.0f, twod);
         }
+        */
 
     }
 }

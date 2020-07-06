@@ -498,12 +498,14 @@ struct RIface {
     Vector2 pos;
     std::string mac;
     uint32_t vlan;
+    std::string ip_addr;
 };
 
 struct RouterParam {
     std::string label;
     Vector3 pos;
-    std::vector<RIface*> ifaces;
+    std::map<uint32_t, RIface*> vlan_iface_map;
+    std::string vmid;
 };
 
 class Router {
