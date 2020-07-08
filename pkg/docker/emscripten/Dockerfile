@@ -111,3 +111,17 @@ RUN cd $HOME/protobuf && \
 RUN cd $HOME/protobuf && \
    sudo cp src/.libs/libprotobuf.a /usr/lib/emscripten/system/lib/protobuf.bc && \
    sudo cp src/.libs/libprotobuf-lite.a /usr/lib/emscripten/system/lib/protobuf-lite.bc
+
+# Include pugixml
+ENV PUGI_VER="1.10"
+
+RUN curl https://github.com/zeux/pugixml/releases/download/v1.10/pugixml-$PUGI_VER.tar.gz -L > pugixml.tar.gz && \
+    tar xvzf pugixml.tar.gz
+
+COPY Emscripten-wasm.cmake local-pkgs/
+
+RUN mkdir $HOME//pugixml-$PUGI_VER/build && \
+    cd $HOME/pugixml-$PUGI_VER/build && \
+    cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/build/local-pkgs/Emscripten-wasm.cmake -DCMAKE_PREFIX_PATH=/usr/lib/emscripten/system -DCMAKE_INSTALL_PREFIX=/usr/lib/emscripten/system && \
+    cmake --build . && \
+    sudo make install
