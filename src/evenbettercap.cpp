@@ -17,12 +17,13 @@
 
 namespace Monopticon {
 
-const int MSAA_CNT = 8; // Number of subpixel samples for MultiSampling Anti-Aliasing
-
 using namespace Magnum;
 using namespace Math::Literals;
 
-std::string ws_uri = "ws://localhost:9002/";
+int MSAA_CNT = 4; // Number of subpixel samples for MultiSampling Anti-Aliasing
+
+char* ws_cstr = emscripten_run_script_string("'wss://'+window.location.host+window.location.pathname+'socket';");
+std::string ws_uri = std::string(ws_cstr);
 
 class Application: public Platform::Application {
     public:
@@ -34,8 +35,6 @@ class Application: public Platform::Application {
         void drawEvent() override;
         void drawTextElements();
         void drawIMGuiElements();
-
-        void viewportEvent(ViewportEvent& event) override;
 
         void keyPressEvent(KeyEvent& event) override;
         void keyReleaseEvent(KeyEvent& event) override;
@@ -95,28 +94,12 @@ class Application: public Platform::Application {
 Application::Application(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
             .setTitle("Monopticon")
-            .setWindowFlags(Configuration::WindowFlag::Resizable)
-            .setSize(Vector2i{1950, 1450}),
-            GLConfiguration{}.setSampleCount(MSAA_CNT)}
+            .setWindowFlags(Configuration::WindowFlag::Resizable),
+            GLConfiguration{}.setSampleCount(MSAA_cnt)}
 {
-
-    /*
-    // Setup the SDL window icon
-    Utility::Resource rs("monopticon");
-    std::string s = rs.get("icon.bmp");
-    SDL_RWops *rw = SDL_RWFromConstMem(s.c_str(), s.size());
-
-    SDL_Surface* sdl_surf = SDL_LoadBMP_RW(rw, 1);
-    if (sdl_surf == nullptr) {
-        std::cerr << "Could not set window icon. SDL startup failed.";
-        std::exit(1);
-    }
-    SDL_Window* sdl_window = Magnum::Platform::Sdl2Application::window();
-    SDL_SetWindowIcon(sdl_window, sdl_surf);
-    */
-
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
+
     wCtx = new Context::WsBroker(ws_uri, gCtx, sCtx);
 
     srand(time(nullptr));
@@ -631,19 +614,6 @@ void Application::DeleteEverything() {
     gCtx->_text_drawables = SceneGraph::DrawableGroup3D{};
 
     redraw();
-}
-
-
-void Application::viewportEvent(ViewportEvent& event) {
-    auto size = event.framebufferSize();
-    const Range2Di newViewport = {{}, size};
-
-    gCtx->destroyGLBuffers();
-    gCtx->prepareGLBuffers(newViewport);
-    gCtx->_camera->setViewport(size);
-
-    _imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
-        event.windowSize(), size);
 }
 
 

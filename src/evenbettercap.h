@@ -23,6 +23,7 @@
 
 #include <arpa/inet.h>
 
+#include <emscripten.h>
 #include <emscripten/websocket.h>
 
 #include <Corrade/Containers/ArrayView.h>
