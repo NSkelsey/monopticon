@@ -8,7 +8,7 @@ uniform lowp float tParam;
 in highp vec4 position;
 
 vec3 calc_pos(vec3 a, vec3 b, float t) {
-    vec3 c = vec3(0.0, 4.0, 0.0);
+    vec3 c = a + (b - a)/2.0 + vec3(0.0, 4.0, 0.0);
 
     vec3 pos = (1.0-t)*((1.0-t)*a + t*c) + t*((1.0-t)*c + t*b);
 

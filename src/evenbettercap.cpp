@@ -22,9 +22,6 @@ using namespace Math::Literals;
 
 int MSAA_CNT = 4; // Number of subpixel samples for MultiSampling Anti-Aliasing
 
-char* ws_cstr = emscripten_run_script_string("'wss://'+window.location.host+window.location.pathname+'socket';");
-std::string ws_uri = std::string(ws_cstr);
-
 class Application: public Platform::Application {
     public:
         explicit Application(const Arguments& arguments);
@@ -58,6 +55,8 @@ class Application: public Platform::Application {
         Context::WsBroker *wCtx;
 
     private:
+        std::string ws_uri;
+
         // UI fields
         ImGuiIntegration::Context _imgui{NoCreate};
 
@@ -75,8 +74,6 @@ class Application: public Platform::Application {
         std::vector<std::string> _iface_list;
         std::string _chosen_iface;
 
-        std::string _zeek_pid;
-
         Timeline _timeline;
 
         int ring_level{0};
@@ -91,16 +88,34 @@ class Application: public Platform::Application {
 };
 
 
+bool endsWith(const std::string& s, const std::string& suffix)
+{
+    return s.rfind(suffix) == std::abs((int)(s.size()-suffix.size()));
+}
+
 Application::Application(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
             .setTitle("Monopticon")
             .setWindowFlags(Configuration::WindowFlag::Resizable),
-            GLConfiguration{}.setSampleCount(MSAA_cnt)}
+            GLConfiguration{}.setSampleCount(MSAA_CNT)}
 {
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
 
+
+    char* t = emscripten_run_script_string("window.location.pathname");
+    std::string app_path = std::string(t);
+
+    char *ws_cstr;
+    if (endsWith(app_path, "/cyberlab/") || endsWith(app_path, "/home-wifi/")) {
+        ws_cstr = emscripten_run_script_string("'wss://'+window.location.host+window.location.pathname+'socket';");
+    } else {
+        ws_cstr = "ws://localhost:9002";
+    }
+
+    ws_uri = std::string(ws_cstr);
     wCtx = new Context::WsBroker(ws_uri, gCtx, sCtx);
+
 
     srand(time(nullptr));
 
@@ -110,16 +125,18 @@ Application::Application(const Arguments& arguments):
     run_sum = 0;
     frame_cnt = 0;
 
-    //setSwapInterval(1);
     _timeline.start();
 
-    //_iface_list = Util::get_iface_list();
-    _zeek_pid = "#nop";
 
     prepareDrawables();
+    
+    if (endsWith(app_path, "/cyberlab/")) {
+        createLayout("cyberlab");
+    }
 
-    // TODO add imgui element to choose and for enable/disable of this interface.
-    createLayout("cyberlab");
+    if (endsWith(app_path, "/home-wifi/")) {
+        createLayout("home-wifi");
+    } 
 }
 
 void Application::prepareDrawables() {
@@ -269,85 +286,94 @@ void annontateVlanDev(Layout::VlanDevice *vdev, pugi::xml_node named_node) {
 }
 
 
+// TODO add imgui element to choose and for enable/disable of this interface.
 void Application::createLayout(std::string choice) {
     Layout::Scenario scenario = Layout::Scenario(choice);
 
-    if (choice == "cyberlab") {
-       pugi::xml_document doc = get_xml_doc("src/assets/cyberlab.xml");
-       pugi::xml_document scenario_doc = get_xml_doc("src/assets/alb-cyberlab.xml");
+    pugi::xml_document doc;
+    pugi::xml_document scenario_doc;
 
-        // Find the center of the scenario.
-        pugi::xpath_node center = doc.select_node("//object[@class='center']");
-        if (!center) {
-            std::cerr << "Could not find scenario center!" << std::endl;
-            return;
-        }
-
-        Vector2 center_pos = get_object_geom(center.node());
-        gCtx->center = Vector3(center_pos.x(), 0.0, center_pos.y());
-
-        pugi::xpath_node_set routers = doc.select_nodes("//object[@class='switch']");
-        for (auto it = routers.begin(); it != routers.end(); it++) {
-            pugi::xpath_node router = *it;
-            auto rparam = extractRouterParam(router, &doc);
-            if (rparam == nullptr) {
-                continue;
-            }
-            annotateRouterParam(rparam, &scenario_doc);
-
-            Layout::Router *fw = gCtx->createRouter(sCtx, rparam);
-            scenario.add(fw, 1);
-        }
-
-        std::string ungrouped_devices = "//root/object[@class='device']/mxCell[@parent='1']";
-        pugi::xpath_node_set devices = doc.select_nodes(ungrouped_devices.c_str());
-        for (auto it = devices.begin(); it != devices.end(); it++) {
-            pugi::xpath_node mxcell = *it;
-
-            // The parent of the mxCell is an object that we can use to get the geometry
-            pugi::xml_node device_node = mxcell.node().parent();
-            Vector2 pos = get_object_geom(device_node);
-
-            std::string lbl = device_node.attribute("label").value();
-
-            Layout::VlanDevice *vdev = new Layout::VlanDevice{lbl, pos};
-
-            std::string scenario_xpath = "/root/" + lbl;
-            pugi::xpath_node xnode = scenario_doc.select_node(scenario_xpath.c_str());
-            if (!xnode) {
-                std::cerr << "Couldn't find dev: " << scenario_xpath << std::endl;
-                continue;
-            }
-
-            pugi::xml_node scen_dev_node = xnode.node();
-            annontateVlanDev(vdev, scen_dev_node);
-
-            gCtx->createDevice(sCtx, vdev);
-        }
- 
-
-        // Classes:
-        // center - where the scene should be centered
-        // bcast  - the broadcast pool center for a vlan
-        //   device - an ellipse positioned on the switch
-        // switch - a <g> that contains a switch rect and devices
-        //   device - an ellipse positioned on the switch
-        //   switch-rect - the geometry of the switch
-        // device - a simple device
-
-
-        /*
-        auto scenar_vlans = std::vector<Layout::VInput*>{};
-        scenar_vlans.push_back(new Layout::VInput{"blue_isp", Vector2(0.0, 0.0), 4});
-        for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
-        for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
-            // TODO these need to be relative to the router
-            Layout::VInput* vinp = *it;
-            Vector3 twod = Vector3(vinp->pos.x(), -1.0, vinp->pos.y());
-            Util::createLayoutRing(gCtx->_scene, gCtx->_permanent_drawables, 1.0f, twod);
-        }
-        */
+    if (choice == "home-wifi") {
+        doc = get_xml_doc("src/assets/home-wifi.xml");
+        scenario_doc = get_xml_doc("src/assets/home-wifi-devs.xml");
     }
+
+    if (choice == "cyberlab") {
+        doc = get_xml_doc("src/assets/cyberlab.xml");
+        scenario_doc = get_xml_doc("src/assets/alb-cyberlab.xml");
+    }
+
+    // Find the center of the scenario.
+    pugi::xpath_node center = doc.select_node("//object[@class='center']");
+    if (!center) {
+        std::cerr << "Could not find scenario center!" << std::endl;
+        return;
+    }
+
+    Vector2 center_pos = get_object_geom(center.node());
+    gCtx->center = Vector3(center_pos.x(), 0.0, center_pos.y());
+
+    pugi::xpath_node_set routers = doc.select_nodes("//object[@class='switch']");
+    for (auto it = routers.begin(); it != routers.end(); it++) {
+        pugi::xpath_node router = *it;
+        auto rparam = extractRouterParam(router, &doc);
+        if (rparam == nullptr) {
+            continue;
+        }
+        annotateRouterParam(rparam, &scenario_doc);
+
+        Layout::Router *fw = gCtx->createRouter(sCtx, rparam);
+        scenario.add(fw, 1);
+    }
+
+    std::string ungrouped_devices = "//root/object[@class='device']/mxCell[@parent='1']";
+    pugi::xpath_node_set devices = doc.select_nodes(ungrouped_devices.c_str());
+    for (auto it = devices.begin(); it != devices.end(); it++) {
+        pugi::xpath_node mxcell = *it;
+
+        // The parent of the mxCell is an object that we can use to get the geometry
+        pugi::xml_node device_node = mxcell.node().parent();
+        Vector2 pos = get_object_geom(device_node);
+
+        std::string lbl = device_node.attribute("label").value();
+
+        Layout::VlanDevice *vdev = new Layout::VlanDevice{lbl, pos};
+
+        std::string scenario_xpath = "/root/" + lbl;
+        pugi::xpath_node xnode = scenario_doc.select_node(scenario_xpath.c_str());
+        if (!xnode) {
+            std::cerr << "Couldn't find dev: " << scenario_xpath << std::endl;
+            continue;
+        }
+
+        pugi::xml_node scen_dev_node = xnode.node();
+        annontateVlanDev(vdev, scen_dev_node);
+
+        gCtx->createDevice(sCtx, vdev);
+    }
+
+
+    // Classes:
+    // center - where the scene should be centered
+    // bcast  - the broadcast pool center for a vlan
+    //   device - an ellipse positioned on the switch
+    // switch - a <g> that contains a switch rect and devices
+    //   device - an ellipse positioned on the switch
+    //   switch-rect - the geometry of the switch
+    // device - a simple device
+
+
+    /*
+    auto scenar_vlans = std::vector<Layout::VInput*>{};
+    scenar_vlans.push_back(new Layout::VInput{"blue_isp", Vector2(0.0, 0.0), 4});
+    for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
+    for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
+        // TODO these need to be relative to the router
+        Layout::VInput* vinp = *it;
+        Vector3 twod = Vector3(vinp->pos.x(), -1.0, vinp->pos.y());
+        Util::createLayoutRing(gCtx->_scene, gCtx->_permanent_drawables, 1.0f, twod);
+    }
+    */
 }
 
 

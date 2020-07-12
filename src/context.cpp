@@ -78,7 +78,7 @@ void Graphic::prepare3DFont()
         Fatal{} << "Cannot open font file";
     }
 
-    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/-+,.! \n");
+    _font->fillGlyphCache(_glyphCache, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/-+,.!_ \n");
 
     auto inner = 0x00ff00_rgbf;
     auto outline = 0x00ff00_rgbf;
@@ -89,10 +89,8 @@ void Graphic::prepare3DFont()
 
 Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac)
 {
-
     int num_objs = sCtx->_device_map.size();
-    int vlan = num_objs % 3;
-    Vector2 v = sCtx->nextVlanPos(vlan);
+    Vector2 v = sCtx->nextVlanPos(1);
     Vector3 w = Vector3{v.x(), 0.0f, v.y()};
 
     return createSphere(sCtx, mac, &_scene, w);
@@ -104,8 +102,6 @@ Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac, Object3
     Object3D *sphere_obj = new Object3D{o};
     o->translate(relPos);
     sphere_obj->transform(Matrix4::scaling(Vector3{0.25f}));
-
-    //o->rotateY(120.0_degf * static_cast<float>(vlan));
 
     UnsignedByte id = sCtx->newObjectId();
 
@@ -129,10 +125,12 @@ Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac, Object3
     return d_s;
 }
 
-Monopticon::Level3::Address *Graphic::createIPv4Address(Context::Store *sCtx, const std::string ipv4_addr, Vector3 pos)
+Monopticon::Level3::Address *Graphic::createIPv4Address(Context::Store *sCtx, const std::string ipv4_addr, Device::Stats *d_s)
 {
+    d_s->hasIP = true;
+
     Vector3 offset{0.0f, 1.0f, 0.0f};
-    auto t = pos + offset;
+    auto t = d_s->circPoint + offset;
 
     Object3D *g = new Object3D{&_scene};
     Object3D *o = new Object3D{g};
@@ -226,18 +224,12 @@ void Graphic::createPoolHit(Device::PrefixStats *dp_s, Color3 c)
     Object3D *o = new Object3D{&_scene};
     o->transform(scaling);
     o->rotateX(90.0_degf);
+    //u->rotateX(270.0_degf);
     o->translate(pos);
 
-    Object3D *u = new Object3D{&_scene};
-    u->transform(scaling);
-    u->rotateX(270.0_degf);
-    u->translate(pos);
+    auto top = new Figure::MulticastDrawable(*o, c, pos, _pool_shader, _drawables, _poolCircle);
 
-    auto top = new Figure::MulticastDrawable(*u, c, pos, _pool_shader, _drawables, _poolCircle);
-    auto bot = new Figure::MulticastDrawable(*o, c, pos, _pool_shader, _drawables, _poolCircle);
-    auto pair = std::make_pair(top, bot);
-
-    dp_s->contacts.push_back(pair);
+    dp_s->contacts.push_back(top);
 }
 
 
@@ -247,19 +239,22 @@ Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
     root->translate(param->pos - center);
 
     Layout::Router* router = new Layout::Router(0, param->vlan_iface_map.size(), root);
-    auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
+    //auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
 
     // TODO store min and max x and y and generate connecting rectangle of that size.
     for (auto it = param->vlan_iface_map.begin(); it != param->vlan_iface_map.end(); it++) {
         Layout::RIface* iface_params = it->second;
 
         Vector3 relPos = Vector3(iface_params->pos.x(), 0.0f, iface_params->pos.y());
+        Vector3 ooof = relPos+param->pos - center;
+
+        Object3D *obj = new Object3D{&_scene};
 
         // Create Device Stats
-        Device::Stats* d_s = createSphere(sCtx, iface_params->mac, root, relPos);
-        addDirectLabels(d_s);
+        Device::Stats* d_s = createSphere(sCtx, iface_params->mac, obj, ooof);
+        addDirectLabels(d_s, iface_params->label);
         // TODO deal with relative offset here.
-        createIPv4Address(sCtx, iface_params->ip_addr, relPos+param->pos - center);
+        createIPv4Address(sCtx, iface_params->ip_addr, d_s);
 
         // TODO project relPos from 0,0 with a ray to choose a good spot to place the vlan bcast pool
 
@@ -277,18 +272,18 @@ void Graphic::createDevice(Store *sCtx, Layout::VlanDevice *vlan_dev) {
 
     // Create Device Stats
     Device::Stats* d_s = createSphere(sCtx, vlan_dev->mac, &_scene, relPos);
-    addDirectLabels(d_s);
+    addDirectLabels(d_s, vlan_dev->label);
 
 
 
     // TODO deal with relative offset here.
     if (vlan_dev->ip_addr.size() > 0) {
-        createIPv4Address(sCtx, vlan_dev->ip_addr, relPos);
+        createIPv4Address(sCtx, vlan_dev->ip_addr, d_s);
     }
 }
 
 
-void Graphic::addDirectLabels(Device::Stats *d_s)
+void Graphic::addDirectLabels(Device::Stats *d_s, std::string bottom_lbl)
 {
     auto scaling = Matrix4::scaling(Vector3{0.10f});
     auto t = d_s->circPoint;
@@ -318,7 +313,7 @@ void Graphic::addDirectLabels(Device::Stats *d_s)
         obj->translate(Vector3(0.0f, -0.7f, 0.0f));
 
         Color3 c = 0xaaaaaa_rgbf;
-        d_s->_mac_label = new Figure::TextDrawable(d_s->mac_addr, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
+        d_s->_mac_label = new Figure::TextDrawable(bottom_lbl, c, _font, &_glyphCache, _text_shader, *obj, _text_drawables);
     }
 }
 
@@ -407,14 +402,14 @@ UnsignedByte Store::newObjectId()
 
 Vector2 Store::nextVlanPos(const int vlan)
 {
-    int row_size = 4 + vlan - vlan;
+    int row_size = 4;
 
-    int num_objs_in_vlan = _device_map.size() / 3; // NOTE replace with vlan
+    int num_objs_in_vlan = _device_map.size(); // NOTE replace with vlan
 
     int vlan_x = num_objs_in_vlan / row_size;
     int vlan_y = num_objs_in_vlan % row_size;
 
-    return 4 * Vector2(vlan_x + 1, vlan_y + 1);
+    return 3 * Vector2(vlan_x + 1, vlan_y + 1);
 }
 
 
@@ -435,13 +430,12 @@ void Store::frameUpdate() {
     // Remove mcast drawables that have expired
     for (auto it2 = _dst_prefix_group_map.begin(); it2 != _dst_prefix_group_map.end(); it2++) {
         Device::PrefixStats *dp_s = (*it2).second;
-        std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> c = dp_s->contacts;
+        std::vector<Figure::MulticastDrawable*> c = dp_s->contacts;
         for (auto it3 = c.begin(); it3 != c.end(); ) {
-            auto pair = *it3;
-            if ((pair.first)->expired) {
+            Figure::MulticastDrawable* mcast = *it3;
+            if (mcast->expired) {
                 it3 = c.erase(it3);
-                delete pair.first;
-                delete pair.second;
+                delete mcast;
             } else {
                 ++it3;
             }

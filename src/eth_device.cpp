@@ -160,15 +160,10 @@ PrefixStats::PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawabl
 
 PrefixStats::~PrefixStats() {
     delete ring;
-    {
-        !Debug{} << "start ring delete";
-        for (auto it = contacts.begin(); it != contacts.end(); it++) {
-            !Debug{} << "running";
-            auto t = it;
-            it = contacts.erase(it);
-            delete t->first;
-            delete t->second;
-        }
+    for (auto it = contacts.begin(); it != contacts.end(); it++) {
+        Figure::MulticastDrawable* mcast = *it;
+        it = contacts.erase(it);
+        delete mcast;
     }
 }
 

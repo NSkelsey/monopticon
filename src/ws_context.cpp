@@ -55,6 +55,8 @@ static EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageE
 
         es.ParseFromIstream(&in);
         b->processEpochStep(es);
+        
+        es.Clear();
     } else {
         b->tot_epoch_drop += 1;
     }
@@ -62,6 +64,7 @@ static EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageE
     if (b->event_cnt % 16 == 0 && b->inv_sample_rate <= 16) {
         b->inv_sample_rate = b->inv_sample_rate*2;
     }
+
     return 0;
 }
 
@@ -76,7 +79,7 @@ void WsBroker::processEpochStep(epoch::EpochStep es) {
          if (search == sCtx->_device_map.end()) {
              Device::Stats *d_s = gCtx->createSphere(sCtx, mac_src);
              sCtx->_device_map.insert(std::make_pair(mac_src, d_s));
-             gCtx->addDirectLabels(d_s);
+             gCtx->addDirectLabels(d_s, mac_src);
          }
     }
 
@@ -164,8 +167,10 @@ void WsBroker::parse_enter_l3_addr(Context::Store *sCtx, Context::Graphic *gCtx,
             return;
         }
 
-        std::string s = Util::uint_to_ipv4addr(addr_map.ipv4());
-        gCtx->createIPv4Address(sCtx, s, tran_d_s->circPoint);
+        if (!tran_d_s->hasIP) {
+            std::string s = Util::uint_to_ipv4addr(addr_map.ipv4());
+            gCtx->createIPv4Address(sCtx, s, tran_d_s);
+        }
 }
 
 
@@ -208,6 +213,7 @@ WsBroker::WsBroker(std::string ws_uri, Graphic *g, Store *s):
     gCtx{g},
     sCtx{s}
 {
+
     if (!emscripten_websocket_is_supported())
     {
         !Debug{} << "Will not be able to create web sockets";
