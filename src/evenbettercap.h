@@ -211,6 +211,7 @@ class Stats: public Selectable {
     int num_pkts_sent;
     int num_pkts_recv;
     int health;
+    bool hasIP{false};
 };
 
 class PrefixStats {
@@ -218,7 +219,7 @@ class PrefixStats {
     PrefixStats(std::string macPrefix, Vector3 pos, Figure::RingDrawable* ring);
     ~PrefixStats();
 
-    std::vector<std::pair<Figure::MulticastDrawable*, Figure::MulticastDrawable*>> contacts;
+    std::vector<Figure::MulticastDrawable*> contacts;
 
     std::string _prefix;
     Vector3     _position;
@@ -655,12 +656,12 @@ class Graphic {
 
         void createPoolHits(Store *sCtx, Device::Stats* tran_d_s, Device::PrefixStats *dp_s, epoch::L2Summary sum);
         void createPoolHit(Device::PrefixStats *dp_s, Color3 c);
-        Level3::Address* createIPv4Address(Store *sCtx, const std::string ipv4_addr, Vector3 pos);
+        Level3::Address* createIPv4Address(Store *sCtx, const std::string ipv4_addr, Device::Stats* d_s);
 
         void createLines(Store *sCtx, Vector3, Vector3, Util::L3Type, int num);
         void createLine(Store *sCtx, Vector3, Vector3, Util::L3Type);
 
-        void addDirectLabels(Device::Stats *d_s);
+        void addDirectLabels(Device::Stats *d_s, std::string bottom_lbl);
         void addL2ConnectL3(Vector3 a, Vector3 b);
 
         void destroyGLBuffers();

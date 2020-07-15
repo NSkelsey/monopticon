@@ -54,6 +54,9 @@ class Application: public Platform::Application {
         Context::Store    *sCtx;
         Context::WsBroker *wCtx;
 
+        bool isFirefox = false;
+        bool isDevelopment = false;
+
     private:
         std::string ws_uri;
 
@@ -102,15 +105,22 @@ Application::Application(const Arguments& arguments):
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
 
+    // Detect if the application is running on localhost
+    {
+        int res = emscripten_run_script_int("window.location.host.indexOf('localhost') != -1");
+        if (res > 0) {
+            isDevelopment = true; 
+        }
+    }
 
     char* t = emscripten_run_script_string("window.location.pathname");
     std::string app_path = std::string(t);
 
     char *ws_cstr;
-    if (endsWith(app_path, "/cyberlab/") || endsWith(app_path, "/home-wifi/")) {
-        ws_cstr = emscripten_run_script_string("'wss://'+window.location.host+window.location.pathname+'socket';");
-    } else {
+    if (isDevelopment) {
         ws_cstr = "ws://localhost:9002";
+    } else {
+        ws_cstr = emscripten_run_script_string("'wss://'+window.location.host+window.location.pathname+'socket';");
     }
 
     ws_uri = std::string(ws_cstr);
@@ -134,9 +144,18 @@ Application::Application(const Arguments& arguments):
         createLayout("cyberlab");
     }
 
-    if (endsWith(app_path, "/home-wifi/")) {
+    if (endsWith(app_path, "/home-wifi/") || isDevelopment) {
         createLayout("home-wifi");
     } 
+
+    // Detect firefox and disable object select.
+    {
+        int res = emscripten_run_script_int("navigator.userAgent.indexOf('Firefox') != -1");
+        if (res > 0) {
+            isFirefox = true;
+            std::cout << "Disabling object select with Firefox" << std::endl;
+        }
+    }
 }
 
 void Application::prepareDrawables() {
@@ -542,9 +561,6 @@ void Application::objectClicked(Device::Selectable *selection) {
     deselectObject();
     _selectedObject = selection;
 
-    //Object3D *o = selection->getObj();
-
-    //Level3::Address *a = dynamic_cast<Level3::Address*>(selection);
     selection->addHighlight(gCtx->_bbitem_shader, gCtx->_billboard_drawables);
 }
 
@@ -697,6 +713,9 @@ void Application::mouseReleaseEvent(MouseEvent& event) {
 
     if(event.button() == MouseEvent::Button::Left && !_draggedMouse) {
         deselectObject();
+
+        // Disable this functionality when using firefox.
+        if (isFirefox) return;
 
         // First scale the position from being relative to window size to being
         // relative to framebuffer size as those two can be different on HiDPI
