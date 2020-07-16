@@ -1,15 +1,5 @@
 TODO
 =====
-### Webopticon
-
-- [ ] Necessary MVP tweaks
-   - [N] use vlan tags for layout groups
-   - [ ] Move right-click to space
-- [ ] Model Cyberlab Network
-   - [ ] decide how VPN access to nginx frontend will work.
-   - [ ] deploy broker + sbackend + nginx frontend
-   - [ ] Integrate scenario data into scene
-
 
 ### Backlog
 ========================================
@@ -152,6 +142,15 @@ Do Thing:
 
 DONE
 ====
+### Webopticon
+- [x] Necessary MVP tweaks
+   - [N] use vlan tags for layout groups
+   - [y] Move right-click to space
+- [x] Model Cyberlab Network
+   - [x] decide how VPN access to nginx frontend will work.
+   - [x] deploy broker + sbackend + nginx frontend
+   - [x] Integrate scenario data into scene
+### ### ###
 - [x] Fix object coloring and buffer bindings using latest updates to magnum
 - [x] Build communication tunnel
    - [x] Decide on Websockets or something else

@@ -130,13 +130,12 @@ int Stats::rightClickActions() {
     if (ImGui::MenuItem("Watch", NULL, false)) {
         std::cout << "Want to watch" << std::endl;
         return 1;
-    }
-    if (ImGui::MenuItem("Set Orbit", NULL, false)) {
-        //watchSelectedDevice();
-        std::cout << "Want to orbit" << std::endl;
+    } else if (ImGui::MenuItem("no-op", NULL, false)) {
+        std::cout << "picked no-op" << std::endl;
         return 3;
+    } else {
+        return 0;
     }
-    return 0;
 }
 
 

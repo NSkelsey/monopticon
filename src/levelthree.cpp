@@ -33,9 +33,7 @@ void Address::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& ca
 
 
 Vector3 Address::getTranslation() {
-    // TODO use _absoluteTransformationCache
     return this->absoluteTransformationMatrix().translation();
-    //return Vector3{};
 }
 
 
@@ -47,6 +45,7 @@ int Address::rightClickActions() {
     if (ImGui::MenuItem("Scan", NULL, false)) {
         std::cout << "Want to scan" << std::endl;
         return 2;
+    } else {
+        return 0;
     }
-    return 0;
 }

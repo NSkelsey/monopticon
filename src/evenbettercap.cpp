@@ -26,8 +26,13 @@ class Application: public Platform::Application {
     public:
         explicit Application(const Arguments& arguments);
 
-        void prepareDrawables();
-        void createLayout(std::string choice);
+        void PrepareDrawables();
+
+        /*
+         * Set applications flags related to the URL at which the application
+         * is executing and the browser in which it is running.
+         */
+        void DetectExecutionContext();
 
         void drawEvent() override;
         void drawTextElements();
@@ -42,7 +47,6 @@ class Application: public Platform::Application {
         void mouseScrollEvent(MouseScrollEvent& event) override;
         void textInputEvent(TextInputEvent& event) override;
 
-        UnsignedByte newObjectId();
         void deselectObject();
         void objectClicked(Device::Selectable *selection);
         void selectableMenuActions(Device::Selectable *selection);
@@ -79,9 +83,6 @@ class Application: public Platform::Application {
 
         Timeline _timeline;
 
-        int ring_level{0};
-        int pos_in_ring{0};
-
         int run_sum;
         int frame_cnt;
 
@@ -91,10 +92,7 @@ class Application: public Platform::Application {
 };
 
 
-bool endsWith(const std::string& s, const std::string& suffix)
-{
-    return s.rfind(suffix) == std::abs((int)(s.size()-suffix.size()));
-}
+
 
 Application::Application(const Arguments& arguments):
         Platform::Application{arguments, Configuration{}
@@ -102,30 +100,11 @@ Application::Application(const Arguments& arguments):
             .setWindowFlags(Configuration::WindowFlag::Resizable),
             GLConfiguration{}.setSampleCount(MSAA_CNT)}
 {
+    DetectExecutionContext();
+
     gCtx = new Context::Graphic();
     sCtx = new Context::Store();
-
-    // Detect if the application is running on localhost
-    {
-        int res = emscripten_run_script_int("window.location.host.indexOf('localhost') != -1");
-        if (res > 0) {
-            isDevelopment = true; 
-        }
-    }
-
-    char* t = emscripten_run_script_string("window.location.pathname");
-    std::string app_path = std::string(t);
-
-    char *ws_cstr;
-    if (isDevelopment) {
-        ws_cstr = "ws://localhost:9002";
-    } else {
-        ws_cstr = emscripten_run_script_string("'wss://'+window.location.host+window.location.pathname+'socket';");
-    }
-
-    ws_uri = std::string(ws_cstr);
     wCtx = new Context::WsBroker(ws_uri, gCtx, sCtx);
-
 
     srand(time(nullptr));
 
@@ -137,28 +116,16 @@ Application::Application(const Arguments& arguments):
 
     _timeline.start();
 
+    PrepareDrawables();
 
-    prepareDrawables();
-    
-    if (endsWith(app_path, "/cyberlab/")) {
-        createLayout("cyberlab");
-    }
+    std::string scenario_name = Util::GetWindowPath();
 
-    if (endsWith(app_path, "/home-wifi/") || isDevelopment) {
-        createLayout("home-wifi");
-    } 
-
-    // Detect firefox and disable object select.
-    {
-        int res = emscripten_run_script_int("navigator.userAgent.indexOf('Firefox') != -1");
-        if (res > 0) {
-            isFirefox = true;
-            std::cout << "Disabling object select with Firefox" << std::endl;
-        }
-    }
+    // TODO add imgui element to choose and for enable/disable of this interface.
+    Layout::Scenario scenario = Layout::Scenario(scenario_name);
+    scenario.ParseDocCreateScene(gCtx, sCtx);
 }
 
-void Application::prepareDrawables() {
+void Application::PrepareDrawables() {
     Device::PrefixStats *ff_bcast = gCtx->createBroadcastPool("ff", Vector3{1.0f, -4.0f, 1.0f});
     Device::PrefixStats *three_bcast = gCtx->createBroadcastPool("33", Vector3{1.0f, -4.0f, -1.0f});
     Device::PrefixStats *one_bcast = gCtx->createBroadcastPool("01", Vector3{-1.0f, -4.0f, 1.0f});
@@ -171,228 +138,33 @@ void Application::prepareDrawables() {
 }
 
 
-/*
- * Extracts the x & y position from an XML <object> that contains the nested mxGeometry element.
- */
-Vector2 get_object_geom(pugi::xml_node obj_node) {
-    float x = obj_node.child("mxCell").child("mxGeometry").attribute("x").as_float();
-    float y = obj_node.child("mxCell").child("mxGeometry").attribute("y").as_float();
-
-    float scale_factor = 20.0f;
-    Vector2 position = Vector2{x/scale_factor, y/scale_factor};
-    return position;
-}
-
-
-uint32_t get_device_vlan(pugi::xml_node dev_obj) {
-    int lbl = dev_obj.attribute("label").as_int();
-    return lbl;
-}
-
-
-Layout::RouterParam* extractRouterParam(pugi::xpath_node router, pugi::xml_document *doc) {
-    Layout::RouterParam* param = new Layout::RouterParam{};
-
-    // Extract root Id
-    std::string id = router.node().attribute("id").value();
-    std::cout << "Extracted id: " << id << std::endl;
-
-    // Get and set the root position
-    Vector2 root_pos = get_object_geom(router.node());
-    param->pos = Vector3(root_pos.x(), 0.0, root_pos.y());
-
-    std::string xpath = "//object[@class='switch-rect']/mxCell[@parent='" + id + "']";
-    pugi::xpath_node sub_rect = doc->select_node(xpath.c_str());
-    if (!sub_rect) {
-        std::cerr << "Couldn't find subrect: " << xpath << std::endl;
-        return nullptr;
-    }
-    // Get the label of the router
-    pugi::xml_node sub_rect_obj = sub_rect.node().parent();
-    param->label = sub_rect_obj.attribute("label").value();
-
-    // Get the sub rectangles geometry
-    Vector2 sub_pos = get_object_geom(sub_rect_obj);
-
-    // Generate a selector for devices from the switches id
-    xpath = "//object[@class='device']/mxCell[@parent='" + id + "']";
-
-    // Extract each attached device's geometry and label
-    pugi::xpath_node_set devices = doc->select_nodes(xpath.c_str());
-    for (auto it = devices.begin(); it != devices.end(); it++) {
-        pugi::xpath_node d_xpath = *it;
-
-        pugi::xml_node dev_obj = d_xpath.node().parent();
-        Vector2 dev_pos = get_object_geom(dev_obj);
-        uint32_t dev_vlan = get_device_vlan(dev_obj);
-
-        Layout::RIface *iface = new Layout::RIface{"", dev_pos, "", dev_vlan, ""};
-        param->vlan_iface_map.emplace(dev_vlan, iface);
-    }
-
-    return param;
-}
-
-
-pugi::xml_document get_xml_doc(std::string fname) {
-    pugi::xml_document doc;
-
-    Utility::Resource rs("monopticon");
-    Containers::ArrayView<const char> content = rs.getRaw(fname);
-
-    pugi::xml_parse_result result = doc.load_buffer(&content.front(), content.size());
-    if (!result) {
-        std::cerr << "Failed to load xml doc: " << fname << std::endl;
-    }
-
-    return doc;
-}
-
-
-void annotateRouterParam(Layout::RouterParam *rparam, pugi::xml_document *scenario_doc) {
-    std::string xpath = "/root/" + rparam->label;
-    pugi::xpath_node x = scenario_doc->select_node(xpath.c_str());
-    if (!x) {
-        std::cerr << "Failed to find xpath: " << xpath << std::endl;
-        return;
-    }
-
-    pugi::xml_node router = x.node();
-    rparam->vmid = router.child("vm_id").value();
-
-    for (pugi::xml_node net = router.child("network"); net != nullptr; net = net.next_sibling("network")) {
-        std::string mac = net.child("mac").text().as_string();
-        std::string ip = net.child("ip").text().as_string();
-        int tag = net.child("tag").text().as_int();
-        // TODO Skip mgmt iface
-        if (tag < 0) {
-            continue;
+void Application::DetectExecutionContext() {
+    // Detect if the application is running on localhost
+    {
+        int res = emscripten_run_script_int("window.location.host.indexOf('localhost') != -1");
+        if (res > 0) {
+            isDevelopment = true;
         }
-        std::string bridge = net.child("bridge").text().as_string();
+    }
 
-        auto search = rparam->vlan_iface_map.find(tag);
-        if (search == rparam->vlan_iface_map.end()) {
-            std::cerr << "Couldn't find vlan: " << tag << " in: " << xpath << std::endl;
-            continue;
+    // Determine what the websocket URL should be
+    char *ws_cstr;
+    if (isDevelopment) {
+        ws_cstr = strdup("ws://localhost:9002");
+    } else {
+        ws_cstr = emscripten_run_script_string("'wss://'+window.location.host+window.location.pathname+'socket';");
+    }
+
+    ws_uri = std::string(ws_cstr);
+
+    // Detect firefox to disable object select for issue #7.
+    {
+        int res = emscripten_run_script_int("navigator.userAgent.indexOf('Firefox') != -1");
+        if (res > 0) {
+            isFirefox = true;
+            std::cout << "Disabling object select with Firefox" << std::endl;
         }
-        Layout::RIface* iface = search->second;
-
-        iface->label = bridge;
-        iface->mac = mac;
-        iface->ip_addr = ip;
-        iface->vlan = tag;
     }
-}
-
-
-void annontateVlanDev(Layout::VlanDevice *vdev, pugi::xml_node named_node) {
-    vdev->vmid = named_node.child("vm_id").text().as_string();
-
-    for (auto net = named_node.child("network"); net != nullptr; net.next_sibling("network")) {
-        int tag = net.child("tag").text().as_int();
-
-        // Each named node has atleast 1 mgmt interface attached with a tag of -1
-        if (tag < 0) {
-            continue;
-        }
-
-        vdev->tag = tag;
-        vdev->mac = net.child("mac").text().as_string();
-        vdev->ip_addr = net.child("ip").text().as_string();
-
-        break;
-    }
-}
-
-
-// TODO add imgui element to choose and for enable/disable of this interface.
-void Application::createLayout(std::string choice) {
-    Layout::Scenario scenario = Layout::Scenario(choice);
-
-    pugi::xml_document doc;
-    pugi::xml_document scenario_doc;
-
-    if (choice == "home-wifi") {
-        doc = get_xml_doc("src/assets/home-wifi.xml");
-        scenario_doc = get_xml_doc("src/assets/home-wifi-devs.xml");
-    }
-
-    if (choice == "cyberlab") {
-        doc = get_xml_doc("src/assets/cyberlab.xml");
-        scenario_doc = get_xml_doc("src/assets/alb-cyberlab.xml");
-    }
-
-    // Find the center of the scenario.
-    pugi::xpath_node center = doc.select_node("//object[@class='center']");
-    if (!center) {
-        std::cerr << "Could not find scenario center!" << std::endl;
-        return;
-    }
-
-    Vector2 center_pos = get_object_geom(center.node());
-    gCtx->center = Vector3(center_pos.x(), 0.0, center_pos.y());
-
-    pugi::xpath_node_set routers = doc.select_nodes("//object[@class='switch']");
-    for (auto it = routers.begin(); it != routers.end(); it++) {
-        pugi::xpath_node router = *it;
-        auto rparam = extractRouterParam(router, &doc);
-        if (rparam == nullptr) {
-            continue;
-        }
-        annotateRouterParam(rparam, &scenario_doc);
-
-        Layout::Router *fw = gCtx->createRouter(sCtx, rparam);
-        scenario.add(fw, 1);
-    }
-
-    std::string ungrouped_devices = "//root/object[@class='device']/mxCell[@parent='1']";
-    pugi::xpath_node_set devices = doc.select_nodes(ungrouped_devices.c_str());
-    for (auto it = devices.begin(); it != devices.end(); it++) {
-        pugi::xpath_node mxcell = *it;
-
-        // The parent of the mxCell is an object that we can use to get the geometry
-        pugi::xml_node device_node = mxcell.node().parent();
-        Vector2 pos = get_object_geom(device_node);
-
-        std::string lbl = device_node.attribute("label").value();
-
-        Layout::VlanDevice *vdev = new Layout::VlanDevice{lbl, pos};
-
-        std::string scenario_xpath = "/root/" + lbl;
-        pugi::xpath_node xnode = scenario_doc.select_node(scenario_xpath.c_str());
-        if (!xnode) {
-            std::cerr << "Couldn't find dev: " << scenario_xpath << std::endl;
-            continue;
-        }
-
-        pugi::xml_node scen_dev_node = xnode.node();
-        annontateVlanDev(vdev, scen_dev_node);
-
-        gCtx->createDevice(sCtx, vdev);
-    }
-
-
-    // Classes:
-    // center - where the scene should be centered
-    // bcast  - the broadcast pool center for a vlan
-    //   device - an ellipse positioned on the switch
-    // switch - a <g> that contains a switch rect and devices
-    //   device - an ellipse positioned on the switch
-    //   switch-rect - the geometry of the switch
-    // device - a simple device
-
-
-    /*
-    auto scenar_vlans = std::vector<Layout::VInput*>{};
-    scenar_vlans.push_back(new Layout::VInput{"blue_isp", Vector2(0.0, 0.0), 4});
-    for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
-    for (auto it = scenar_vlans.begin(); it != scenar_vlans.end(); it++) {
-        // TODO these need to be relative to the router
-        Layout::VInput* vinp = *it;
-        Vector3 twod = Vector3(vinp->pos.x(), -1.0, vinp->pos.y());
-        Util::createLayoutRing(gCtx->_scene, gCtx->_permanent_drawables, 1.0f, twod);
-    }
-    */
 }
 
 
@@ -434,7 +206,7 @@ void Application::drawIMGuiElements() {
     if (!wCtx->socket_connected) {
         if (ImGui::Button("Connect", ImVec2(80, 20))) {
             wCtx->openSocket(ws_uri);
-            prepareDrawables();
+            PrepareDrawables();
         }
     } else {
         if (ImGui::Button("Disconnect", ImVec2(80, 20))) {
@@ -548,9 +320,9 @@ void Application::selectableMenuActions(Device::Selectable *selection) {
     } else if (res == 1) {
         watchSelectedDevice();
     } else if (res == 2) {
-        std::cout << "scan dev" << std::endl;
+        std::cout << "focus" << std::endl;
     } else if (res == 3) {
-        std::cout << "change orbit" << std::endl;
+        std::cout << "color" << std::endl;
     } else {
         std::cerr << "No selectable menu action found " << res << std::endl;
     }
@@ -589,7 +361,7 @@ void Application::watchSelectedDevice() {
 void Application::drawEvent() {
     wCtx->frameUpdate();
 
-    sCtx->frameUpdate();
+    sCtx->FrameUpdate();
 
     gCtx->draw3DElements();
 
@@ -678,16 +450,20 @@ void Application::keyPressEvent(KeyEvent& event) {
 void Application::keyReleaseEvent(KeyEvent& event) {
     if(_imgui.handleKeyReleaseEvent(event)) return;
 
+    std::string val = event.keyName();
 
-    if(event.key() == KeyEvent::Key::M && _selectedObject != nullptr) {
+    if(val == "M" && _selectedObject != nullptr) {
         std::cout << "m released" << std::endl;
-        //Vector3 t = _selectedObject->getObj().transformationMatrix().translation();
-        // CREATE plan ring centered on object; add object that follows pos.
-        Vector3 v = Vector3{0.0f};
-        Util::createLayoutRing(_selectedObject->getObj(), gCtx->_drawables, 30.0, v);
+        Object3D &obj = _selectedObject->getObj();
+        Vector3 t = obj.absoluteTransformationMatrix().translation();
 
+        Util::createLayoutRing(obj, gCtx->_drawables, 30.0, t);
 
-        // project pos onto plane surface.
+        // TODO project mouse position onto plane surface.
+    }
+
+    if(val == " " && _selectedObject != nullptr) {
+        _openPopup = true;
     }
 }
 

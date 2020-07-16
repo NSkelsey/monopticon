@@ -89,8 +89,7 @@ void Graphic::prepare3DFont()
 
 Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac)
 {
-    int num_objs = sCtx->_device_map.size();
-    Vector2 v = sCtx->nextVlanPos(1);
+    Vector2 v = sCtx->NextVlanPos();
     Vector3 w = Vector3{v.x(), 0.0f, v.y()};
 
     return createSphere(sCtx, mac, &_scene, w);
@@ -103,7 +102,7 @@ Device::Stats *Graphic::createSphere(Store *sCtx, const std::string mac, Object3
     o->translate(relPos);
     sphere_obj->transform(Matrix4::scaling(Vector3{0.25f}));
 
-    UnsignedByte id = sCtx->newObjectId();
+    UnsignedByte id = sCtx->NewObjectId();
 
     Color3 c = 0xa5c9ea_rgbf;
     Figure::DeviceDrawable *dev = new Figure::DeviceDrawable{
@@ -141,7 +140,7 @@ Monopticon::Level3::Address *Graphic::createIPv4Address(Context::Store *sCtx, co
 
     Color3 c = 0xffffff_rgbf;
 
-    UnsignedByte id = sCtx->newObjectId();
+    UnsignedByte id = sCtx->NewObjectId();
 
     Level3::Address *address_obj = new Level3::Address{
         id,
@@ -238,7 +237,7 @@ Layout::Router* Graphic::createRouter(Store *sCtx, Layout::RouterParam* param)
     Object3D *root = new Object3D{&_scene};
     root->translate(param->pos - center);
 
-    Layout::Router* router = new Layout::Router(0, param->vlan_iface_map.size(), root);
+    Layout::Router* router = new Layout::Router(root);
     //auto grid = Util::createLayoutRing(*root, _permanent_drawables, 2.0f, Vector3{});
 
     // TODO store min and max x and y and generate connecting rectangle of that size.
@@ -395,12 +394,12 @@ Store::Store()
 {
 }
 
-UnsignedByte Store::newObjectId()
+UnsignedByte Store::NewObjectId()
 {
     return static_cast<UnsignedByte>(_selectable_objects.size());
 }
 
-Vector2 Store::nextVlanPos(const int vlan)
+Vector2 Store::NextVlanPos()
 {
     int row_size = 4;
 
@@ -413,7 +412,7 @@ Vector2 Store::nextVlanPos(const int vlan)
 }
 
 
-void Store::frameUpdate() {
+void Store::FrameUpdate() {
     // Remove packet_lines that have expired from the queue
     std::set<Figure::PacketLineDrawable *>::iterator it;
     for (it = _packet_line_queue.begin(); it != _packet_line_queue.end(); ) {

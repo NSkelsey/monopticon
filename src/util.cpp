@@ -1,8 +1,8 @@
 #include "evenbettercap.h"
 
-namespace Monopticon {
+namespace Monopticon { namespace Util {
 
-std::string Util::fmtEUI48(const uint64_t & mac) {
+std::string fmtEUI48(const uint64_t & mac) {
     const uint8_t* cmac = reinterpret_cast<const uint8_t *>(&mac);
     char buf[20];
     snprintf(buf, sizeof buf, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -11,12 +11,12 @@ std::string Util::fmtEUI48(const uint64_t & mac) {
     return std::string(buf);
 }
 
-int Util::SumTotal(epoch::L2Summary struct_l2) {
+int SumTotal(epoch::L2Summary struct_l2) {
     return struct_l2.ipv4() + struct_l2.ipv6() + struct_l2.arp() + struct_l2.unknown();
 }
 
 
-std::string Util::uint_to_ipv4addr(const uint32_t ipv4) {
+std::string uint_to_ipv4addr(const uint32_t ipv4) {
     char b[INET_ADDRSTRLEN] = {0};
     char* t = reinterpret_cast<char *>(b);
     inet_ntop(AF_INET, reinterpret_cast<const char *>(&ipv4), t, INET_ADDRSTRLEN);
@@ -24,7 +24,7 @@ std::string Util::uint_to_ipv4addr(const uint32_t ipv4) {
 }
 
 
-Vector2 Util::randCirclePoint() {
+Vector2 randCirclePoint() {
     float r = rand() / (1e9/(2*Math::Constants<float>::pi()));
 
     float steps = 16.0f;
@@ -38,7 +38,7 @@ Vector2 Util::randCirclePoint() {
 }
 
 
-Vector2 Util::paramCirclePoint(int num_elem, int pos) {
+Vector2 paramCirclePoint(int num_elem, int pos) {
     float steps = static_cast<float>(num_elem);
     float posf = static_cast<float>(pos);
 
@@ -54,7 +54,7 @@ Vector2 Util::paramCirclePoint(int num_elem, int pos) {
 }
 
 
-Vector2 Util::randOffset(float z) {
+Vector2 randOffset(float z) {
     int x = rand() % 2;
     int y = rand() % 2;
     Vector2 v = Vector2{x ? z : -z, y ? z : -z};
@@ -62,7 +62,7 @@ Vector2 Util::randOffset(float z) {
 }
 
 
-std::vector<std::string> Util::get_iface_list() {
+std::vector<std::string> get_iface_list() {
     auto v = std::vector<std::string>{};
     std::string g = "monopt_iface_proto list_ifaces";
     std::string s = "";
@@ -75,7 +75,7 @@ std::vector<std::string> Util::get_iface_list() {
 }
 
 
-Color3 Util::typeColor(Util::L3Type t) {
+Color3 typeColor(Util::L3Type t) {
     using namespace Util;
     Color3 c;
     switch (t) {
@@ -95,7 +95,7 @@ Color3 Util::typeColor(Util::L3Type t) {
 }
 
 
-Figure::RingDrawable* Util::createLayoutRing(Object3D &parent, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
+Figure::RingDrawable* createLayoutRing(Object3D &parent, SceneGraph::DrawableGroup3D &group, float r, Vector3 trans) {
     Object3D *obj = new Object3D{&parent};
     Matrix4 scaling = Matrix4::scaling(Vector3{r});
     obj->transform(scaling);
@@ -104,4 +104,25 @@ Figure::RingDrawable* Util::createLayoutRing(Object3D &parent, SceneGraph::Drawa
     return new Figure::RingDrawable{*obj, 0x00ff00_rgbf, group};
 }
 
+std::string GetWindowPath() {
+    char* t = emscripten_run_script_string("window.location.pathname");
+    std::stringstream app_path(t);
+
+    std::string segment;
+    std::vector<std::string> seglist;
+    while(std::getline(app_path, segment, '/')) {
+        seglist.push_back(segment);
+    }
+
+    std::string last_path = seglist.at(seglist.size()-1);
+    return last_path;
 }
+
+bool EndsWith(const std::string& s, const std::string& suffix)
+{
+    long long p = s.size() - suffix.size();
+    return s.rfind(suffix) == std::abs(p);
+}
+
+} // namespace Util
+} // namespace Monopticon

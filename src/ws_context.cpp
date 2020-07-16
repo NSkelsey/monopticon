@@ -20,7 +20,7 @@ static EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *
 {
     Context::WsBroker *b = static_cast<Context::WsBroker*>(userData);
     b->socket_connected = true;
-    !Debug{} << "WS open:" << eventType;
+    !Debug{} << "WS open:" << eventType << " " << e;
     return 0;
 }
 
@@ -32,9 +32,9 @@ static EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent
     return 0;
 }
 
-static EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *_)
+static EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void *userData)
 {
-    !Debug{} << "WS error:" << eventType << " " << e;
+    !Debug{} << "WS error:" << eventType << " " << e << " " << userData;
     return 0;
 }
 
@@ -240,8 +240,9 @@ void WsBroker::openSocket(std::string url) {
 
     int urlLength = 0;
     EMSCRIPTEN_RESULT res = emscripten_websocket_get_url_length(socket, &urlLength);
-    assert(res == EMSCRIPTEN_RESULT_SUCCESS);
-    assert(urlLength == strlen(url));
+    if (res != EMSCRIPTEN_RESULT_SUCCESS) {
+        !Debug{} << "Something went wrong with the websocket";
+    }
 
     emscripten_websocket_set_onopen_callback(socket, this, WebSocketOpen);
     emscripten_websocket_set_onclose_callback(socket, this, WebSocketClose);

@@ -123,6 +123,12 @@ namespace Monopticon {
 
   }
 
+  namespace Context {
+      class Graphic;
+      class Store;
+      class WsBroker;
+  }
+
 // Definitions
 namespace Util {
     int SumTotal(epoch::L2Summary struct_l2);
@@ -154,6 +160,14 @@ namespace Util {
     };
 
     Color3 typeColor(L3Type t);
+
+    /*
+     * Return the last element in the path contained in the pages URL
+     * that concludes with a"/"
+     */
+    std::string GetWindowPath();
+
+    bool EndsWith(const std::string& s, const std::string& suffix);
 }
 
 namespace Device {
@@ -512,7 +526,7 @@ struct RouterParam {
 
 class Router {
   public:
-    Router(int level, int size, Object3D *root);
+    Router(Object3D *root_obj);
 
     Object3D* root;
 
@@ -595,11 +609,32 @@ class Scenario {
   public:
     Scenario(std::string label);
 
+    void ParseDocCreateScene(Context::Graphic *gCtx, Context::Store *sCtx);
+
     std::vector<std::vector<Router*>> router_levels;
 
-    Scenario& add(Router* r, int level);
-
+    pugi::xml_document doc;
+    pugi::xml_document scenario_doc;
 };
+
+
+pugi::xml_document get_xml_doc(std::string fname);
+
+/*
+ * Extracts the x & y position from an XML <object> that contains the nested mxGeometry element.
+ */
+Vector2 get_object_geom(pugi::xml_node obj_node);
+
+/*
+ * XML parsing logic
+ */
+uint32_t get_device_vlan(pugi::xml_node dev_obj);
+
+// Object Parameter Setup from xml source
+Layout::RouterParam* ExtractRouterParam(pugi::xpath_node router, pugi::xml_document *doc);
+void AnnotateRouterParam(Layout::RouterParam *rparam, pugi::xml_document *scenario_doc);
+void AnnontateVlanDev(Layout::VlanDevice *vdev, pugi::xml_node named_node);
+
 
 } // Layout
 
@@ -613,8 +648,8 @@ class Store {
     public:
         Store();
 
-        Vector2 nextVlanPos(const int vlan);
-        UnsignedByte newObjectId();
+        Vector2 NextVlanPos();
+        UnsignedByte NewObjectId();
 
         /**
          * @brief Clean up expired items
@@ -622,7 +657,7 @@ class Store {
          * Checks for expired packet line and mcast drawables
          * and removes them from their respective queues.
          **/
-        void frameUpdate();
+        void FrameUpdate();
 
         // Scene objects
         std::vector<Device::Selectable*>      _selectable_objects{};

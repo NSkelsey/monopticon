@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root>
+    <author>n.skelsey</author>
+    <wifi_router>
+        <network>
+            <bridge>router</bridge>
+            <tag>1</tag>
+            <ip>192.168.1.1</ip>
+            <mac>be:ef:be:ef:be:ef</mac>
+        </network>
+    </wifi_router>
+    <winzoz_pc>
+        <network>
+            <bridge>vmbr</bridge>
+            <tag>1</tag>
+            <ip>192.168.1.101</ip>
+            <mac>be:ef:ca:fe:ca:fe</mac>
+        </network>
+        <started>true</started>
+        <vm_id>104</vm_id>
+    </winzoz_pc>
+    <iphone_30>
+        <network>
+            <bridge>vmbr</bridge>
+            <tag>2</tag>
+            <ip>192.168.1.42</ip>
+            <mac>ca:fe:ca:fe:ca:fe</mac>
+        </network>
+        <vm_id>106</vm_id>
+    </iphone_30>
+</root>
