@@ -118,11 +118,6 @@ std::string GetWindowPath() {
     return last_path;
 }
 
-bool EndsWith(const std::string& s, const std::string& suffix)
-{
-    long long p = s.size() - suffix.size();
-    return s.rfind(suffix) == std::abs(p);
-}
 
 } // namespace Util
 } // namespace Monopticon

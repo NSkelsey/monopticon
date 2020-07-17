@@ -166,8 +166,6 @@ namespace Util {
      * that concludes with a"/"
      */
     std::string GetWindowPath();
-
-    bool EndsWith(const std::string& s, const std::string& suffix);
 }
 
 namespace Device {

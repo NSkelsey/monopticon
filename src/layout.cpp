@@ -26,14 +26,14 @@ Scenario::Scenario(std::string label) {
     } else if (label == "sample") {
         doc_path = "src/assets/sample-layout-drawio.xml";
         scenario_doc_path = "src/assets/sample-cmdb.xml";
-    } else{
+    } else {
         std::cerr << "Could not find a relevant scenario" << std::endl;
         doc_path = "src/assets/sample-layout-drawio.xml";
         scenario_doc_path = "src/assets/sample-devs.xml";
     }
 
-    pugi::xml_document doc = get_xml_doc(doc_path);
-    pugi::xml_document scenario_doc = get_xml_doc(scenario_doc_path);
+    doc = get_xml_doc(doc_path);
+    scenario_doc = get_xml_doc(scenario_doc_path);
 }
 
 
