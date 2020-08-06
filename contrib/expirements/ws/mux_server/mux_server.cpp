@@ -28,6 +28,8 @@ public:
     epoch::EpochStep parse_epoch_step(broker::zeek::Event event);
 };
 
+int broker_port;
+
 
 class mux_server {
 public:
@@ -91,8 +93,7 @@ public:
         uint64_t count = 0;
         std::stringstream val;
 
-        std::string addr = "127.0.0.1";
-        uint16_t port = 9999;
+        std::string addr = "0.0.0.0";
         BrokerCtx bCtx = BrokerCtx();
 
         // Zeek broker components
@@ -101,15 +102,15 @@ public:
         broker::subscriber subscriber = _ep.make_subscriber({"monopt/l2", "monopt/stats"});
         broker::status_subscriber status_subscriber = _ep.make_status_subscriber(true);
 
-        int res = _ep.listen(addr, port);
+        int res = _ep.listen(addr, broker_port);
 
         if (res == 0) {
           std::cerr << "Could not listen on: ";
-          std::cerr << addr << ":" << port << std::endl;
+          std::cerr << addr << ":" << broker_port << std::endl;
           std::exit(1);
         } else {
           std::cout << "Endpoint listening on: ";
-          std::cout << addr << ":" << port << std::endl;
+          std::cout << addr << ":" << broker_port << std::endl;
         }
 
         int len = 1024*10;
@@ -170,7 +171,7 @@ int main(int argc, char* argv[]) {
     uint16_t port = 9002;
 
     if (argc == 1) {
-        std::cout << "Usage: mux_server [port]" << std::endl;
+        std::cout << "Usage: mux_server [port] [broker-port]" << std::endl;
         return 1;
     }
 
@@ -182,6 +183,14 @@ int main(int argc, char* argv[]) {
         }
 
         port = uint16_t(i);
+
+	int j = atoi(argv[2]);
+        if (j <= 0 || j > 65535) {
+            std::cout << "invalid broker port" << std::endl;
+            return 1;
+        }
+
+        broker_port = uint16_t(j);
     }
 
     s.run(port);
