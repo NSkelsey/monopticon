@@ -1,4 +1,4 @@
-# This program generates router identification events on a schedule
+# This program generates network events on a schedule
 @load policy/misc/stats.bro
 
 export {
@@ -9,6 +9,9 @@ export {
     10.0.0.0/8,
     100.64.0.0/10
   };
+
+  global mux_server = "127.0.0.1" &redef;
+  global mux_server_port = 9999/tcp &redef;
 
   type L2Summary: record {
     # maps enum: L3_IPV4, L3_IPV6, L3_ARP, L3_UNKOWN to num_pkts
@@ -355,15 +358,11 @@ event raw_packet(p: raw_pkt_hdr)
 
 event zeek_init()
 {
-  local cop = create_L2Device("00:04:13", T);
-  cop$label = "Copernico APs";
-
-  local copt: table[string] of L2Device = table(["00:04:13"] = cop);
   local t = table();
   PrefixVec = [t, t, t, t, t, t, t, t];
 
   print "Trying to add peer";
-  Broker::peer("127.0.0.1", 9999/tcp, 0sec);
+  Broker::peer(mux_server, mux_server_port, 0sec);
   print "Starting epoch_steps";
 }
 

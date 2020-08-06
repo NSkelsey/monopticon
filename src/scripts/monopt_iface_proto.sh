@@ -75,6 +75,18 @@ launch() {
     fi
     iface=$1
 
+    ext_endpoint=false
+    if [ -z "$3" ]
+    then
+        echo "Using default endpoint"
+    else
+      ext_endpoint=true
+      broker_host=$2
+      broker_port=$3
+    fi
+
+
+
     # Check if ZEEK_ROOT is set, otherwise use the default package install path
     if [ -z ${ZEEK_ROOT+x} ];
     then
@@ -84,7 +96,14 @@ launch() {
     zeek_script_path="${ZEEK_ROOT}/share/zeek"
     script_path="/usr/local/share/monopticon/scripts/epoch_event.zeek $zeek_script_path/policy/misc/stats.zeek"
     cd /var/log/monopticon
-    $zeek_bin_path -i $iface -b $script_path >monopticon.log &
+
+    if [ "$ext_endpoint" = true ]
+    then
+      $zeek_bin_path -e "redef mux_server = \"${broker_host}\"; redef mux_server_port = ${broker_port}/tcp;" \
+                     -i $iface -b $script_path >monopticon.log &
+    else
+      $zeek_bin_path -i $iface -b $script_path >monopticon.log &
+    fi
     echo $!
 }
 
@@ -112,7 +131,7 @@ function contains() {
 function usage() {
     echo "USAGE: monopt_iface_proto FUNC"
     echo "FUNC:="
-    echo "     {launch <iface>}"
+    echo "     {launch <iface> [monopt_host] [port]}"
     echo "     {sstop <pid>}"
     echo "     {list_ifaces}"
     echo "     {mac_addr <iface>}"

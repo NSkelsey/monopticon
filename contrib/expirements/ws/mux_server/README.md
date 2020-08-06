@@ -20,12 +20,12 @@ Please note that these instructions were not tested and are not complete, but a 
 
 ### Build & Install zeek for its broker
 
-Download a release of Zeek - `3.1.2` works.
+Download a release of Zeek - `3.1.2` works. Ensure that the version of the broker is the same on the system that will connect to the mux_server.
 
-Configure and install zeek ensuring that shared libaries are installed
+Configure and install Zeek ensuring that shared libaries are installed.
 
 ```bash
-> ./configure --disable-python --disable-broker-tests --disable-auxtools --disable-zeekctl --binary-package
+> ./configure --prefix=/usr/ --binary-package --enable-static-binpac --disable-python --disable-zeekctl --disable-broker-tests
 > make
 > sudo make install
 ```
@@ -39,7 +39,6 @@ Clone the 0.8.2 version of the websocketpp project. Copy the contents of the `/m
 These commands are shown below executed from this directory.
 
 ```bash
-
 > git clone https://github.com/nskelsey/websocketpp
 
 > cd websocketpp/examples/mux_server
@@ -51,7 +50,7 @@ These commands are shown below executed from this directory.
 > cmake --build .
 ```
 
-# Operation
+## Usage
 
 The `build/bin` should now contain the `mux_server` binary.
 
@@ -62,8 +61,31 @@ The `build/bin` should now contain the `mux_server` binary.
 > mux_server 9999 9002
 ```
 
-## Running the Nginx frontend.
+### Deploying with nginx
 
 With nginx you can forward websocket connections to the mux_server encrypting them to this endpoint. To handle TLS just use let's encrypt.
 
 A sample nginx server configuration is included in the file `monopt-site`.
+
+```
+.
+├── a310d825-7d3c-4500-be33-15aefe361cd0
+│   ├── cyberlab
+│   │   ├── EmscriptenApplication.js
+│   │   ├── WebApplication.css
+│   │   ├── index.html
+│   │   ├── monopticon.js
+│   │   └── monopticon.wasm
+│   ├── home-wifi
+│   │   ├── EmscriptenApplication.js
+│   │   ├── WebApplication.css
+│   │   ├── index.html
+│   │   ├── monopticon.js
+│   │   └── monopticon.wasm
+│   ├── index.html
+│   ├── m-dark.compiled.css
+│   ├── m-dark.css
+│   └── styles.css
+└── img
+    └── favicon.png
+```
