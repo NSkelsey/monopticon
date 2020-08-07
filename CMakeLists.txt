@@ -31,7 +31,7 @@ find_package(Magnum REQUIRED
                     )
 
 
-corrade_add_resource(monopticon_RESOURCES dev-resources.conf)
+corrade_add_resource(monopticon_RESOURCES resources.conf)
 
 set(monopticon_FILES
         contrib/expirements/ws/newproto/epoch.pb.h
