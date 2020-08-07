@@ -31,9 +31,9 @@ The animation below demonstrates the output of Monopticon (v0.3.0) monitoring a 
 [Check it out](https://nskelsey.com/secret-url/web-samples/)
 
 
-## Local Usage
+## Usage
 
-To use Monopticon locally you'll need to build and install a few components. The instructions for installing each piece are listed below.
+To use Monopticon on your systems you'll need to build and install a few components. The instructions for installing each piece are linked below.
 
 - [mux_server](https://github.com/NSkelsey/monopticon/tree/master/contrib/expirements/ws/mux_server)
 - [monitor_server](https://github.com/NSkelsey/monopticon/tree/master/src/scripts)
