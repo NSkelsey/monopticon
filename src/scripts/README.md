@@ -2,7 +2,7 @@ monitor_server
 ==============
 As described in the design document, the monitor server is a minimal zeek deployment with a custom script. This means zeek, the zeek script and the bash script `monopt_iface_proto` must be prepared and installed.
 
-## Build and Instal
+## Build and Install
 
 ### Setup Zeek
 
@@ -24,4 +24,7 @@ Ensure that the mux_server is running.
 
 Execute:
 
-> monopt_iface_proto launch <iface> <host:broker-port>
+```
+> # monopt_iface_proto launch <iface> <host> <broker-port>
+> monopt_iface_proto launch en0 10.0.200.20 9999
+```

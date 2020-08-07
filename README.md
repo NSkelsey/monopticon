@@ -33,32 +33,13 @@ The animation below demonstrates the output of Monopticon (v0.3.0) monitoring a 
 
 ## Local Usage
 
-1) Install the software following the commands documented below.
-2) Prepare a suitable interface to capture packets on.
+To use Monopticon locally you'll need to build and install a few components. The instructions for installing each piece are listed below.
 
-Read the file `monpt_iface_proto.sh` to ensure that it will work with your system.
-
-3) Run:
-
-```zsh
-> monopticon
-```
-
-### OpenSuse Leap
-
-ARM and x86 rpm packages are available on the [Open Build System](https://software.opensuse.org/package/monopticon?search_term=monopticon).
+- [mux_server](https://github.com/NSkelsey/monopticon/tree/master/contrib/expirements/ws/mux_server)
+- [monitor_server](https://github.com/NSkelsey/monopticon/tree/master/src/scripts)
+- [web page](https://github.com/NSkelsey/monopticon/tree/master/src/web)
 
 
-### Arch Linux
+## Documentation
 
-In an alternative rolling universe the following command may function:
-
-```zsh
-> yay monopticon
-```
-
-### Building
-
-See `INSTALL.md` for notes on building.
-
-For true believers there is a Dockerfile in `pkg/docker` that should work out of the box.
+For a detailed description of the architecture of Monopticon read the [design document](https://github.com/NSkelsey/monopticon/wiki/Design-and-Architecture).
